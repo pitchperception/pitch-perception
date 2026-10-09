@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pitch Perception</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/pp.css">
+</head>
+<body>
+<header class="mast" id="mast">
+  <div class="wrap">
+    <a class="mark" href="#today" aria-label="Pitch Perception, Today"><img id="logo" src="assets/logo-reversed.png" width="47" height="30" alt=""><b>Pitch Perception</b></a>
+    <nav class="mnav" aria-label="Sections">
+      <a href="#today" data-s="today">Today</a>
+      <a href="#players" data-s="players">Players</a>
+      <a href="#teams" data-s="teams">Teams</a>
+      <a href="#race" data-s="race">Playoff race</a>
+      <a href="#matches" data-s="matches">Matches</a>
+      <a href="#week" data-s="week">Weekly</a>
+      <a href="#recruiting" data-s="recruiting">Recruiting</a>
+      <a href="#method" data-s="method">Method</a>
+    </nav>
+    <div class="msearch" role="search">
+      <label class="sfield" for="q"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.5"/></svg><span class="sr">Search players and teams</span><input id="q" type="search" placeholder="Search players and teams" autocomplete="off" aria-controls="qres"><span class="kbd" aria-hidden="true">/</span></label>
+      <div class="sresults" id="qres" role="listbox" hidden></div>
+    </div>
+    <button class="sbtn" type="button" aria-label="Search players and teams"><svg width="18" height="18" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="fl">
+      <span>Pitch Perception is an independent model, not affiliated with or endorsed by Major League Soccer.</span>
+      <span>Data from WhoScored (Opta events), Sofascore, the MLS Players Association, American Soccer Analysis and Transfermarkt (market values, shown as bands, and contracts). <span id="imgcredit">Player photos and club crests: MLS.</span> Regular season only.</span>
+      <span><a href="#contact">Contact, corrections and privacy</a></span>
+    </div>
+    <div class="seg theme-seg" role="group" aria-label="Theme">
+      <button type="button" id="th-system" data-t="system" aria-pressed="true">System</button>
+      <button type="button" id="th-light" data-t="light" aria-pressed="false">Paper</button>
+      <button type="button" id="th-dark" data-t="dark" aria-pressed="false">Night</button>
+    </div>
+  </div>
+</footer>
+
+<nav class="tabbar" aria-label="Sections">
+  <a href="#today" data-s="today"><i></i>Today</a>
+  <a href="#players" data-s="players"><i></i>Players</a>
+  <a href="#teams" data-s="teams"><i></i>Teams</a>
+  <a href="#race" data-s="race"><i></i>Race</a>
+  <a href="#more" data-s="more"><i></i>More</a>
+</nav>
+
+<script src="assets/core.js"></script>
+<script src="assets/charts.js"></script>
+<script src="assets/home.js"></script>
+<script src="assets/player.js"></script>
+<script src="assets/team.js"></script>
+<script src="assets/manager.js"></script>
+<script src="assets/race.js"></script>
+<script src="assets/explore.js"></script>
+<script src="assets/weeks.js"></script>
+<script src="assets/matches.js"></script>
+<script src="assets/recruit.js"></script>
+<script src="assets/scout.js"></script>
+<script src="assets/method.js"></script>
+<script>PP.boot();</script>
+</body>
+</html>
