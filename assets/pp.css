@@ -826,3 +826,19 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 .wksum span{font-size:var(--t-12);color:var(--ink-3)}
 .fx.is-motw{border-left:4px solid var(--signal);padding-left:12px;background:var(--well)}
 .motw-tag{display:inline-block;width:max-content;margin-right:6px;font-size:var(--t-12);font-weight:700;color:var(--signal)}
+/* what is at stake, match pages (owner, 2026-10-09) */
+.stk{display:grid;gap:6px;padding-block:var(--s-3);border-bottom:1px solid var(--rule)}
+.stk-h{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:var(--s-3)}
+.stk-h .who{display:grid;gap:2px;font-weight:650}
+.stk-g{font-size:var(--t-13);font-weight:500;color:var(--ink-2)}
+.stk-sw{display:grid;justify-items:end;gap:0}
+.stk-sw b{font-size:var(--t-27);font-weight:650;line-height:1;color:var(--signal)}
+.stk-tr{position:relative;height:10px;margin:4px 6px 0;background:var(--well);border-radius:5px}
+.stk-tr i{position:absolute;top:0;bottom:0;background:var(--signal);opacity:.3;border-radius:5px}
+.stk-tr u,.stk-lab u{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid var(--raised)}
+.stk-lab u{position:static;display:inline-block;width:9px;height:9px;margin:0 6px 0 0;border:0;vertical-align:0}
+.stk .l{background:var(--ink-3)} .stk .w{background:var(--signal)}
+.stk-lab{display:flex;justify-content:space-between;gap:var(--s-3);font-size:var(--t-12);color:var(--ink-3)}
+.stk-lab b{color:var(--ink);font-weight:650}
+.stk-watch{margin-top:var(--s-4)}
+.stk-watch .r-figure{font-size:var(--t-36);color:var(--signal)}

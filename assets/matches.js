@@ -198,6 +198,18 @@ PP.pages.match = async (main, h) => {
   let body = "";
   if(!played){
     const side = s => d["stake_"+s] && d["if_win_"+s] != null ? `<div class="ind"><span class="r-label">${esc(short(m[s]))}</span><span class="v">${STAKE(d["stake_"+s], conf(m[s])+"ern Conference")}</span><span class="r-small">${pct(d["if_win_"+s])} with a win, ${pct(d["if_loss_"+s])} with a defeat.</span></div>` : "";
+    // what is at stake (owner, 2026-10-09: restyled to match the rest of the site): each side's most affected season goal,
+    // its chance with a defeat and with a win on one 0-100% track, and the swing between them
+    const goalName = (st, team) => ({"top 7": "A top-seven finish", "playoffs": "The playoffs", "1st in conference": `First in the ${conf(team)}`,
+      "Supporters' Shield": "The Supporters' Shield", "MLS Cup": "MLS Cup"}[st] || st);
+    const stakeRow = s => { const st = d["stake_"+s], w = d["if_win_"+s], l = d["if_loss_"+s]; if(!st || w == null || l == null) return "";
+      const lo = Math.min(w, l), hi = Math.max(w, l);
+      return `<div class="stk"><div class="stk-h"><div class="who">${clubTag(m[s], true)}<span class="stk-g">${esc(goalName(st, m[s]))}</span></div>
+          <div class="stk-sw"><b class="num">${Math.round(Math.abs(w - l) * 100)}</b><span class="r-small">point swing</span></div></div>
+        <div class="stk-tr" role="img" aria-label="${esc(short(m[s]))}: ${pct(w)} chance with a win, ${pct(l)} with a defeat"><i style="left:${lo*100}%;width:${Math.max(0.5, (hi - lo)*100)}%"></i><u class="l" style="left:${l*100}%"></u><u class="w" style="left:${w*100}%"></u></div>
+        <div class="stk-lab"><span><u class="l"></u>With a defeat <b class="num">${pctShort(l)}</b></span><span><u class="w"></u>With a win <b class="num">${pctShort(w)}</b></span></div></div>`; };
+    const watchFigs = m.watchability != null ? `<div class="motw-figs stk-watch"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
+      <p class="r-small">Watchability averages quality (how strong both teams are) and importance (how much the result moves their season goals), after FiveThirtyEight's old match ratings.</p>` : "";
     const outs = s => { const o = d["out_"+s], q = d["questionable_"+s]; return o || q ? `<p class="r-small"><b>${esc(short(m[s]))}</b>${o ? `: out, ${esc(o.split("; ").join(", "))}` : ""}${q ? `${o?"; ":": "}doubtful, ${esc(q.split("; ").join(", "))}` : ""}.</p>` : ""; };
     body = `<div class="wrap"><section class="plate pplate mplate">
         <div class="pp-left"><span class="r-label">The forecast</span>
@@ -206,7 +218,7 @@ PP.pages.match = async (main, h) => {
           <p class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}. ${src(m.source)}${d.elo_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.elo_pH)}, ${pctShort(d.elo_pD)}, ${pctShort(d.elo_pA)}.` : ""}</p>
           ${recordNote(m, false)}
         </div>
-        <div class="pp-right"><span class="r-label">What is at stake</span><div class="indicators">${side("home")}${side("away")}</div>${m.importance!=null?`<p class="r-small">Watchability ${r0(m.watchability)} of 100: quality ${r0(m.quality)}, importance ${r0(m.importance)} among the remaining matches. ${WATCH_NOTE}</p>`:""}</div>
+        <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>
       </section></div>
       <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The confirmed starting elevens." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
