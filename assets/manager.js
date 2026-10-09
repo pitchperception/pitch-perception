@@ -27,15 +27,15 @@ PP.pages.managers = async main => {
   const all = M.managers.filter(m => m.score), d0 = Math.min(-0.6, ...all.map(m => m.score.lo)), d1 = Math.max(0.6, ...all.map(m => m.score.hi));
   const since = m => { const st = m.stints.filter(s => s.team === m.current); return st.length ? st[0].first : null; };
   const row = (m, i, club) => { const sc = m.score;
-    return `<a class="mrow" href="#manager-${m.slug}"><span class="rk">${i+1}</span><span class="nm">${club ? `${PP.crestImg(club, 22) || chip(club)}` : ""}<b>${esc(m.name)}</b>${club ? `<span class="r-small">${esc(short(club))}${since(m) ? `, since ${PP.dateLong(since(m))} ${since(m).slice(0,4)}` : ""}</span>` : `<span class="r-small">${m.teams.map(t => esc(short(t))).join(", ")}</span>`}</span>
+    return `<a class="mgrow" href="#manager-${m.slug}"><span class="rk">${i+1}</span><span class="nm">${club ? `${PP.crestImg(club, 22) || chip(club)}` : ""}<b>${esc(m.name)}</b>${club ? `<span class="r-small">${esc(short(club))}${since(m) ? `, since ${PP.dateLong(since(m))} ${since(m).slice(0,4)}` : ""}</span>` : `<span class="r-small">${m.teams.map(t => esc(short(t))).join(", ")}</span>`}</span>
       <span class="num">${sc ? sc.n : 0}</span><span class="val">${sc ? `${PP.ibar(sc.value, sc.lo, sc.hi, d0, d1)}<b>${sgn(sc.value)}</b>` : `<span class="r-small">no matches with ratings</span>`}</span></a>`; };
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Managers</h1>
       <p class="r-note" style="max-width:66ch">How each MLS manager's teams have done against what their players predict, and how they play. The score is expected-goal difference per match above what the starting elevens' pre-season player ratings predict, 2021&ndash;26 regular seasons, pulled toward zero for managers with few matches. The bar is the 90% range.</p>
       <p class="r-small" style="max-width:66ch">${esc(M.reading === "plain" ? "Steady within a season (reliability 0.64), but it carries over only modestly from one season to the next, so read it as how his teams have performed, not a fixed trait." : M.reading)}</p></section>
     <section class="band"><div class="band-head"><h2 class="r-title">Current managers</h2><p>The 30 clubs' managers at their latest match. Matches count only 2021&ndash;26, the seasons with player ratings to compare against.</p></div>
-      <div class="mlist"><div class="mhead"><span></span><span>Manager</span><span>Matches</span><span>xG per match above the squad</span></div>${cur.map((m,i) => row(m, i, m.current)).join("")}</div></section>
+      <div class="mlist"><div class="mghead"><span></span><span>Manager</span><span>Matches</span><span>xG per match above the squad</span></div>${cur.map((m,i) => row(m, i, m.current)).join("")}</div></section>
     <section class="band"><div class="band-head"><h2 class="r-title">Former managers</h2><p>Managers with ${MINN}+ matches since 2021 who are no longer at an MLS club.</p></div>
-      <div class="mlist"><div class="mhead"><span></span><span>Manager</span><span>Matches</span><span>xG per match above the squad</span></div>${past.map((m,i) => row(m, i, null)).join("")}</div></section></div>`;
+      <div class="mlist"><div class="mghead"><span></span><span>Manager</span><span>Matches</span><span>xG per match above the squad</span></div>${past.map((m,i) => row(m, i, null)).join("")}</div></section></div>`;
   $$(".ibar", main).forEach(PP.bindTips);
 };
 

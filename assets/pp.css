@@ -760,16 +760,16 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 
 /* managers (2026-10-08) */
 .mlist{display:grid}
-.mhead,.mrow{display:grid;grid-template-columns:32px minmax(0,1fr) 72px minmax(0,300px);gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
-.mhead{font-size:var(--t-13);font-weight:600;color:var(--ink-2);border-bottom:1px solid var(--rule-strong)}
-.mrow{text-decoration:none;color:inherit}
-.mrow:hover{background:var(--well)}
-.mrow .rk{color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums}
-.mrow .nm{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
-.mrow .nm .r-small{flex-basis:100%;padding-left:32px}
-.mrow .num{text-align:right}
-.mrow .val{display:flex;align-items:center;gap:10px;justify-content:flex-end}
-@media (max-width:640px){.mhead{display:none}.mrow{grid-template-columns:24px minmax(0,1fr) auto}.mrow .num{display:none}.mrow .val .ibar{width:90px}}
+.mghead,.mgrow{display:grid;grid-template-columns:32px minmax(0,1fr) 72px minmax(0,300px);gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
+.mghead{font-size:var(--t-13);font-weight:600;color:var(--ink-2);border-bottom:1px solid var(--rule-strong)}
+.mgrow{text-decoration:none;color:inherit}
+.mgrow:hover{background:var(--well)}
+.mgrow .rk{color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums}
+.mgrow .nm{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
+.mgrow .nm .r-small{flex-basis:100%;padding-left:32px}
+.mgrow .num{text-align:right}
+.mgrow .val{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+@media (max-width:640px){.mghead{display:none}.mgrow{grid-template-columns:24px minmax(0,1fr) auto}.mgrow .num{display:none}.mgrow .val .ibar{width:90px}}
 .mgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:var(--s-7);align-items:start}
 @media (max-width:900px){.mgrid{grid-template-columns:1fr}}
 .facts2{display:grid;gap:var(--s-5)}
@@ -808,3 +808,21 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 .motw-figs .num{font-size:var(--t-21);font-weight:650}
 .motw-card .plab{display:flex;justify-content:space-between;gap:var(--s-3);font-size:var(--t-13);margin-top:4px}
 .msort,.wbadge{width:max-content;justify-self:start}
+/* matchday view (owner, 2026-10-09) */
+.wkstrip{display:flex;gap:6px;overflow-x:auto;padding:var(--s-2) 0 var(--s-3);scrollbar-width:thin}
+.wkb{flex:none;display:grid;gap:1px;justify-items:center;min-width:60px;padding:6px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--raised);color:var(--ink-3);font:inherit;font-size:var(--t-12);cursor:pointer}
+.wkb b{font-size:var(--t-13);font-weight:650;color:var(--ink)}
+.wkb.done{background:var(--well)}
+.wkb.part{border-style:dashed}
+.wkb.on{background:var(--navy);border-color:var(--navy);color:var(--on-navy-2)}
+.wkb.on b{color:var(--on-navy)}
+.wkhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s-3);margin-top:var(--s-3)}
+.wknav{width:38px;height:38px;border:1px solid var(--rule);border-radius:50%;background:var(--raised);color:var(--ink);font:inherit;font-size:var(--t-21);line-height:1;cursor:pointer}
+.wknav:disabled{opacity:.35;cursor:default}
+.mdk{font-size:var(--t-13);font-weight:600;color:var(--ink-3);margin-left:6px}
+.wksum{display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-6);margin:var(--s-4) 0 var(--s-2)}
+.wksum>div{display:grid;gap:1px}
+.wksum b{font-size:var(--t-17);font-weight:650}
+.wksum span{font-size:var(--t-12);color:var(--ink-3)}
+.fx.is-motw{border-left:4px solid var(--signal);padding-left:12px;background:var(--well)}
+.motw-tag{display:inline-block;width:max-content;margin-right:6px;font-size:var(--t-12);font-weight:700;color:var(--signal)}

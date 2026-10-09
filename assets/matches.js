@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 const {$, $$, S, text, esc, sgn, num, pct, pctShort, short, full, chip, clubTag} = PP;
-let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time";
+let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time", WK = null;
 const load = () => mP || (mP = fetch("data/matches.json").then(r => { if(!r.ok) throw new Error(`matches.json returned ${r.status}`); return r.json(); }));
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const kickDate = m => m.kickoff_utc ? new Date(m.kickoff_utc.replace("Z",":00Z")) : new Date(m.date+"T23:00:00Z");
@@ -18,7 +18,7 @@ const motwCard = m => {
   const d = M.detail[String(m.id)] || {}, k = kickDate(m);
   const sw = ["home","away"].map(s => d["stake_"+s] && d["if_win_"+s] != null ? {team: m[s], stake: d["stake_"+s], w: d["if_win_"+s], l: d["if_loss_"+s]} : null)
     .filter(Boolean).sort((a,b) => (b.w - b.l) - (a.w - a.l))[0];
-  return `<section class="band motw" aria-labelledby="motw-h"><div class="band-head"><h2 class="r-title" id="motw-h">Match of the week</h2><p>The most watchable match of the next seven days: both sides strong, and a lot riding on it.</p></div>
+  return `<section class="band motw" aria-labelledby="motw-h"><div class="band-head"><h2 class="r-title" id="motw-h">Match of the week</h2><p>The most watchable match still to play this matchday: both sides strong, and a lot riding on it.</p></div>
     <a class="motw-card" href="#match-${m.id}">
       <span class="r-label">${dayKey(k)}, ${timeOf(k)}</span>
       <div class="motw-teams">${clubTag(m.home, true)}<span class="v">v</span>${clubTag(m.away, true)}</div>
@@ -62,18 +62,18 @@ PP.pages.matches = async main => {
     const up = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m)).slice(0, FILTER === "all" ? 24 : 12);
     const past = all.filter(m => m.status === "played" && f(m)).reverse().slice(0, FILTER === "all" ? 24 : 34);
     const group = arr => { const g = []; arr.forEach(m => { const k = dayKey(kickDate(m)); if(!g.length || g[g.length-1][0] !== k) g.push([k, []]); g[g.length-1][1].push(m); }); return g; };
-    const upRow = m => `<a class="fx fxl" href="#match-${m.id}"><span class="time">${timeOf(kickDate(m))}</span>
+    const upRow = (m, hot) => `<a class="fx fxl${hot ? " is-motw" : ""}" href="#match-${m.id}"><span class="time">${timeOf(kickDate(m))}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="probs">${pbar(m)}
         <div class="plab"><span><b>${pctShort(m.pH)}</b> win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> win</span></div></div>
-      <div class="stake">${watchChip(m)}${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.watchability!=null?`; quality ${r0(m.quality)}, importance ${r0(m.importance)}`:""}</span></div></a>`;
+      <div class="stake">${hot ? `<span class="motw-tag">Match of the week</span>` : ""}${watchChip(m)}${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.watchability!=null?`; quality ${r0(m.quality)}, importance ${r0(m.importance)}`:""}</span></div></a>`;
     const pastRow = m => { const d = M.detail[String(m.id)] || {}, th = (d.top_home||[])[0], ta = (d.top_away||[])[0];
       return `<a class="fx fxl fxp" href="#match-${m.id}"><span class="score num">${m.g_home}–${m.g_away}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="xgpair num"><span>xG ${num(m.xg_home,2)}</span><span>xG ${num(m.xg_away,2)}</span></div>
       <div class="stake r-small">${th && ta ? `Most value added: ${esc(th[1])} (${sgn(th[2],2)}) and ${esc(ta[1])} (${sgn(ta[2],2)})` : ""}</div></a>`; };
-    const week = all.filter(m => m.status === "upcoming" && m.watchability != null && kickDate(m) > now - 2*3600e3 && kickDate(m) < now + 7*86400e3);
-    const motw = FILTER === "all" && week.length ? week.slice().sort((a,b) => b.watchability - a.watchability)[0] : null;
+    if(FILTER === "all"){ weekView(group, upRow, pastRow); return; }
+    const motw = null;
     const upAll = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m));      // ranked across every remaining match
     const upGroups = SORT === "watch" ? [["Most watchable first", upAll.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1)).slice(0, FILTER === "all" ? 24 : 12)]] : group(up);
     $("#mlist").innerHTML = `${motw ? motwCard(motw) : ""}<section class="band" style="padding-top:0"><div class="band-head"><h2 class="r-title">Coming up</h2><p>Win, draw and defeat chances from the forecast, with lineup news where it exists. Kickoff times are Eastern. ${WATCH_NOTE}</p>
@@ -82,11 +82,63 @@ PP.pages.matches = async main => {
       <section class="band"><div class="band-head"><h2 class="r-title">Results</h2><p>Scores, expected goals, and the player who added the most value on each side. Open a result for its match report.</p></div>
       <div class="fixtures">${group(past).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(pastRow).join("")}`).join("")}</div></section>`;
   };
+  /* matchdays, as on the previous site (owner, 2026-10-09): walk the season in kickoff order; a new matchday starts after
+     a day without matches or when a club would play twice; rounds of six or more matches are numbered, and a round played
+     only Tuesday to Thursday is midweek. Days are US Eastern. */
+  const ymd = m => kickDate(m).toLocaleDateString("en-CA", {timeZone: "America/New_York"});
+  const dShort = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", {day: "numeric", month: "short", timeZone: "UTC"});
+  const dRange = (a, b) => { if(a === b) return dShort(a); const [da, ma] = dShort(a).split(" "), [db, mb] = dShort(b).split(" "); return ma === mb ? `${da} to ${db} ${mb}` : `${dShort(a)} to ${dShort(b)}`; };
+  const slates = (() => {
+    const out = []; let cur = null;
+    const gap = (a, b) => (new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 864e5;
+    all.forEach(m => { const d = ymd(m);
+      if(!cur || gap(cur.last, d) >= 2 || cur.teams.has(m.home) || cur.teams.has(m.away)){ cur = {matches: [], teams: new Set(), first: d, last: d}; out.push(cur); }
+      cur.matches.push(m); cur.teams.add(m.home); cur.teams.add(m.away); cur.last = d; });
+    let n = 0;
+    return out.map((x, i) => { const full = x.matches.length >= 6, days = [...new Set(x.matches.map(m => new Date(ymd(m) + "T12:00:00Z").getUTCDay()))];
+      return {key: "s" + i, n: full ? ++n : null, kind: full ? (days.every(d => d >= 2 && d <= 4) ? "Midweek" : "Weekend") : "Extra", first: x.first, last: x.last, matches: x.matches}; });
+  })();
+  if(!WK || !slates.some(x => x.key === WK)){
+    const nx = slates.find(x => x.n && x.matches.some(m => m.status !== "played" && kickDate(m) > now - 2*3600e3));
+    WK = (nx || slates[slates.length - 1]).key;
+  }
+  const weekView = (group, upRow, pastRow) => {
+    const i = slates.findIndex(x => x.key === WK), w = slates[i];
+    const ups = w.matches.filter(m => m.status !== "played");
+    const motw = ups.filter(m => m.watchability != null && kickDate(m) > now - 2*3600e3).sort((a,b) => b.watchability - a.watchability)[0] || null;
+    const done = w.matches.filter(m => m.status === "played" && m.pH != null), oc = m => m.g_home > m.g_away ? 0 : m.g_home === m.g_away ? 1 : 2, ps = m => [m.pH, m.pD, m.pA];
+    const bits = [];
+    if(done.length){
+      const right = done.filter(m => { const p = ps(m); return p.indexOf(Math.max(...p)) === oc(m); }).length;
+      bits.push([`${right} of ${done.length}`, "results where the forecast's most likely outcome happened"], [pct(done.reduce((a, m) => a + ps(m)[oc(m)], 0) / done.length), "average chance given to what happened"]);
+    }
+    if(ups.length){
+      const close = ups.slice().sort((a,b) => Math.abs(a.pH - a.pA) - Math.abs(b.pH - b.pA))[0], big = ups.slice().sort((a,b) => Math.max(b.pH, b.pA) - Math.max(a.pH, a.pA))[0], bigT = big.pH >= big.pA ? big.home : big.away;
+      bits.push([String(ups.length), "still to play"], [`${short(close.home)} v ${short(close.away)}`, "closest call"], [`${short(bigT)} ${pctShort(Math.max(big.pH, big.pA))}`, "biggest favourite"]);
+    }
+    const st = x => x.matches.every(m => m.status === "played") ? "done" : x.matches.some(m => m.status === "played") ? "part" : "up";
+    const strip = `<div class="wkstrip" role="group" aria-label="Matchdays">${slates.map(x => `<button type="button" class="wkb ${st(x)}${x.key === WK ? " on" : ""}" aria-pressed="${x.key === WK}" data-wk="${x.key}" title="${x.n ? `${x.kind} matchday ${x.n}` : "Extra match"}"><b>${x.n ? "MD" + x.n : "Extra"}</b><span>${dShort(x.first)}</span></button>`).join("")}</div>`;
+    const head = `<div class="wkhead"><button type="button" class="wknav" data-step="-1"${i === 0 ? " disabled" : ""} aria-label="Previous matchday">‹</button>
+      <div><h2 class="r-title">${w.n ? `Matchday ${w.n}` : "Extra match" + (w.matches.length > 1 ? "es" : "")} <span class="mdk">${w.kind}</span></h2>
+        <p class="r-small">${dRange(w.first, w.last)}, ${w.matches.length} match${w.matches.length === 1 ? "" : "es"}. Kickoff times are Eastern.</p></div>
+      <button type="button" class="wknav" data-step="1"${i === slates.length - 1 ? " disabled" : ""} aria-label="Next matchday">›</button></div>`;
+    const row = m => m.status === "played" ? pastRow(m) : upRow(m, motw && m.id === motw.id);
+    const groups = SORT === "watch" && ups.length ? [["Most watchable first", w.matches.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1))]] : group(w.matches);
+    $("#mlist").innerHTML = `${strip}${head}${bits.length ? `<div class="wksum">${bits.map(([b, t]) => `<div><b>${esc(b)}</b><span>${t}</span></div>`).join("")}</div>` : ""}
+      ${motw ? motwCard(motw) : ""}
+      <section class="band" style="padding-top:0"><div class="band-head"><p>${WATCH_NOTE}</p>${ups.length ? `<div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div>` : ""}</div>
+      <div class="fixtures">${groups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(row).join("")}`).join("")}</div></section>`;
+    const sw = $(".wkstrip"), on = $(".wkb.on"); if(sw && on) sw.scrollLeft = on.offsetLeft - sw.clientWidth / 2 + on.clientWidth / 2;
+  };
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Matches</h1><p class="r-note standfirst">Every 2026 match: the forecast before it, and what happened after. Open a match for lineups, stakes and who made the difference.</p>${recordLine()}
     <label class="fsel" style="justify-self:start"><span class="r-small">Club</span><select id="mteam"><option value="all">All clubs</option>${teams.map(t => `<option value="${esc(t)}"${t===FILTER?" selected":""}>${esc(full(t))}</option>`).join("")}</select></label></section>
     <div id="mlist"></div></div>`;
   $("#mteam").addEventListener("change", e => { FILTER = e.target.value; draw(); });
-  $("#mlist").addEventListener("click", e => { const b = e.target.closest("[data-sort]"); if(b){ SORT = b.dataset.sort; draw(); } });
+  $("#mlist").addEventListener("click", e => {
+    const b = e.target.closest("[data-sort]"); if(b){ SORT = b.dataset.sort; draw(); return; }
+    const k = e.target.closest("[data-wk]"); if(k){ WK = k.dataset.wk; draw(); return; }
+    const st = e.target.closest("[data-step]"); if(st && !st.disabled){ const j = slates.findIndex(x => x.key === WK) + Number(st.dataset.step); if(slates[j]){ WK = slates[j].key; draw(); } }
+  });
   PP.bindTips($("#mlist"));
   draw();
 };
