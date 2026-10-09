@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 const {$, $$, S, text, esc, sgn, num, pct, pctShort, short, full, chip, clubTag} = PP;
-let mP = null, M = null, FILTER = "all", RP = null, LOGD = null;
+let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time";
 const load = () => mP || (mP = fetch("data/matches.json").then(r => { if(!r.ok) throw new Error(`matches.json returned ${r.status}`); return r.json(); }));
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const kickDate = m => m.kickoff_utc ? new Date(m.kickoff_utc.replace("Z",":00Z")) : new Date(m.date+"T23:00:00Z");
@@ -10,6 +10,23 @@ const dayKey = d => d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",m
 const timeOf = d => d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).replace(" AM"," am").replace(" PM"," pm") + " ET";
 const src = s => s === "lineups" ? `<span class="src"><i class="st confirmed"></i>Confirmed lineups</span>` : s === "availability" ? `<span class="src"><i class="st likely"></i>Likely lineups from the availability report</span>` : `<span class="src"><i class="st model"></i>Team strength only; no lineup news yet</span>`;
 const pbar = (m, big) => { const [h, a] = PP.pairKit(m.home, m.away); return `<div class="pbar${big?" big":""}" role="img" aria-label="${esc(short(m.home))} ${pct(m.pH)}, draw ${pct(m.pD)}, ${esc(short(m.away))} ${pct(m.pA)}"><i style="width:${m.pH*100}%;background:${h}"></i><i style="width:${m.pD*100}%;background:var(--mid)"></i><i style="width:${m.pA*100}%;background:${a}"></i></div>`; };
+/* watchability, quality and importance (FiveThirtyEight's old match ratings; 29): restored on v3, owner 2026-10-09 */
+const r0 = v => Math.round(v);
+const watchChip = m => m.watchability == null ? "" : `<span class="wbadge" data-tip="${esc(`Watchability ${r0(m.watchability)}: the average of quality ${r0(m.quality)} (how strong both teams are) and importance ${r0(m.importance)} (how much the result moves their season goals)`)}"><b class="num">${r0(m.watchability)}</b> watchability</span>`;
+const WATCH_NOTE = "Watchability follows FiveThirtyEight's old match ratings: the average of quality (how strong both teams are, from the strength rating) and importance (how much the result moves each side's chances of its season goals in the playoff simulation). Both run from 0 to 100.";
+const motwCard = m => {
+  const d = M.detail[String(m.id)] || {}, k = kickDate(m);
+  const sw = ["home","away"].map(s => d["stake_"+s] && d["if_win_"+s] != null ? {team: m[s], stake: d["stake_"+s], w: d["if_win_"+s], l: d["if_loss_"+s]} : null)
+    .filter(Boolean).sort((a,b) => (b.w - b.l) - (a.w - a.l))[0];
+  return `<section class="band motw" aria-labelledby="motw-h"><div class="band-head"><h2 class="r-title" id="motw-h">Match of the week</h2><p>The most watchable match of the next seven days: both sides strong, and a lot riding on it.</p></div>
+    <a class="motw-card" href="#match-${m.id}">
+      <span class="r-label">${dayKey(k)}, ${timeOf(k)}</span>
+      <div class="motw-teams">${clubTag(m.home, true)}<span class="v">v</span>${clubTag(m.away, true)}</div>
+      <div class="probs">${pbar(m, true)}<div class="plab"><span><b>${pctShort(m.pH)}</b> ${esc(short(m.home))} win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> ${esc(short(m.away))} win</span></div></div>
+      <div class="motw-figs"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
+      ${sw ? `<p class="r-small">${esc(short(sw.team))}: ${pct(sw.w)} chance of ${STAKE(sw.stake, confOf(sw.team)+"ern Conference")} with a win, ${pct(sw.l)} with a defeat.</p>` : ""}
+    </a></section>`;
+};
 /* live forecast record (96, owner 2026-10-09): what the site said before kickoff, written down at the time */
 const logged = id => ((LOGD && LOGD.rows) || {})[String(id)] || null;
 const whenET = iso => { const d = new Date(iso); return `${dayKey(d)}, ${timeOf(d)}`; };
@@ -49,14 +66,19 @@ PP.pages.matches = async main => {
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="probs">${pbar(m)}
         <div class="plab"><span><b>${pctShort(m.pH)}</b> win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> win</span></div></div>
-      <div class="stake">${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.importance!=null?`; importance ${Math.round(m.importance)} of 100`:""}</span></div></a>`;
+      <div class="stake">${watchChip(m)}${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.watchability!=null?`; quality ${r0(m.quality)}, importance ${r0(m.importance)}`:""}</span></div></a>`;
     const pastRow = m => { const d = M.detail[String(m.id)] || {}, th = (d.top_home||[])[0], ta = (d.top_away||[])[0];
       return `<a class="fx fxl fxp" href="#match-${m.id}"><span class="score num">${m.g_home}–${m.g_away}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="xgpair num"><span>xG ${num(m.xg_home,2)}</span><span>xG ${num(m.xg_away,2)}</span></div>
       <div class="stake r-small">${th && ta ? `Most value added: ${esc(th[1])} (${sgn(th[2],2)}) and ${esc(ta[1])} (${sgn(ta[2],2)})` : ""}</div></a>`; };
-    $("#mlist").innerHTML = `<section class="band" style="padding-top:0"><div class="band-head"><h2 class="r-title">Coming up</h2><p>Win, draw and defeat chances from the forecast, with lineup news where it exists. Kickoff times are Eastern.</p></div>
-      <div class="fixtures">${group(up).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(upRow).join("")}`).join("") || `<p class="r-small">No matches scheduled.</p>`}</div></section>
+    const week = all.filter(m => m.status === "upcoming" && m.watchability != null && kickDate(m) > now - 2*3600e3 && kickDate(m) < now + 7*86400e3);
+    const motw = FILTER === "all" && week.length ? week.slice().sort((a,b) => b.watchability - a.watchability)[0] : null;
+    const upAll = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m));      // ranked across every remaining match
+    const upGroups = SORT === "watch" ? [["Most watchable first", upAll.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1)).slice(0, FILTER === "all" ? 24 : 12)]] : group(up);
+    $("#mlist").innerHTML = `${motw ? motwCard(motw) : ""}<section class="band" style="padding-top:0"><div class="band-head"><h2 class="r-title">Coming up</h2><p>Win, draw and defeat chances from the forecast, with lineup news where it exists. Kickoff times are Eastern. ${WATCH_NOTE}</p>
+      <div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div></div>
+      <div class="fixtures">${upGroups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(upRow).join("")}`).join("") || `<p class="r-small">No matches scheduled.</p>`}</div></section>
       <section class="band"><div class="band-head"><h2 class="r-title">Results</h2><p>Scores, expected goals, and the player who added the most value on each side. Open a result for its match report.</p></div>
       <div class="fixtures">${group(past).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(pastRow).join("")}`).join("")}</div></section>`;
   };
@@ -64,6 +86,8 @@ PP.pages.matches = async main => {
     <label class="fsel" style="justify-self:start"><span class="r-small">Club</span><select id="mteam"><option value="all">All clubs</option>${teams.map(t => `<option value="${esc(t)}"${t===FILTER?" selected":""}>${esc(full(t))}</option>`).join("")}</select></label></section>
     <div id="mlist"></div></div>`;
   $("#mteam").addEventListener("change", e => { FILTER = e.target.value; draw(); });
+  $("#mlist").addEventListener("click", e => { const b = e.target.closest("[data-sort]"); if(b){ SORT = b.dataset.sort; draw(); } });
+  PP.bindTips($("#mlist"));
   draw();
 };
 
@@ -140,7 +164,7 @@ PP.pages.match = async (main, h) => {
           <p class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}. ${src(m.source)}${d.elo_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.elo_pH)}, ${pctShort(d.elo_pD)}, ${pctShort(d.elo_pA)}.` : ""}</p>
           ${recordNote(m, false)}
         </div>
-        <div class="pp-right"><span class="r-label">What is at stake</span><div class="indicators">${side("home")}${side("away")}</div>${m.importance!=null?`<p class="r-small">Importance ${Math.round(m.importance)} of 100 among the remaining matches.</p>`:""}</div>
+        <div class="pp-right"><span class="r-label">What is at stake</span><div class="indicators">${side("home")}${side("away")}</div>${m.importance!=null?`<p class="r-small">Watchability ${r0(m.watchability)} of 100: quality ${r0(m.quality)}, importance ${r0(m.importance)} among the remaining matches. ${WATCH_NOTE}</p>`:""}</div>
       </section></div>
       <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The confirmed starting elevens." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
