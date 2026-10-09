@@ -106,16 +106,6 @@ PP.pages.matches = async main => {
     const i = slates.findIndex(x => x.key === WK), w = slates[i];
     const ups = w.matches.filter(m => m.status !== "played");
     const motw = ups.filter(m => m.watchability != null && kickDate(m) > now - 2*3600e3).sort((a,b) => b.watchability - a.watchability)[0] || null;
-    const done = w.matches.filter(m => m.status === "played" && m.pH != null), oc = m => m.g_home > m.g_away ? 0 : m.g_home === m.g_away ? 1 : 2, ps = m => [m.pH, m.pD, m.pA];
-    const bits = [];
-    if(done.length){
-      const right = done.filter(m => { const p = ps(m); return p.indexOf(Math.max(...p)) === oc(m); }).length;
-      bits.push([`${right} of ${done.length}`, "results where the forecast's most likely outcome happened"], [pct(done.reduce((a, m) => a + ps(m)[oc(m)], 0) / done.length), "average chance given to what happened"]);
-    }
-    if(ups.length){
-      const close = ups.slice().sort((a,b) => Math.abs(a.pH - a.pA) - Math.abs(b.pH - b.pA))[0], big = ups.slice().sort((a,b) => Math.max(b.pH, b.pA) - Math.max(a.pH, a.pA))[0], bigT = big.pH >= big.pA ? big.home : big.away;
-      bits.push([String(ups.length), "still to play"], [`${short(close.home)} v ${short(close.away)}`, "closest call"], [`${short(bigT)} ${pctShort(Math.max(big.pH, big.pA))}`, "biggest favourite"]);
-    }
     const st = x => x.matches.every(m => m.status === "played") ? "done" : x.matches.some(m => m.status === "played") ? "part" : "up";
     const strip = `<div class="wkstrip" role="group" aria-label="Matchdays">${slates.map(x => `<button type="button" class="wkb ${st(x)}${x.key === WK ? " on" : ""}" aria-pressed="${x.key === WK}" data-wk="${x.key}" title="${x.n ? `${x.kind} matchday ${x.n}` : "Extra match"}"><b>${x.n ? "MD" + x.n : "Extra"}</b><span>${dShort(x.first)}</span></button>`).join("")}</div>`;
     const head = `<div class="wkhead"><button type="button" class="wknav" data-step="-1"${i === 0 ? " disabled" : ""} aria-label="Previous matchday">‹</button>
@@ -124,7 +114,7 @@ PP.pages.matches = async main => {
       <button type="button" class="wknav" data-step="1"${i === slates.length - 1 ? " disabled" : ""} aria-label="Next matchday">›</button></div>`;
     const row = m => m.status === "played" ? pastRow(m) : upRow(m, motw && m.id === motw.id);
     const groups = SORT === "watch" && ups.length ? [["Most watchable first", w.matches.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1))]] : group(w.matches);
-    $("#mlist").innerHTML = `${strip}${head}${bits.length ? `<div class="wksum">${bits.map(([b, t]) => `<div><b>${esc(b)}</b><span>${t}</span></div>`).join("")}</div>` : ""}
+    $("#mlist").innerHTML = `${strip}${head}
       ${motw ? motwCard(motw) : ""}
       <section class="band" style="padding-top:0"><div class="band-head"><p>${WATCH_NOTE}</p>${ups.length ? `<div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div>` : ""}</div>
       <div class="fixtures">${groups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(row).join("")}`).join("")}</div></section>`;
