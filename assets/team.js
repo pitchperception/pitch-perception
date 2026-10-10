@@ -14,6 +14,18 @@ const POSG = {GK:"Goalkeepers",CB:"Defence",FB:"Defence",CM_DM:"Midfield",AM:"Mi
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 let T = null;
 
+// what the Strength column is (owner, 2026-10-10): the production rating of matchmodel.py (rating "blend"), in plain words
+function strengthNote(race){
+  const r = race.filter(t => t.elo != null).sort((a,b) => b.elo - a.elo); if(!r.length) return "";
+  const hi = r[0], lo = r[r.length-1], exp = d => 1 / (1 + Math.pow(10, -d/400));
+  return `<div><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="why-strength">What strength means</button>
+    <div class="disc" id="why-strength" aria-hidden="true"><div><div class="why-body" style="max-width:64ch">
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>What it represents.</b> How good each club is right now, on a scale where the league average is about 1,500. It works like an Elo rating in chess: a club gains points when it does better than expected and loses them when it does worse. Today it runs from ${PP.int(hi.elo)} (${esc(short(hi.team))}) to ${PP.int(lo.elo)} (${esc(short(lo.team))}). Before each match the two ratings, with 60 points added for the home side, set the result each side is expected to get: a 100-point edge means the stronger side is expected to take ${Math.round(exp(100)*100)}% of the result on offer, counting a draw as half a win.</p>
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>How it moves.</b> After each match, a club's result is counted half as what actually happened (win, draw or loss, and the margin) and half as what the chances would usually produce, from both sides' expected goals. A lucky win therefore earns less than a deserved one, and an unlucky defeat costs less. The bigger the surprise, the bigger the move, and wider margins count a little more. Each new season every rating moves a third of the way back to 1,500, because squads change; expansion clubs start at 1,450.</p>
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>How it is used.</b> Every match forecast and every simulation of the rest of the season starts from it; lineup news and the league's availability report then adjust each match. It replaced a rating built on results alone on 7 October 2026, after a test fixed in advance showed it predicted the 2021&ndash;25 matches slightly better. The <a href="#method">Method</a> page has the details.</p>
+    </div></div></div></div>`;
+}
+
 /* ---------------- Teams index ---------------- */
 PP.pages.teams = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-small">Loading.</p></section></div>`;
@@ -22,7 +34,8 @@ PP.pages.teams = async main => {
   const col = c => race.filter(t => t.conference === c).sort((a,b) => b.points - a.points || a.played - b.played);
   const rows = arr => arr.map((t,i) => `<a class="trow" href="#team-${PP.slug(t.team)}"><span class="rk">${i+1}</span><span class="nm">${PP.chip(t.team)}${esc(full(t.team))}</span>
     <span class="num">${t.points} pts, ${t.played} played</span><span class="num">Strength ${PP.int(t.elo)}</span><span class="tp"><span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span></span></a>`).join("");
-  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. Ordered by points; the bar is the chance of reaching the playoffs.</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a></section>
+  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. Ordered by points; the bar is the chance of reaching the playoffs.</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a>
+      ${strengthNote(race)}</section>
     <div class="tindex">${["East","West"].map(c => `<section><h2 class="r-title">${c}ern Conference</h2><div class="thead"><span></span><span>Club</span><span>Record</span><span>Strength</span><span>Playoffs</span></div>${rows(col(c))}</section>`).join("")}</div></div>
     <section class="band" id="lstyle"><div class="wrap"><div class="band-head"><h2 class="r-title">How the league plays</h2><p>Every club of 2026 by the chances it creates and allows per match, from our shot model. Up and to the right is better at both ends; the diagonal lines mark equal expected-goal difference.</p></div>
       <div class="chart" id="lscatter"></div></div></section>
@@ -31,6 +44,7 @@ PP.pages.teams = async main => {
       <figure class="tfig"><div class="fig-cap"><span class="r-label">Results</span></div><div class="chart" id="lres"></div><div class="legend"><span><i style="width:10px;height:10px;background:var(--signal);display:inline-block;border-radius:2px"></i>Home win</span><span><i style="width:10px;height:10px;background:var(--mid);display:inline-block;border-radius:2px"></i>Draw</span><span><i style="width:10px;height:10px;background:var(--ink-3);display:inline-block;border-radius:2px"></i>Away win</span></div></figure></div></div></section>` : ""}`;
   const L26 = (L.seasons["2026"] || []).map(r => Object.fromEntries(L.cols.map((k,i) => [k, r[i]])));
   PP.chart($("#lscatter"), el => drawLeague(el, L26)); PP.bindTips($("#lscatter"));
+  PP.bindDisclosures(main);
   if(TR){ PP.chart($("#lgoals"), el => drawGoals(el, TR.seasons)); PP.chart($("#lres"), el => drawRes(el, TR.seasons)); ["#lgoals","#lres"].forEach(q => PP.bindTips($(q))); }
 };
 function drawLeague(el, rows){
