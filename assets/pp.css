@@ -473,7 +473,11 @@ span.dl{cursor:default}
 .tp{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:center}
 .pbar1{height:8px;background:var(--well);border-radius:0 3px 3px 0;position:relative}
 .pbar1 i{position:absolute;left:0;top:0;bottom:0;background:var(--signal);border-radius:0 3px 3px 0}
-@media (max-width:640px){.thead,.trow{grid-template-columns:20px minmax(0,1fr) 84px}.thead span:nth-child(3),.thead span:nth-child(4),.trow>span:nth-child(3),.trow>span:nth-child(4){display:none}}
+@media (max-width:640px){.thead,.trow{grid-template-columns:20px minmax(0,1fr) 54px 84px}.thead span:nth-child(3),.trow>span:nth-child(3){display:none}}   /* phones keep strength, drop the record (2026-10-10) */
+.trow .nmt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .nm-short{display:none}
+@media (max-width:480px){.trow .nm-full{display:none}.trow .nm-short{display:inline}}                     /* short club names on phones */
+@media (max-width:360px){.thead,.trow{grid-template-columns:18px minmax(0,1fr) 50px 44px}.trow .tp .pbar1{display:none}}   /* smallest phones: playoff % without the bar */
 .pieces{display:grid;gap:var(--s-6)}
 @media (min-width:1080px){.pieces{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:var(--s-7)}}
 .sqtotal{display:grid;gap:2px;padding-bottom:var(--s-3);border-bottom:2px solid var(--ink)}
