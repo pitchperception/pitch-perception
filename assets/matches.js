@@ -220,7 +220,7 @@ PP.pages.match = async (main, h) => {
         </div>
         <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>
       </section></div>
-      <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : d.xi_kind === "lineups" || d.xi_kind === "confirmed" ? "The confirmed starting elevens." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
+      <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
   } else {
     const I = await PP.loadWeeks(), wn = I ? PP.weekOfMatch(I, id) : null;
@@ -266,15 +266,16 @@ function drawDuel(el, m, d){
   } else { const b = PP.pitchBase(svg, W, H, false); PP.pitchLines(svg, b.sx, b.sy); P = (L, Wd) => ({x: b.sx(L), y: b.sy(Wd)}); }
   const place = (xi, home) => xi.forEach(p => {
     const L = home ? 4 + (1 - p.y) * 46 : 101 - (1 - p.y) * 46, Wd = home ? (portrait ? 6 + p.x*56 : 6 + (1-p.x)*56) : (portrait ? 62 - p.x*56 : 6 + p.x*56);
-    const c = P(L, Wd), v = p.value || 0, rr = Math.max(8, Math.min(16, 8 + Math.abs(v)*2.6)), f = PP.valueFill(v, 5);
+    const rated = p.value != null, c = P(L, Wd), v = p.value || 0, rr = Math.max(8, Math.min(16, 8 + Math.abs(v)*2.6)), f = rated ? PP.valueFill(v, 5) : "var(--paper)";
     const pk = PP.pairKit(m.home, m.away), id = p.ws_player_id, linked = id != null && (!pages.size || pages.has(id));
     const g = linked ? S("a",{href:`#player-${id}`,class:"xi-link","aria-label":`${p.player}, ${short(home ? m.home : m.away)}: open his page`},svg) : svg;
-    S("circle",{cx:c.x,cy:c.y,r:rr,fill:f,stroke:home ? pk[0] : pk[1],"stroke-width":2.5,"stroke-dasharray":!home && pk[2] ? "3 2" : "","data-tip":`<b>${esc(p.player)}</b>, ${esc(short(home ? m.home : m.away))}<br>${sgn(v,2)} this season${p.kind && p.kind !== "same" ? `<br>${p.kind === "changed" ? "Change from the usual eleven" : esc(p.kind)}` : ""}${linked ? `<br>Click for his page` : ""}`},g);
-    text(g, c.x, c.y+4, sgn(v,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:10.5px`});
-    text(g, c.x, c.y+rr+12, PP.surname(p.player), "t-lab halo-w", {"text-anchor":"middle",style:"font-size:11px"});
+    S("circle",{cx:c.x,cy:c.y,r:rr,fill:f,stroke:home ? pk[0] : pk[1],"stroke-width":2.5,"stroke-dasharray":!home && pk[2] ? "3 2" : "","data-tip":`<b>${esc(p.player)}</b>, ${esc(short(home ? m.home : m.away))}<br>${rated ? `${sgn(v,2)} this season` : "No MLS rating yet"}${p.kind && p.kind !== "same" ? `<br>${p.kind === "changed" ? "Change from the usual eleven" : esc(p.kind)}` : ""}${linked ? `<br>Click for his page` : ""}`},g);
+    text(g, c.x, c.y+4, rated ? sgn(v,1) : "–", "t-axis", {"text-anchor":"middle",style:`fill:${rated ? PP.inkOn(f) : "var(--ink-3)"};font-weight:650;font-size:10.5px`});
+    text(g, c.x, c.y+rr+12, p.player ? PP.surname(p.player) : "?", "t-lab halo-w", {"text-anchor":"middle",style:"font-size:11px"});
   });
   place(xh, true); place(xa, false);
-  const fh = d.formation_home, fa = d.formation_away;
+  const shp = f => { if(f == null) return null; const s = String(f); if(s.includes("-")) return s; const dg = s.split(".")[0].replace(/\D/g, ""); return dg ? dg.split("").join("-") : null; };
+  const fh = shp(d.formation_home), fa = shp(d.formation_away);
   if(!portrait){ text(svg, 8, 16, `${short(m.home)}${fh?`, ${fh}`:""}`, "t-lab halo-w", {}); text(svg, W-8, 16, `${short(m.away)}${fa?`, ${fa}`:""}`, "t-lab halo-w", {"text-anchor":"end"}); }
   else { text(svg, 8, H-8, short(m.home), "t-lab halo-w", {}); text(svg, 8, 16, short(m.away), "t-lab halo-w", {}); }
 }
