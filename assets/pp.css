@@ -842,3 +842,9 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 .stk-lab b{color:var(--ink);font-weight:650}
 .stk-watch{margin-top:var(--s-4)}
 .stk-watch .r-figure{font-size:var(--t-36);color:var(--signal)}
+
+/* match lineups: each player links to his page (2026-10-10) */
+.xi-link{cursor:pointer}
+.xi-link:hover circle,.xi-link:focus-visible circle{stroke:var(--ink);stroke-width:4}
+.xi-link:focus{outline:none}
+.xi-link:hover .t-lab,.xi-link:focus-visible .t-lab{text-decoration:underline}
