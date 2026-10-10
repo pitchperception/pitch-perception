@@ -160,6 +160,14 @@ PP.moveWords = x => x == null ? null : x >= 3 ? "Much more likely than most" : x
 /* ---------- routing ---------- */
 const SECTIONS = [["today","Today"],["players","Players"],["teams","Teams"],["race","Playoff race"],["matches","Matches"],["week","Weekly"],["recruiting","Recruiting"],["method","Method"]];
 const TABS = [["today","Today"],["players","Players"],["teams","Teams"],["race","Race"],["more","More"]];
+/* a page's own name for the tab title, which the visit counter records (owner, 2026-10-09): players, clubs and managers */
+PP.pageName = h => {
+  const [k, ...rest] = h.split("-"), id = rest.join("-");
+  if(k === "player"){ const r = (PP.data.index || []).find(x => String(x[0]) === id.split("-")[0]); return r ? r[1] : ""; }
+  if(k === "team"){ const t = Object.keys(PP.CLUB).find(x => PP.slug(x) === id); return t ? PP.full(t) : ""; }
+  if(k === "manager") return id.split("-").map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(" ");
+  return "";
+};
 PP.route = () => {
   const h = (location.hash || "#today").slice(1);
   let section = h.split("-")[0];
@@ -173,7 +181,7 @@ PP.route = () => {
   const main = $("#main"); main.innerHTML = "";
   const page = PP.pages[h.split("-")[0]] || PP.pages[section];
   page(main, h);
-  document.title = (section === "today" ? "Pitch Perception" : (SECTIONS.find(s=>s[0]===section)||["","Pitch Perception"])[1] + " | Pitch Perception");
+  document.title = (PP.pageName(h) || (section === "today" ? "" : (SECTIONS.find(s=>s[0]===section)||["",""])[1])).replace(/^(.+)$/, "$1 | ") + "Pitch Perception";
 };
 addEventListener("hashchange", () => { PP.route(); window.scrollTo(0,0); });
 
