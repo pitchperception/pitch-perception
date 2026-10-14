@@ -334,3 +334,10 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-12T10:53:35Z,1953043,2026-10-15T00:30:00Z,St. Louis City,Vancouver Whitecaps,0.3724,0.2656,0.362,availability
 2026-10-13T18:52:34Z,1953050,2026-10-17T18:30:00Z,Philadelphia Union,Charlotte FC,0.5614,0.2357,0.2029,availability
 2026-10-13T20:53:18Z,1953045,2026-10-17T20:30:00Z,Minnesota United,St. Louis City,0.3573,0.2655,0.3772,availability
+2026-10-14T00:54:57Z,1953044,2026-10-17T23:30:00Z,Atlanta United,Inter Miami CF,0.2946,0.2604,0.445,availability
+2026-10-14T00:54:57Z,1953051,2026-10-18T00:30:00Z,Austin FC,Vancouver Whitecaps,0.2114,0.239,0.5495,availability
+2026-10-14T00:54:57Z,1953052,2026-10-18T00:30:00Z,Houston Dynamo FC,FC Dallas,0.4167,0.2634,0.3198,availability
+2026-10-14T00:54:57Z,1953046,2026-10-17T23:30:00Z,New England Revolution,Chicago Fire FC,0.3477,0.2652,0.3871,availability
+2026-10-14T00:54:57Z,1953049,2026-10-17T23:30:00Z,Orlando City,DC United,0.5353,0.2428,0.2219,availability
+2026-10-14T00:54:57Z,1953048,2026-10-17T23:30:00Z,Red Bull New York,Toronto FC,0.4864,0.2537,0.2599,availability
+2026-10-14T00:54:57Z,1953053,2026-10-18T00:30:00Z,Sporting Kansas City,Real Salt Lake,0.3812,0.2654,0.3533,availability
