@@ -382,6 +382,7 @@ span.dl{cursor:default}
 .drepl .dz .b{background:var(--mid)!important}
 .dv{text-align:right;font-size:var(--t-13);font-weight:550}
 .dz-na{color:var(--ink-3);font-size:var(--t-12);grid-column:1 / -1;text-align:right}
+.dpart .dl{padding-left:14px;font-weight:450}
 .dsub .dl{font-weight:700}
 .dsub .dv{font-weight:700}
 .dsub .dz .b.pos{background:var(--ink)}
