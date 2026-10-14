@@ -341,3 +341,7 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-14T00:54:57Z,1953049,2026-10-17T23:30:00Z,Orlando City,DC United,0.5353,0.2428,0.2219,availability
 2026-10-14T00:54:57Z,1953048,2026-10-17T23:30:00Z,Red Bull New York,Toronto FC,0.4864,0.2537,0.2599,availability
 2026-10-14T00:54:57Z,1953053,2026-10-18T00:30:00Z,Sporting Kansas City,Real Salt Lake,0.3812,0.2654,0.3533,availability
+2026-10-14T02:55:42Z,1953054,2026-10-18T02:30:00Z,LA Galaxy,San Diego FC,0.4125,0.2638,0.3237,availability
+2026-10-14T02:55:42Z,1953055,2026-10-18T02:30:00Z,Portland Timbers,Colorado Rapids,0.4397,0.261,0.2993,availability
+2026-10-14T02:55:42Z,1953056,2026-10-18T02:30:00Z,San Jose Earthquakes,Nashville SC,0.3449,0.2651,0.39,availability
+2026-10-14T02:55:42Z,1953057,2026-10-18T02:30:00Z,Seattle Sounders FC,CF Montreal,0.5948,0.2253,0.1799,availability
