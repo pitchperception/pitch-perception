@@ -368,3 +368,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-14T15:04:01Z,1953055,2026-10-18T02:30:00Z,Portland Timbers,Colorado Rapids,0.4386,0.2612,0.3002,availability
 2026-10-14T15:04:01Z,1953056,2026-10-18T02:30:00Z,San Jose Earthquakes,Nashville SC,0.349,0.2653,0.3857,availability
 2026-10-14T15:04:01Z,1953053,2026-10-18T00:30:00Z,Sporting Kansas City,Real Salt Lake,0.3697,0.2656,0.3647,availability
+2026-10-14T17:04:45Z,1953037,2026-10-15T00:30:00Z,FC Dallas,Seattle Sounders FC,0.4744,0.2559,0.2697,availability
+2026-10-14T17:04:45Z,1953052,2026-10-18T00:30:00Z,Houston Dynamo FC,FC Dallas,0.4292,0.2622,0.3086,availability
