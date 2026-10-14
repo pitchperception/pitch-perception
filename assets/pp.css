@@ -738,7 +738,7 @@ table.cmp td.who{width:34%}
 table.cmp .valcell{display:inline-flex;align-items:center;gap:12px}
 table.cmp th.n,table.cmp td.n{text-align:right}
 
-/* the owner's logo (2026-10-08), reversed for the navy masthead */
+/* the owner's logo (new design 2026-10-14; first 2026-10-08), white for the navy masthead */
 .mark img{display:block;height:30px;width:auto}
 
 /* value and per-90 percentile side by side on player pages (2026-10-08) */
