@@ -372,3 +372,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-14T17:04:45Z,1953052,2026-10-18T00:30:00Z,Houston Dynamo FC,FC Dallas,0.4292,0.2622,0.3086,availability
 2026-10-14T21:06:14Z,1953058,2026-10-18T21:00:00Z,FC Cincinnati,Columbus Crew,0.4784,0.2552,0.2664,availability
 2026-10-14T22:29:50Z,1953034,2026-10-14T23:30:00Z,Toronto FC,Orlando City,0.3889,0.2652,0.346,lineups
+2026-10-14T22:30:49Z,1953029,2026-10-14T23:30:00Z,FC Cincinnati,New England Revolution,0.476,0.2556,0.2684,lineups
+2026-10-14T22:30:49Z,1953032,2026-10-14T23:30:00Z,Inter Miami CF,New York City FC,0.5792,0.2303,0.1905,lineups
