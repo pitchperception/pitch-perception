@@ -130,12 +130,22 @@ PP.badgeSvg = (k, size = 16) => `<svg width="${size}" height="${size}" viewBox="
 let archP = null;
 PP.loadArch = () => archP || (archP = fetch("data/archetypes.json").then(r => r.ok ? r.json() : null).catch(() => null)
   .then(d => { if(d) d.byKey = Object.fromEntries(d.defs.map(x => [x.key, x])); PP.data.arch = d; return d; }));
-PP.badgesFor = (id, year, team) => { const A = PP.data.arch; return A ? (A.badges[`${id}|${year}|${team}`] || []) : []; };
-PP.badgeTip = (k, pos, pct, year) => { const A = PP.data.arch, d = A && A.byKey[k]; if(!d) return "";
+// this season's badges, then last season's still carried (80: until this season can judge them), as [key, pct, year earned]
+PP.badgesFor = (id, year, team) => { const A = PP.data.arch; if(!A) return [];
+  const k = `${id}|${year}|${team}`, carried = ((A.carried || {})[k] || []).map(([b, y]) => [b, null, y]);
+  return (A.badges[k] || []).concat(carried); };
+// what a badge needs (80's definition): 900+ minutes and, for a badge on a skill, that skill reliable at his minutes
+PP.badgeNeeds = (d, pos) => { const A = PP.data.arch, m = (d.reliable_from || {})[pos], pl = A.pos_plural[pos] || "players at the position";
+  if(!d.skill_rows || !d.skill_rows.length) return `Needs ${PP.int(A.min_minutes)}+ minutes.`;
+  if(m == null) return `Not within reach for ${pl} in one season: the skill is not reliable enough at that position.`;
+  return m <= A.min_minutes ? `Needs ${PP.int(A.min_minutes)}+ minutes.` : `Needs ${PP.int(Math.round(m/10)*10)}+ minutes for ${pl}, when the skill becomes reliable.`; };
+PP.badgeTip = (k, pos, pct, year, from) => { const A = PP.data.arch, d = A && A.byKey[k]; if(!d) return "";
   const txt = d.text.replace("{pos}", A.pos_plural[pos] || "players at the position");
-  return `<b>${PP.esc(d.name)}</b><br>${PP.esc(txt)}${pct != null ? `<br>${PP.pctile(pct)} percentile in ${year}.` : ""}<br>Repeats the next season ${Math.round(d.repeat*100)}% of the time (by chance ${Math.round(d.base*100)}%).`; };
-PP.badgeChips = (list, pos, year) => list.length ? `<div class="bdgs" aria-label="Archetypes">${list.map(([k, p]) => { const d = PP.data.arch.byKey[k]; return d ? `<a class="bdg" href="#method-archetypes" data-tip="${PP.esc(PP.badgeTip(k, pos, p, year))}"><span class="bdg-roundel">${PP.badgeSvg(k, 17)}</span>${PP.esc(d.name)}</a>` : ""; }).join("")}</div>` : "";
-PP.badgeMini = list => list.length ? `<span class="bdg-row">${list.map(([k]) => { const d = PP.data.arch && PP.data.arch.byKey[k]; return d ? `<span class="bdg-mini" title="${PP.esc(d.name)}" role="img" aria-label="${PP.esc(d.name)}">${PP.badgeSvg(k, 12)}</span>` : ""; }).join("")}</span>` : "";
+  return `<b>${PP.esc(d.name)}</b>${from ? ` (${from})` : ""}<br>${PP.esc(txt)}${pct != null ? `<br>${PP.pctile(pct)} percentile in ${year}.` : ""}`
+    + (from ? `<br>Earned in ${from}. Shown until this season has enough minutes to judge it.` : `<br>${PP.esc(PP.badgeNeeds(d, pos))}`)
+    + `<br>Repeats the next season ${Math.round(d.repeat*100)}% of the time (by chance ${Math.round(d.base*100)}%).`; };
+PP.badgeChips = (list, pos, year) => list.length ? `<div class="bdgs" aria-label="Archetypes">${list.map(([k, p, from]) => { const d = PP.data.arch.byKey[k]; return d ? `<a class="bdg${from ? " carried" : ""}" href="#method-archetypes" data-tip="${PP.esc(PP.badgeTip(k, pos, p, year, from))}"><span class="bdg-roundel">${PP.badgeSvg(k, 17)}</span>${PP.esc(d.name)}${from ? `<span class="bdg-yr">${from}</span>` : ""}</a>` : ""; }).join("")}</div>` : "";
+PP.badgeMini = list => list.length ? `<span class="bdg-row">${list.map(([k, , from]) => { const d = PP.data.arch && PP.data.arch.byKey[k]; const t = from ? `${d && d.name} (${from})` : d && d.name; return d ? `<span class="bdg-mini${from ? " carried" : ""}" title="${PP.esc(t)}" role="img" aria-label="${PP.esc(t)}">${PP.badgeSvg(k, 12)}</span>` : ""; }).join("")}</span>` : "";
 
 /* ---------- Transfermarkt in the scouting hub (62_tm_market.py): value bands, contracts, MLS-move likelihood ---------- */
 let mkP = null;

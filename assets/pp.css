@@ -665,6 +665,10 @@ span.dl{cursor:default}
 .bdg-roundel.lg{width:44px;height:44px}
 .bdg-mini{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--badge-bg);color:var(--badge-fg);flex:none;vertical-align:middle}
 .bdg-row{display:inline-flex;gap:3px;margin-left:4px;vertical-align:middle}
+/* last season's badge, carried until this season can judge it (80) */
+.bdg.carried{border-style:dashed;color:var(--ink-2)}
+.bdg.carried .bdg-roundel,.bdg-mini.carried{opacity:.55}
+.bdg-yr{margin-left:6px;font-weight:500;font-size:var(--t-12);color:var(--ink-3)}
 .arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--s-5) var(--s-6);margin-top:var(--s-4);align-items:start}
 .arch{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px var(--s-3);align-items:start;align-content:start}
 .arch .bdg-roundel{grid-row:1 / span 3}
