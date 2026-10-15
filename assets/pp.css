@@ -460,6 +460,10 @@ span.dl{cursor:default}
 .dtable th{text-align:left;font-weight:600;color:var(--ink-2);background:var(--well);padding:7px 10px;white-space:nowrap}
 .dtable td{padding:7px 10px;border-top:1px solid var(--rule);white-space:nowrap;font-variant-numeric:tabular-nums}
 .dtable .n{text-align:right}
+/* tables of sentences (Method: how we decide): wrap, top-aligned; stacked one row at a time on phones */
+.dtable.wrap td{white-space:normal;vertical-align:top;line-height:1.45}
+@media (max-width:700px){.dtable.wrap thead{display:none}.dtable.wrap tr{display:block;border-top:1px solid var(--rule);padding:8px 0}
+  .dtable.wrap td{display:block;border-top:0;padding:3px 0}}
 
 /* ---------- team pages ---------- */
 .tindex{display:grid;gap:var(--s-7);padding-bottom:var(--s-8)}

@@ -9,7 +9,7 @@ const POSW = {DC:"Centre back", DL:"Left back", DR:"Right back", DML:"Left wing-
   AMC:"Attacking midfielder", AML:"Left winger", AMR:"Right winger", ML:"Left midfielder", MR:"Right midfielder", FW:"Striker", FWL:"Left forward", FWR:"Right forward"};
 const POS6 = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
 const SK = [["On the ball","Passes and carries, valued by how much they moved the chance of a goal"],["Shooting","Chance quality of the shots taken (expected goals), not whether they went in"],
-  ["Receiving","Getting on the end of passes in valuable places"],["Ball security","Value lost by giving the ball away (higher is better)"],["Winning the ball","Danger removed by winning the ball, per chance to win it"]];
+  ["Receiving","Getting on the end of passes in valuable places"],["Ball security","Value lost by giving the ball away (higher is better)"],["Winning the ball","Danger removed by winning the ball, beyond what a replacement would win back in the same minutes and danger"]];
 const LG = {"england-premier-league":"Premier League","germany-bundesliga":"Bundesliga","spain-laliga":"LaLiga","italy-serie-a":"Serie A","france-ligue-1":"Ligue 1",
   "germany-2-bundesliga":"2. Bundesliga","england-championship":"Championship","england-league-one":"League One","netherlands-eredivisie":"Eredivisie","turkey-super-lig":"Süper Lig",
   "belgium-jupiler-pro-league":"Belgian Pro League","scotland-premiership":"Scottish Premiership","portugal-liga-portugal":"Liga Portugal","sweden-allsvenskan":"Allsvenskan",

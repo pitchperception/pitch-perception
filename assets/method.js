@@ -2,10 +2,11 @@
 (function(){
 "use strict";
 const {$, $$, S, text, esc, sgn, num, pct, pctShort, money, short, full} = PP;
-let mP = null, tP = null, sP = null, MD = null, SN = null, HZ = 91;
+let mP = null, tP = null, sP = null, dP = null, MD = null, SN = null, DC = null, HZ = 91;
 const load = () => mP || (mP = fetch("data/method.json").then(r => { if(!r.ok) throw new Error(`method.json returned ${r.status}`); return r.json(); }));
 const loadS = () => sP || (sP = fetch("data/sensitivity.json").then(r => r.ok ? r.json() : null).catch(() => null));
 const loadT = () => tP || (tP = fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null));
+const loadD = () => dP || (dP = fetch("data/decisions.json").then(r => r.ok ? r.json() : null).catch(() => null));   // 139: how we decide
 
 /* "What the number means" (owner, 2026-10-09). Zone values come from the fitted chain (method.json grid); the example is
    the season's top-rated player (home.json leaders), so every figure follows the data. */
@@ -25,7 +26,7 @@ const meaning = (G, EX) => {
 
 PP.pages.method = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">How it works</h1><p class="r-small">Loading.</p></section></div>`;
-  let T; try { [MD, T, SN] = await Promise.all([load(), loadT(), loadS(), PP.loadArch()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The method data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
+  let T; try { [MD, T, SN, , DC] = await Promise.all([load(), loadT(), loadS(), PP.loadArch(), loadD()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The method data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
   let EX = null;
   try {
     const L0 = ((PP.data.home || {}).leaders || [])[0];
@@ -47,10 +48,10 @@ ${meaning(G, EX)}
 
   <section class="band mtext" id="m-origins"><div class="band-head"><h2 class="r-title">Where the method comes from</h2>
     <p>Valuing football actions by how much they change a possession's chance of ending in a goal is a well-established idea in football analytics; Pitch Perception did not invent it. Modelling possession as a chain of states, a Markov model, goes back at least to Sarah Rudd's work in 2011. Karun Singh's expected threat (xT) made the zone-based version widely known. Academic models such as VAEP (KU Leuven, 2019) value every on-ball action, and American Soccer Analysis publishes its goals added for MLS. Expected goals, the value of a shot, is a standard idea too.</p>
-    <p>This site is an independent implementation of that family of models, fitted to MLS event data. The choices made in building it are its own: the grid of pitch zones; ball-winning measured against the danger each player faced rather than counted; attack and ball-winning weighted by how well they predict match results, with ball-winning then counted at half that weight (an independent test, how each team does with a player on and off the pitch, favours less, and halving costs almost nothing in predicting results); ratings against a replacement-level player at each position and season; ranges from resampling matches; and every piece tested on seasons the models never saw. Where a choice follows someone else's convention it is borrowed openly: crediting the receiver of a completed pass as well as the passer follows American Soccer Analysis, which divides the value by how likely the pass was to be completed; here it is split equally.</p></div></section>
+    <p>This site is an independent implementation of that family of models, fitted to MLS event data. The choices made in building it are its own: the grid of pitch zones, split by how the ball arrived; ball-winning measured against what a replacement would win back from the danger each player faced; ratings kept in the model's own units of goals, with ball-winning's weight left to a study fixed in advance; ratings against a replacement-level player at each position and season; ranges from resampling matches; and every piece tested on seasons the models never saw. Where a choice follows someone else's convention it is borrowed openly: crediting the receiver of a completed pass as well as the passer follows American Soccer Analysis, which divides the value by how likely the pass was to be completed; here it is split equally.</p></div></section>
 
   <section class="band mtext" id="m-chain"><div class="band-head"><h2 class="r-title">The pitch as a chain of states</h2>
-    <p>A state is where the ball is (one of 96 zones, or a set piece) and who has it. From every state the event data shows how often the team keeps the ball, loses it or shoots, and where the ball goes next. Solving those probabilities together gives every state a value: the goals the team in possession can expect to score minus concede before the possession ends. Select any zone.</p></div>
+    <p>A state is where the ball is (one of 96 zones, or a set piece), who has it and, in open play, how it got there: the kind of action that delivered it, whether the possession began with a ball won back, and for a pass, which third of the pitch it came from. From every state the event data shows how often the team keeps the ball, loses it or shoots, and where the ball goes next. Solving those probabilities together gives every state a value: the goals the team in possession can expect to score minus concede before the possession ends. Select any zone; its value and moves are those of all the ways the ball arrives there, together.</p></div>
     <div class="mgrid"><figure class="tfig"><div class="chart" id="mzones"></div><div id="mzleg" class="zleg"></div></figure><div class="mpanel" id="mpanel"></div></div></section>
 
   ${A ? `  <section class="band mtext" id="m-attack"><div class="band-head"><h2 class="r-title">Valuing a real move</h2>
@@ -59,23 +60,23 @@ ${meaning(G, EX)}
     <div class="tbl-wrap"><table class="dtable"><thead><tr><th class="n">#</th><th>Player</th><th>Action</th><th class="n">Value before</th><th class="n">After</th><th class="n">Change</th><th>Credit</th></tr></thead><tbody>
       ${A.steps.map((s,i) => `<tr><td class="n">${i+1}</td><td>${esc(s.player)}</td><td>${esc(s.action)}</td><td class="n">${num(s.v_before,3)}</td><td class="n">${s.xg != null ? `${num(s.xg,3)} xG` : num(s.v_after,3)}</td><td class="n"><b>${sgn(s.delta,3)}</b></td><td>${s.credits.map(c => `${esc(PP.surname(c.player))} ${sgn(c.value,3)} <span class="r-small">${esc(c.role)}</span>`).join("<br>")}</td></tr>`).join("")}
     </tbody></table></div>
-    <p class="r-small">Credit from this move: ${A.totals.map(t => `${esc(t.player)} ${sgn(t.value,3)}`).join(", ")}. The build-up passes add little because they move the ball between zones of similar value; the value jumps when the ball reaches the box. Over a season the credits are added up, set against a replacement-level player at the same position and scaled to goals (attack weight ${W.w_off.toFixed(2)}).</p></section>` : ""}
+    <p class="r-small">Credit from this move: ${A.totals.map(t => `${esc(t.player)} ${sgn(t.value,3)}`).join(", ")}. The build-up passes add little because they move the ball between zones of similar value; the value jumps when the ball reaches the box. Over a season the credits are added up and set against a replacement-level player at the same position. They are already in goals, so attack counts as it is${W.w_off === 1 ? "" : ` (weight ${W.w_off.toFixed(2)})`}.</p></section>` : ""}
 
   <section class="band mtext" id="m-defence"><div class="band-head"><h2 class="r-title">Winning the ball back</h2>
     <p>${esc(D.attacker)} (${esc(short(D.attacking_team))}) tries a ${esc(D.attacker_action)} inside the box, ${PP.dateLong(D.date)}, ${D.minute} minutes in, and ${esc(D.defender)} (${esc(short(D.defender_team))}) wins it with a ${esc(D.action)}. Before the tackle the attack was worth ${num(D.danger_before,3)}; afterwards his own side's possession was worth ${num(D.own_value_after,3)}. The swing, ${num(D.swing,3)}, is shared: half to the defender, half charged to the attacker.</p>
-    <p>Volume alone would reward defenders whose team is under siege, so ball-winning is judged against the danger that came into a defender's zones while he was on the pitch. ${esc(D.defender)} faced danger worth ${num(D.season.exp_value,1)} in ${PP.int(D.season.mins)} minutes of ${D.season.year} and won back ${num(D.season.regain,2)} of it (${(D.season.eff*100).toFixed(1)}%), against ${(D.season.repl_eff*100).toFixed(1)}% for a replacement-level ${D.pos === "CB" ? "centre back" : "fullback"}. Scaled to goals (ball-winning weight ${W.w_def.toFixed(2)}), that is ${sgn(D.season.defence,2)}.</p></div>
-    <div class="tbl-wrap"><table class="dtable" style="max-width:820px"><thead><tr><th>Two centre backs, 2025</th><th class="n">Minutes</th><th class="n">Danger faced</th><th class="n">Won back</th><th class="n">Share</th><th class="n">Winning it, goals</th></tr></thead>
-      <tbody>${C.players.map(p => `<tr><td>${esc(p.player)} <span class="r-small">${esc(short(p.team))}</span></td><td class="n">${PP.int(p.mins)}</td><td class="n">${num(p.exp_value,1)}</td><td class="n">${num(p.regain,2)}</td><td class="n">${(p.eff*100).toFixed(1)}%</td><td class="n"><b>${sgn(p.defence,2)}</b></td></tr>`).join("")}</tbody></table></div>
-    <p class="r-small">The first wins more of the ball in total, because more danger comes his way; the second wins a bigger share of what reaches him, and rates higher. A replacement-level centre back wins ${(C.repl_eff*100).toFixed(1)}%.</p></section>
+    <p>Volume alone would reward defenders whose team is under siege, so ball-winning is judged against what a replacement would have won back in the same minutes, facing the same danger. Players do win more of the ball when more danger comes their way, but less than in proportion, so a replacement wins back a fixed amount per 90 minutes plus a share of each unit of danger, both measured from players' own busier and quieter matches at the position that season. ${esc(D.defender)} faced danger worth ${num(D.season.exp_value,1)} in ${PP.int(D.season.mins)} minutes of ${D.season.year} and won back ${num(D.season.regain,2)}; a replacement-level ${D.pos === "CB" ? "centre back" : "fullback"} would have won back ${num(D.season.repl,2)} (${num(D.season.a_r_p90,3)} per 90 plus ${num(D.season.beta,3)} of each unit of danger). ${W.w_def === 1 ? "Counted as it is" : `Weighted ${W.w_def.toFixed(2)}`}, that is ${sgn(D.season.defence,2)}.</p></div>
+    <div class="tbl-wrap"><table class="dtable" style="max-width:820px"><thead><tr><th>Two centre backs, 2025</th><th class="n">Minutes</th><th class="n">Danger faced</th><th class="n">Won back</th><th class="n">Replacement would win back</th><th class="n">Winning it, goals</th></tr></thead>
+      <tbody>${C.players.map(p => `<tr><td>${esc(p.player)} <span class="r-small">${esc(short(p.team))}</span></td><td class="n">${PP.int(p.mins)}</td><td class="n">${num(p.exp_value,1)}</td><td class="n">${num(p.regain,2)}</td><td class="n">${num(p.repl,2)}</td><td class="n"><b>${sgn(p.defence,2)}</b></td></tr>`).join("")}</tbody></table></div>
+    <p class="r-small">They won back about the same, but far more danger came the first one's way, so a replacement would have won back more in his place too, and the second rates higher. Each unit of danger adds ${num(C.beta,3)} to what a replacement-level centre back wins back, on top of ${num(C.a_r_p90,3)} per 90.</p></section>
 
   <section class="band mtext" id="m-rating"><div class="band-head"><h2 class="r-title">From actions to a rating</h2>
     <p><b>Value above replacement</b> is a season's attack plus ball-winning, in goals of match expected-goal difference, against a replacement-level player at the same position and season. Replacement level is what the players who actually fill in produce (measured below), set per position and season, so league-wide changes (such as the rise in recorded clearances in 2025, an Opta coding change) do not inflate a whole position.</p>
-    <p>Attack and ball-winning are weighted (${W.w_off.toFixed(2)} and ${W.w_def.toFixed(2)}) starting from how strongly each predicts match results when summed over the players who started, fitted on 2021–25. On that test ball-winning is the stronger predictor, but a second, independent check rates it lower, so the published ball-winning weight is half the fitted one (why, below). Fouls are reported but not counted: once a player's exposure is allowed for, they carried no individual signal. Penalties won are treated the same way. The pass or run before the foul earns what it is worth to reach the penalty spot in open play, and the rest of the penalty's value is shown, not counted, for the player who was fouled, because winning penalties barely repeats from one half-season to the next.</p>
+    <p>Attack and ball-winning are both in the model's own units, goals of expected-goal difference, and ${W.w_def === 1 && W.w_off === 1 ? "both count as they are" : `are weighted ${W.w_off.toFixed(2)} and ${W.w_def.toFixed(2)}`}. How much ball-winning should count is the one choice the data have not pinned down (below). Fouls are reported but not counted: once a player's exposure is allowed for, they carried no individual signal. Penalties won are treated the same way. The pass or run before the foul earns what it is worth to reach the penalty spot in open play, and the rest of the penalty's value is shown, not counted, for the player who was fouled, because winning penalties barely repeats from one half-season to the next.</p>
     <p>Every rating has a 90% range from resampling the season's matches 1,000 times: how much the season's numbers could have differed with the same player. A regular's range typically spans about 3 goals, so close rankings are ties: see the Tiers view on the Players page.</p></div></section>
 
 ${SN ? weightsSection(SN) : ""}
 
-${PP.data.arch ? archSection(PP.data.arch) : ""}
+${PP.data.arch ? archSection(PP.data.arch, DC) : ""}
 
   <section class="band mtext" id="m-slot"><div class="band-head"><h2 class="r-title">Against the contract type</h2>
     <p>MLS roster building is a scarcity problem: three Designated Player places and a handful of U22 and allocation-money signings, paid for whether or not the player plays. So the fair comparison for a player is with others on the same type of contract: does a Designated Player produce like a Designated Player? Value against the contract type is a player's rating minus the median season of everyone on that type of contract, 2020–25, pro-rated to the part of the season it was held. The chance of beating it comes from the same resampling as the player's range. How much a player is paid within a type does not enter: a $2m Designated Player and a $20m one face the same bar, because the scarce thing is the place, not the money. ${T && T.points_per_goal ? `A goal of a team's season expected-goal difference has been worth about ${num(T.points_per_goal,2)} points in the table (2021–25).` : ""}</p></div>
@@ -89,14 +90,16 @@ ${PP.data.arch ? archSection(PP.data.arch) : ""}
     <ul class="mlist">
       <li><b>Lineup test.</b> Last season's ratings, summed over who actually started, predict this season's match expected-goal difference (r about 0.20 on 2021–25), better than the previous model (0.10). On 2014–19 matches held back for confirmation it scores 0.17.</li>
       <li><b>Within-team test.</b> When a club fields a stronger-than-usual lineup by these ratings, it produces a better-than-usual expected-goal difference (r about 0.10): the ratings separate individual players, not just teams.</li>
-      <li><b>Is the ball-winning number the player or his team?</b> Tested three ways, pre-registered: within a team, more ball won from the same danger goes with better results; it separates players within a team after allowing for attack; and for 168 players who changed clubs it followed the player about as strongly as attack did. It measures the defender, mixed with some team context.</li>
+      <li><b>What a replacement would win back.</b> Two rules were tested before either was chosen, in a study fixed in advance: ball won rising in proportion to the danger a player faces (the earlier rule), and a fixed amount per 90 plus a share of each unit of danger (the rule used now). Predicting players' own matches that the fit had not seen, the second was 7.5% more accurate, in all six seasons, and 22% more accurate for 117 players who changed clubs.</li>
       <li>Every number is out of sample: each season is valued by models fitted on other seasons.</li>
     </ul></section>
+
+${DC && DC.decisions ? decideSection(DC) : ""}
 
   <section class="band mtext" id="m-caveats"><div class="band-head"><h2 class="r-title">What it cannot see</h2></div>
     <ul class="mlist">
       <li><b>Off-ball movement, marking and shape</b> are invisible in event data. Getting open is credited only through receiving the ball.</li>
-      <li><b>Ball-winning carries a lot of weight.</b> It is what predicts results, but it means defensive midfielders and centre backs rank higher than on most public leaderboards, and attackers who do not win the ball lose value. Part of what it rewards may be off-ball and team defending that happens to end with this player winning the ball.</li>
+      <li><b>Ball-winning's weight is the least certain choice.</b> ${SN && SN.rankings_2025 ? (r => r ? `At ${num(r.w_def, r.w_def % 1 ? 2 : 0)} it accounts for ${Math.round(r.bw_share*100)}% of the differences between players at the same position; ` : "")(SN.rankings_2025.find(x => x.published)) : ""}the data allow anything from almost no weight to several times more (see the weights above). Part of what it rewards may also be off-ball and team defending that happens to end with this player winning the ball.</li>
       <li><b>Ranges cover luck, not the model.</b> A player's 90% range shows how much the season could have differed with the same player. It does not include doubt about the model's own choices (the weights, replacement level, the zone values), so the real uncertainty is somewhat wider.</li>
       <li><b>Goalkeepers</b> are rated separately, by goals prevented. Shot-stopping barely repeats from one season to the next (year-to-year correlation about 0.18), so a single season describes more than it predicts. Distribution is repeatable but showed no link to goals conceded.</li>
       <li><b>Finishing is not a skill here.</b> Shots earn their chance quality, not whether they went in; finishing barely repeats from season to season (about 0.05).</li>
@@ -113,14 +116,31 @@ ${PP.data.arch ? archSection(PP.data.arch) : ""}
     PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels:[0, st.length-1, st.reduce((bi,s,i) => (s.delta||0) > (st[bi].delta||0) ? i : bi, 0)], maxW:900}));
     PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {maxW:900}));
   }
-  if(SN) PP.chart($("#msens"), drawSens);
   if(hh.startsWith("method-")){ const el = $(`#m-${hh.slice(7)}`); if(el) requestAnimationFrame(() => el.scrollIntoView()); }
-  ["#mzones","#mpitch","#msteps","#msens"].forEach(q => { if($(q)) PP.bindTips($(q)); });
+  ["#mzones","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
   panel();
 };
 
+/* skills that stay noise within a position even over a full season (139, from 68's reliability), in words */
+const NOISE_WORD = {penalties:"penalties won", aerials:"aerial duels", not_beaten:"being dribbled past", fouls:"fouls", dribbling:"dribbling",
+  high_regains:"high regains", blocks:"blocks", clearances:"clearances", shooting:"shot selection", interceptions:"interceptions"};
+function noiseList(D){
+  const k = D && D.noise_skills ? D.noise_skills.never.filter(x => x !== "penalties").map(x => NOISE_WORD[x] || x) : [];
+  return k.length ? (k.length === 1 ? k[0] : `${k.slice(0, -1).join(", ")} and ${k[k.length-1]}`) : "";
+}
+
+/* how we decide (139_how_we_decide.py): each choice settled by a test fixed before it ran, with its result */
+function decideSection(D){
+  const rows = D.decisions.map(d => `<tr><td><b>${esc(d.question)}</b><span class="r-small" style="display:block;margin-top:4px">${esc(d.test)}</span></td>
+    <td>${esc(d.result)}</td><td><b>${esc(d.decision)}</b><span class="r-small" style="display:block;margin-top:4px">${esc(d.area)}, ${esc(d.date)}</span></td></tr>`).join("");
+  return `<section class="band mtext" id="m-decide"><div class="band-head"><h2 class="r-title">How we decide</h2>
+    <p>The main choices behind the ratings and forecasts, and the test that settled each one. Every test was written down before it ran, with its rule for passing fixed in advance; when a test fails, the change is not made, and the result is still shown here.</p></div>
+    <div class="tbl-wrap"><table class="dtable wrap"><colgroup><col style="width:44%"><col style="width:30%"><col style="width:26%"></colgroup><thead><tr><th>The question, and the test fixed in advance</th><th>Result</th><th>Decision</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="r-small">Intervals are 95%. An error change below zero means the change predicted better: per possession for the pitch models, per match for the forecasts.</p></section>`;
+}
+
 /* archetype badges (80_archetypes.py): the legend */
-function archSection(A){
+function archSection(A, D){
   const shown = A.defs.filter(d => d.shown), groups = [["attack","With the ball"],["defence","Winning it back"],["both","All-round"],["keeper","Goalkeepers"]];
   const POSW = {GK:"keepers", CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
   const who = d => d.positions.length >= 6 ? "Any outfield position" : d.positions.map(p => POSW[p]).join(", ").replace(/^./, c => c.toUpperCase());
@@ -136,49 +156,33 @@ function archSection(A){
       : `Needs ${fmt(lo) !== fmt(hi) ? `${fmt(lo)} to ${fmt(hi)}+ minutes, depending on position` : `${fmt(hi)}+ minutes`}, when the skill becomes reliable`;
     return `${a}${never.length ? `${a ? "; " : ""}not within reach in one season for ${never.map(p => POSW[p]).join(" or ")}` : ""}.`; };
   return `<section class="band mtext" id="m-archetypes"><div class="band-head"><h2 class="r-title">Archetypes</h2>
-    <p>Each badge marks what a player does best, measured against players at the same position in the same season (${PP.int(A.min_minutes)}+ minutes), from the skills breakdown on every player page. A player shows every badge earned, strongest first (ordered by how far each clears its own bar, so a two-skill badge competes fairly with a one-skill badge). Badges rest only on skills with a real signal: aerial duels, being dribbled past and fouls stay mostly noise within a position even over a full season, and so does dribbling for most players, so nothing is built on them. Many other single skills are still noisy over one season (each player page marks which, at his minutes), so a badge must also prove that it repeats. Goals are never used: finishing does not repeat, so Goal Threat is about the number and quality of chances, and a Poacher is a forward who does a lot with few touches.</p>
+    <p>Each badge marks what a player does best, measured against players at the same position in the same season (${PP.int(A.min_minutes)}+ minutes), from the skills breakdown on every player page. A player shows every badge earned, strongest first (ordered by how far each clears its own bar, so a two-skill badge competes fairly with a one-skill badge). Badges rest only on skills with a real signal${noiseList(D) ? `: ${noiseList(D)} stay mostly noise within a position even over a full season, so nothing is built on them` : ""}. Many other single skills are still noisy over one season (each player page marks which, at his minutes), so a badge must also prove that it repeats. Goals are never used: finishing does not repeat, so Goal Threat is about the number and quality of chances, and a Poacher is a forward who does a lot with few touches.</p>
     <p><b>How a player earns a badge, each season:</b> at least ${PP.int(A.min_minutes)} minutes at a position the badge covers; a value per 90 in the badge's skill in the top 15% (or 10%, where stated) of players at his position with ${PP.int(A.min_minutes)}+ minutes that season; and, for a badge built on a skill, that skill reliable at his minutes (0.5 or more), because below that a season's number is mostly noise. How many minutes that takes depends on the skill and the position, so each badge below says. <b>Early in a season</b>, a player's badges from last season stay on his page, marked with their year and a dashed outline, until this season has enough minutes to judge them.</p>
-    <p>A badge is only shown if the players who hold it are at least twice as likely as chance to hold it again the next season, and the low end of the 95% range of that rate still beats chance, so a badge resting on a handful of players cannot pass on luck. A player holds a badge built on a skill only if that skill is reliable at his minutes, so no badge rests on a row his page marks as mostly noise. Interceptions and loose-ball recoveries failed that on their own, so the ball-winning badges count tackles, interceptions and recoveries together; for keepers, claiming and sweeping failed it and has no badge. Players abroad in the scouting database earn the same badges, measured against their own league.</p></div>
+    <p>A badge is only shown if the players who hold it are at least twice as likely as chance to hold it again the next season, and the low end of the 95% range of that rate still beats chance, so a badge resting on a handful of players cannot pass on luck. A player holds a badge built on a skill only if that skill is reliable at his minutes, so no badge rests on a row his page marks as mostly noise. Interceptions and loose-ball recoveries failed that on their own, so the ball-winning badges count tackles, interceptions and recoveries together${(A.defs.find(d => d.key === "sweeper_keeper") || {}).shown === false ? "; for keepers, claiming and sweeping failed it and has no badge" : ""}. Players abroad in the scouting database earn the same badges, measured against their own league.</p></div>
     ${groups.map(([g, l]) => { const ds = shown.filter(d => d.side === g); return ds.length ? `<h3 class="r-heading" style="margin-top:var(--s-5)">${l}</h3><div class="arch-grid">${ds.map(card).join("")}</div>` : ""; }).join("")}
   </section>`;
 }
 
-/* how firmly the data fix the attack / ball-winning balance (77_weight_sensitivity.py) */
+/* the weights: rankings by ball-winning weight and the evidence on it (77_weight_sensitivity.py, rewritten for the 2026-10 release) */
 function weightsSection(N){
-  const P = N.prediction, R = N.rankings_2025, at = k => P.find(x => x.k === k), rk = k => R.find(x => x.k === k), sp = N.spread_2025;
-  const pk = N.published_k || 1, pub = at(pk), fit = at(1), quarter = at(0.25), dbl = at(2), C = N.change, L = N.levels;
-  const lab = k => k === pk ? "As published" : k === 1 ? "Fitted (best on lineups)" : `×${k} of fitted`;
-  const rows = [0.25, 0.5, 0.75, 1, 1.5, 2].map(k => { const x = rk(k), p = at(k); return `<tr${k===pk?' class="cur"':""}><td>${lab(k)}</td><td class="n">${num(p.w_def,2)}</td><td class="n">${p.r_dev.toFixed(3)}</td><td class="n">${k===pk?"–":x.spearman.toFixed(2)}</td><td class="n">${x.top20_kept} of 20</td><td class="n">${x.top50_pos.CB}</td><td class="n">${x.top50_pos.CM_DM}</td><td class="n">${x.top50_pos.W + x.top50_pos.ST}</td></tr>`; }).join("");
+  const R = N.rankings_2025 || [], WT = N.within_team, AB = N.abroad || {}, L = N.levels;
+  const f2 = v => num(v, 2), wl = w => num(w, w % 1 ? 2 : 0);
+  const rows = R.map(x => `<tr${x.published?' class="cur"':""}><td>${wl(x.w_def)}${x.published?" (as published)":""}</td><td class="n">${x.published?"–":x.spearman.toFixed(2)}</td><td class="n">${x.top20_kept} of 20</td><td class="n">${Math.round(x.bw_share*100)}%</td><td class="n">${x.top50_pos.CB}</td><td class="n">${x.top50_pos.CM_DM}</td><td class="n">${x.top50_pos.W + x.top50_pos.ST}</td></tr>`).join("");
   const POSW = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
-  const lev = L ? Object.keys(POSW).filter(p => L.att[p] != null).map(p => `<tr><td>${POSW[p].replace(/^./, c => c.toUpperCase())}</td><td class="n">${Math.round(L.att[p]*100)}th</td><td class="n">${Math.round(L.def[p]*100)}th</td></tr>`).join("") : "";
-  return `<section class="band mtext" id="m-weights"><div class="band-head"><h2 class="r-title">The weights, and why ball-winning counts half</h2>
-    <p>Attack is counted in goals (weight ${num(N.w_off,2)}); ball-winning in balls won per chance to win one, scaled to goals. The ball-winning weight that best predicts results from who starts is ${num(N.w_def_fit || N.w_def,2)}. We publish half of it, ${num(N.w_def,2)}.</p>
-    <p>Why half. The lineup test, which sets the weights, can barely tell them apart: from half to double the fitted weight it predicts almost equally well (${pub.r_dev.toFixed(3)} at half, ${fit.r_dev.toFixed(3)} fitted, ${dbl.r_dev.toFixed(3)} at double), though a quarter is clearly worse (${sgn(quarter.d_dev,3)}). The second check is independent of every model: how a team's expected goals change with a player on the pitch against off it, over 2020–25.${C ? ` It clearly prefers less weight on ball-winning: the rating's agreement with it rose from ${C.onoff.net.old.toFixed(3)} to ${C.onoff.net.new.toFixed(3)} with the change (95% interval of the gain ${sgn(C.onoff.net.new_minus_old_ci[0],3)} to ${sgn(C.onoff.net.new_minus_old_ci[1],3)}), and with career adjusted plus-minus from ${C.rapm.old.toFixed(2)} to ${C.rapm.new.toFixed(2)}.` : ""} Half is the weight both checks accept. Owner's decision, 8 October 2026; until then the fitted weight was published.</p>
-    <p>Ball-winning still matters: it varies between regulars about as much as attack does (2025 standard deviations ${num(sp.defence_sd,2)} and ${num(sp.attack_sd,2)} goals), and players who win the ball back where it is dangerous still rate highly.</p></div>
-    <figure class="tfig" style="max-width:820px"><div class="fig-cap"><span class="r-label">Lineup test by ball-winning weight</span><span class="r-small">Correlation of predicted with actual match expected-goal difference, by multiple of the fitted weight. Hover a point.</span></div><div class="chart" id="msens"></div>
-      <div class="legend"><span><i class="lg-line"></i>2021–25, each season held out (${PP.int(N.n_dev)} matches)</span><span><i class="lg-line dash"></i>2026, never used in fitting (${PP.int(N.n_2026)})</span></div></figure>
-    <div class="tbl-wrap"><table class="dtable" style="max-width:820px"><thead><tr><th>Ball-winning weight</th><th class="n">Weight</th><th class="n">Lineup test r</th><th class="n">Rank agreement, 2025</th><th class="n">Top 20 kept</th><th class="n">Centre backs in top 50</th><th class="n">Central midfielders</th><th class="n">Wingers and strikers</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="r-small">Rank agreement is the correlation between the rankings of 2025 outfield players (900+ minutes) under each weight and as published.</p>
+  const bwL = L && (L.def_m2 || L.def);
+  const lev = L ? Object.keys(POSW).filter(p => L.att[p] != null).map(p => `<tr><td>${POSW[p].replace(/^./, c => c.toUpperCase())}</td><td class="n">${Math.round(L.att[p]*100)}th</td><td class="n">${bwL && bwL[p] != null ? Math.round(bwL[p]*100) + "th" : "–"}</td></tr>`).join("") : "";
+  const abroad = AB.status === "reported"
+    ? `A second study, of lineups in ten foreign leagues and fixed in advance, estimated ${f2(AB.estimate)} (${f2(AB.ci95[0])} to ${f2(AB.ci95[1])}); by its rule the weight is ${f2(AB.rule_A.W_DEF)}.`
+    : `A second study, of lineups in ten foreign leagues and fixed in advance, is under way to narrow it. Its rule keeps a weight of 1 unless the data pin down another value.`;
+  return `<section class="band mtext" id="m-weights"><div class="band-head"><h2 class="r-title">How much ball-winning counts</h2>
+    <p>Attack counts as it is, in goals of possession value. How much ball-winning should count is harder to know. The cleanest evidence compares a club's own lineups, which keeps team quality out: there, ball-winning's weight comes out at ${f2(WT.ball_winning.estimate)}, with a 95% range from ${f2(WT.ball_winning.ci95[0])} to ${f2(WT.ball_winning.ci95[1])}, and attack's at ${f2(WT.attack.estimate)} (${f2(WT.attack.ci95[0])} to ${f2(WT.attack.ci95[1])}). That is too wide to set a weight from. ${abroad} The site counts ball-winning at ${wl(N.w_def)}.</p>
+    <p>The table shows what the choice changes.${(lo => hi => lo && hi ? ` Ball-winning accounts for ${Math.round(lo.bw_share*100)}% of the differences between players at the same position at a weight of ${wl(lo.w_def)} and ${Math.round(hi.bw_share*100)}% at ${wl(hi.w_def)}; as it grows, centre backs move up the rankings.` : "")(R[0])(R[R.length-1])}</p></div>
+    <div class="tbl-wrap"><table class="dtable" style="max-width:820px"><thead><tr><th>Ball-winning weight</th><th class="n">Rank agreement, 2025</th><th class="n">Top 20 kept</th><th class="n">Ball-winning's share of differences</th><th class="n">Centre backs in top 50</th><th class="n">Central midfielders</th><th class="n">Wingers and strikers</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="r-small">Rank agreement is the correlation between the rankings of 2025 outfield players (${PP.int(N.n_2025)} with 900+ minutes) under each weight and as published. The share is ball-winning's part of how far players' ratings per 90 differ from their position's average, 2020–26.</p>
     ${lev ? `<h3 class="r-heading" style="margin-top:var(--s-6)">Replacement level: what the players who fill in produce</h3>
-    <p>A replacement-level player is the kind a club can call on when a regular is out. We measure them directly: players under 900 minutes in a season, in their matches of 60 minutes or more (mostly starts). Against that season's regulars at the position, they sit at these percentiles, averaged over 2020–25 and steadied toward the all-position level where data are thin. Until 8 October 2026 the 25th percentile was assumed everywhere; the real level is higher, so values above replacement are now smaller and more honest.</p>
+    <p>A replacement-level player is the kind a club can call on when a regular is out. We measure them directly: players under 900 minutes in a season, in their matches of 60 minutes or more (mostly starts). Against that season's regulars at the position, they sit at these percentiles (for ball-winning, by the measure above), averaged over 2020–25 and steadied toward the all-position level where data are thin. Until 8 October 2026 the 25th percentile was assumed everywhere; the real level is higher, so values above replacement are now smaller and more honest.</p>
     <div class="tbl-wrap"><table class="dtable" style="max-width:520px"><thead><tr><th>Position</th><th class="n">Attack</th><th class="n">Ball-winning</th></tr></thead><tbody>${lev}</tbody></table></div>` : ""}
   </section>`;
-}
-function drawSens(el){
-  const N = SN, W = el.clientWidth; if(!W) return; const H = 210, m = {l:44, r:16, t:12, b:34}; el.innerHTML = "";
-  const P = N.prediction, ks = P.map(p => p.k), x0 = 0, x1 = Math.max(...ks), vals = P.flatMap(p => [p.r_dev, p.r_2026]);
-  const y0 = Math.floor(Math.min(...vals)*20)/20, y1 = Math.ceil(Math.max(...vals)*20)/20;
-  const sx = k => m.l + (k-x0)/(x1-x0)*(W-m.l-m.r), sy = v => m.t + (1-(v-y0)/(y1-y0))*(H-m.t-m.b);
-  const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Lineup test correlation by multiple of the published ball-winning weight"},el);
-  for(let v = y0; v <= y1 + 1e-9; v += 0.05){ S("line",{x1:m.l,x2:W-m.r,y1:sy(v),y2:sy(v),class:"g-line"},svg); text(svg, m.l-6, sy(v)+4, v.toFixed(2), "t-axis", {"text-anchor":"end"}); }
-  ks.forEach(k => text(svg, sx(k), H-16, k === 1 ? "×1" : `×${k}`, "t-axis", {"text-anchor":"middle"}));
-  const pk = N.published_k || 1;
-  text(svg, W-m.r, H-2, "Multiple of the fitted ball-winning weight", "t-axis", {"text-anchor":"end"});
-  S("line",{x1:sx(pk),x2:sx(pk),y1:m.t,y2:H-m.b,class:"g-base"},svg);
-  [["r_dev","var(--signal)",""],["r_2026","var(--ink-3)","4 3"]].forEach(([key,col,dash]) => {
-    S("path",{d:P.map((p,i) => `${i?"L":"M"}${sx(p.k)},${sy(p[key])}`).join(""),fill:"none",stroke:col,"stroke-width":2,"stroke-dasharray":dash},svg);
-    P.forEach(p => S("circle",{cx:sx(p.k),cy:sy(p[key]),r:p.k===pk?5:3.5,fill:col,stroke:"var(--paper)","stroke-width":1.5,"data-tip":`<b>${p.k===pk?"As published":p.k===1?"Fitted":`×${p.k}`}</b> (weight ${num(p.w_def,2)})<br>${key==="r_dev"?"2021–25":"2026"}: r ${p[key].toFixed(3)}${key==="r_dev"&&p.d_dev!=null?`<br>vs fitted ${sgn(p.d_dev,3)} (${sgn(p.d_dev_ci[0],3)} to ${sgn(p.d_dev_ci[1],3)})`:""}`},svg));
-  });
 }
 
 function drawZones(el){
