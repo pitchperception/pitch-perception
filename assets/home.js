@@ -43,16 +43,16 @@ PP.pages.today = main => {
   weekTeaser();
 };
 
-/* ---------------- the week in review, teaser (82 / weeks.js) ---------------- */
+/* ---------------- the matchday in review, teaser (82 / weeks.js; per matchday since 2026-10-15) ---------------- */
 async function weekTeaser(){
-  const I = await PP.loadWeeks(); if(!I || !I.weeks.length) return;
-  const wk = PP.latestWeek(I); let W; try { [W] = await Promise.all([PP.loadWeek(wk.week), PP.loadArch()]); } catch(e){ return; }
+  const I = await PP.loadRounds(); if(!I || !I.matchdays.length) return;
+  const wk = PP.latestRound(I); let W; try { [W] = await Promise.all([PP.loadRound(wk.md), PP.loadArch()]); } catch(e){ return; }
   const el = $("#wkteaser"); if(!el || location.hash.replace("#","") && location.hash !== "#today") return;
   const P = (W.players || []).slice(0, 5), top = P[0];
-  el.innerHTML = `<div class="wrap"><div class="band-head"><span class="kicker">The week in review</span><h2 class="r-title" id="wkt-h">${top ? `${PP.plink(top[0], top[1])} was the player of the week` : "The week in review"}</h2>
-      <p>${esc(PP.weekRange(wk))}. ${top ? `${PP.plink(top[0], surname(top[1]))} added ${sgn(top[6],2)} goals above replacement for ${esc(short(top[2]))}, the most in MLS. ` : ""}<a href="#week-${wk.week}">The full week: team of the week, awards and every match report</a>.</p></div>
+  el.innerHTML = `<div class="wrap"><div class="band-head"><span class="kicker">The matchday in review</span><h2 class="r-title" id="wkt-h">${top ? `${PP.plink(top[0], top[1])} was the player of Matchday ${wk.md}` : "The matchday in review"}</h2>
+      <p>Matchday ${wk.md}, ${esc(PP.weekRange(wk))}. ${top ? `${PP.plink(top[0], surname(top[1]))} added ${sgn(top[6],2)} goals above replacement for ${esc(short(top[2]))}, the most in MLS. ` : ""}<a href="#matchday-${wk.md}">The full matchday: team of the matchday, awards and every match report</a>.</p></div>
     <div class="wkteaser"><div class="wklist">${P.map((p,k) => `<a class="wkrow" href="#player-${p[0]}"><span class="rk">${k+1}</span><span class="nm">${esc(p[1])}${PP.badgeMini(PP.badgesFor(p[0], 2026, p[2]))}</span><span class="meta">${chip(p[2])}${esc(short(p[2]))}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[6])/Math.abs(P[0][6]||1)*100)}%;background:var(--turf)"></i></span><span class="v num">${sgn(p[6],2)}</span></a>`).join("")}</div>
-      <figure style="margin:0"><div class="fig-cap"><span class="r-label">Team of the week</span><span class="r-small">${esc(W.formation || "4-3-3")}; hover a player</span></div><div class="chart" id="hometotw"></div></figure></div></div>`;
+      <figure style="margin:0"><div class="fig-cap"><span class="r-label">Team of the matchday</span><span class="r-small">${esc(W.formation || "4-3-3")}; hover a player</span></div><div class="chart" id="hometotw"></div></figure></div></div>`;
   el.hidden = false;
   PP.chart($("#hometotw"), e => PP.drawEleven(e, W.xi || [], {maxV: 1, maxW: 640, tip: p => `<b>${esc(p.player)}</b>, ${esc(short(p.team))}<br>${p.keeper ? `${sgn(p.value,2)} goals prevented` : `${sgn(p.value,2)} goals above replacement`}`}));
   PP.bindTips($("#hometotw"));

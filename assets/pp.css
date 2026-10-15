@@ -694,7 +694,7 @@ span.dl{cursor:default}
 .prtrack .c{border:2px solid var(--ink);border-radius:50%;background:var(--paper)}
 /* the week in review (weeks.js) */
 .wknav{display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-5);align-items:center;justify-content:space-between;margin-top:var(--s-4);max-width:720px}
-.wknav .fsel select{min-width:220px}
+.wknav .fsel select{min-width:220px;max-width:min(330px,100%)}   /* "Matchday 28: 23 to 30 September" (2026-10-15) */
 .potw-name{margin:4px 0 2px}
 .potw-name a{text-decoration:none}
 .pfacts-inline{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--ink-2);font-size:var(--t-13);margin-bottom:var(--s-3)}

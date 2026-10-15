@@ -150,7 +150,7 @@ function report(m, R, wk){
     return `<div class="mom"><span class="num min">${x[0]}'</span><span class="who">${chip(team)}<a href="#player-${x[2]}">${esc(x[3]||"")}</a></span><span class="act">${esc(x[4])}</span><span class="v num">${sgn(x[5],2)}</span></div>`; }).join("");
   const ch = R.chain;
   return `<div class="wrap"><section class="plate pplate mplate" aria-label="The result against the chances">
-      <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#week-${wk.week}">The week in review: ${esc(PP.weekRange(wk))}</a>` : ""}</div>
+      <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#matchday-${wk.md}">The matchday in review: Matchday ${wk.md}</a>` : ""}</div>
       <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, `Before kickoff${recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, "On the chances: every shot scored with its expected-goal probability")}</div>
     </section></div>
     <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match; filled circles are goals. Hover a shot.</p></div><div class="chart" id="mrace"></div></div></section>
@@ -223,11 +223,11 @@ PP.pages.match = async (main, h) => {
       <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
   } else {
-    const I = await PP.loadWeeks(), wn = I ? PP.weekOfMatch(I, id) : null;
+    const I = await PP.loadRounds(), wn = I ? PP.roundOfMatch(I, id) : null;
     let R = null;
-    if(wn){ try { R = (await PP.loadWeek(wn)).reports[id]; } catch(e){ R = null; } }
+    if(wn){ try { R = (await PP.loadRound(wn)).reports[id]; } catch(e){ R = null; } }
     if(location.hash.slice(1) !== h) return;
-    if(R){ RP = {m, R}; body = report(m, R, I.weeks.find(w => w.week === wn)); }
+    if(R){ RP = {m, R}; body = report(m, R, I.matchdays.find(w => w.md === wn)); }
   }
   if(played && !body){
     const list = (arr, t) => { const mx = Math.max(0.05, ...arr.map(x => Math.abs(x[2]||0)));
