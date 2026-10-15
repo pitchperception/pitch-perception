@@ -185,8 +185,8 @@ PP.contractEnd = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c ||
 PP.moveWords = x => x == null ? null : x >= 3 ? "Much more likely than most" : x >= 1.5 ? "More likely than most" : x >= 0.67 ? "About as likely as most" : "Less likely than most";
 
 /* ---------- routing ---------- */
-const SECTIONS = [["today","Today"],["players","Players"],["teams","Teams"],["race","Playoff race"],["matches","Matches"],["week","Weekly"],["recruiting","Recruiting"],["method","Method"]];
-const TABS = [["today","Today"],["players","Players"],["teams","Teams"],["race","Race"],["more","More"]];
+const SECTIONS = [["today","Today"],["players","Players"],["teams","Teams"],["matches","Matches"],["race","Playoff race"],["week","Weekly"],["recruiting","Recruiting"],["method","Method"]];
+const TABS = [["today","Today"],["players","Players"],["teams","Teams"],["matches","Matches"],["more","More"]];   // Matches before the race (owner, 2026-10-15)
 /* a page's own name for the tab title, which the visit counter records (owner, 2026-10-09): players, clubs and managers */
 PP.pageName = h => {
   const [k, ...rest] = h.split("-"), id = rest.join("-");
@@ -203,7 +203,7 @@ PP.route = () => {
   if(section === "match") section = "matches";
   if(section === "scout") section = "recruiting";
   if(!PP.pages[section] && !PP.pages[h.split("-")[0]]) section = "today";
-  $$(".mnav a, .tabbar a").forEach(a => { if(a.dataset.s === section || (a.dataset.s === "more" && ["matches","week","recruiting","method","more"].includes(section))) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  $$(".mnav a, .tabbar a").forEach(a => { if(a.dataset.s === section || (a.dataset.s === "more" && ["race","week","recruiting","method","more"].includes(section))) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   drawers.clear();
   const main = $("#main"); main.innerHTML = "";
   const page = PP.pages[h.split("-")[0]] || PP.pages[section];
