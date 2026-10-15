@@ -861,3 +861,14 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 .xi-link:hover circle,.xi-link:focus-visible circle{stroke:var(--ink);stroke-width:4}
 .xi-link:focus{outline:none}
 .xi-link:hover .t-lab,.xi-link:focus-visible .t-lab{text-decoration:underline}
+
+/* club crests in lists, tables and tabs (owner, 2026-10-15) */
+td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
+.ctabs .club{gap:4px}
+/* dark crests (Inter Miami, Chicago, LAFC) keep their outline on the night background */
+:root{--crest-halo:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--crest-halo:drop-shadow(0 0 1px rgba(255,255,255,.55))}}
+:root[data-theme="dark"]{--crest-halo:drop-shadow(0 0 1px rgba(255,255,255,.55))}
+.crest{filter:var(--crest-halo)}
+/* the Teams index: a crest is wider than the colour chip, so the club column gets more of the row */
+@media (min-width:641px){.tindex .thead,.tindex .trow{grid-template-columns:24px minmax(0,1.9fr) minmax(0,1fr) 84px minmax(90px,1fr)}}

@@ -29,10 +29,10 @@ function strengthNote(race){
 /* ---------------- Teams index ---------------- */
 PP.pages.teams = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-small">Loading.</p></section></div>`;
-  let L, TR = null; try { [L, TR] = await Promise.all([loadLeague(), fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null)]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The league data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
+  let L, TR = null; try { [L, TR] = await Promise.all([loadLeague(), fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null), PP.loadImages()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The league data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
   const race = ((PP.data.home||{}).race||{teams:[]}).teams, byT = Object.fromEntries(race.map(t => [t.team, t]));
   const col = c => race.filter(t => t.conference === c).sort((a,b) => b.points - a.points || a.played - b.played);
-  const rows = arr => arr.map((t,i) => `<a class="trow" href="#team-${PP.slug(t.team)}"><span class="rk">${i+1}</span><span class="nm">${PP.chip(t.team)}<span class="nmt"><span class="nm-full">${esc(full(t.team))}</span><span class="nm-short">${esc(short(t.team))}</span></span></span>
+  const rows = arr => arr.map((t,i) => `<a class="trow" href="#team-${PP.slug(t.team)}"><span class="rk">${i+1}</span><span class="nm">${PP.crestOr(t.team, 22)}<span class="nmt"><span class="nm-full">${esc(full(t.team))}</span><span class="nm-short">${esc(short(t.team))}</span></span></span>
     <span class="num">${t.points} pts, ${t.played} played</span><span class="num"><span class="sr">Strength </span>${PP.int(t.elo)}</span><span class="tp"><span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span></span></a>`).join("");
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. Ordered by points; the bar is the chance of reaching the playoffs.</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a>
       ${strengthNote(race)}</section>
@@ -59,8 +59,9 @@ function drawLeague(el, rows){
   text(svg, m.l+iw, H-4, "Expected goals created per match", "t-axis", {"text-anchor":"end"});
   text(svg, m.l+4, m.t+4, "Expected goals allowed per match (fewer is higher)", "t-axis", {"dominant-baseline":"hanging"});
   rows.forEach(r => { const cx = sx(r.xgf_pg), cy = sy(r.xga_pg);
-    S("circle",{cx,cy,r:6,fill:"var(--dot)",stroke:"var(--paper)","stroke-width":2},svg);
-    const a = S("a",{href:`#team-${PP.slug(r.team)}`},svg); text(a, cx+9, cy+4, PP.short(r.team), "t-lab2 halo", {});
+    const a = S("a",{href:`#team-${PP.slug(r.team)}`},svg), cr = PP.svgCrest(a, r.team, cx-11, cy-11, 22);   // the crest, or a dot without one
+    if(!cr) S("circle",{cx,cy,r:6,fill:"var(--dot)",stroke:"var(--paper)","stroke-width":2},a);
+    text(a, cx+(cr?14:9), cy+4, PP.short(r.team), "t-lab2 halo", {});
     S("circle",{cx,cy,r:11,class:"hit","data-tip":`<b>${esc(full(r.team))}</b><br>${num(r.xgf_pg,2)} created, ${num(r.xga_pg,2)} allowed per match<br>${sgn(r.xgd_pg,2)} difference, ${num(r.pts_pg,2)} points per match`},svg); });
 }
 function drawGoals(el, ss){
@@ -329,7 +330,7 @@ function runinSection(){
   const funnel = rounds.map(([l,p]) => `<div class="fn"><span>${l}</span><span class="tr"><i style="width:${Math.max(0.5,p*100)}%"></i></span><span class="num">${pct(p)}</span></div>`).join("");
   const conf = T.D.conference + "ern Conference";
   const fx = rem.map(m => { const k = m.kickoff_utc ? PP.kick(m.kickoff_utc) : null;
-    return `<div class="rfx fxl" data-href="#match-${m.id}"><span class="r-small">${k ? `${k.day.replace(/^(\w+) /,"$1, ")}` : m.date}</span><span class="who">${m.home?"v":"at"} <a href="#team-${PP.slug(m.opp)}">${clubTag(m.opp)}</a> <span class="r-small">strength ${PP.int(m.opp_elo)}</span></span>
+    return `<div class="rfx fxl" data-href="#match-${m.id}"><span class="r-small">${k ? `${k.day.replace(/^(\w+) /,"$1, ")}` : m.date}</span><span class="who">${m.home?"v":"at"} <a href="#team-${PP.slug(m.opp)}">${PP.crestTag(m.opp, false, 20)}</a> <span class="r-small">strength ${PP.int(m.opp_elo)}</span></span>
       <span class="pbar"><i style="width:${m.p_win*100}%;background:var(--signal)"></i><i style="width:${m.p_draw*100}%;background:var(--mid)"></i><i style="width:${m.p_loss*100}%;background:var(--rule-strong)"></i></span>
       <span class="num r-small"><b>${pctShort(m.p_win)}</b> win, ${pctShort(m.p_draw)} draw, ${pctShort(m.p_loss)} loss</span>
       <span class="r-small">${m.stake && m.if_win != null ? `${cap(STAKE(m.stake, conf))}: ${pct(m.if_win)} with a win, ${pct(m.if_loss)} with a defeat` : ""}</span></div>`; }).join("");
@@ -396,7 +397,7 @@ function detailSection(){
   const s = T.s, ros = s.roster || [], ms = (s.matches || []).slice().reverse(), out = new Set(s.out || []), squad = s.squad ? new Set(s.squad) : null;
   const disc = (id, title, inner) => `<div class="ddisc"><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="${id}">${title}</button><div class="disc" id="${id}" aria-hidden="true"><div><div class="why-body">${inner}</div></div></div></div>`;
   const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${out.has(p.id)?" (out)":""}${squad&&!squad.has(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?`${sgn(p.gp,1)} prevented`:sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
-  const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${esc(short(x[1]))}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
+  const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${PP.crestTag(x[1])}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
   const hr = T.seasons.slice().reverse().map(x => `<tr><td><a href="#team-${T.D.slug}-${x.year}">${x.year}</a></td><td class="n">${x.games}</td><td class="n">${x.w}–${x.d}–${x.l}</td><td class="n">${x.pts}</td><td class="n">${x.gf}–${x.ga}</td><td class="n">${num(x.xgf,1)}–${num(x.xga,1)}</td><td class="n">${PP.ord(x.pts_pg_rank)}</td><td class="n">${PP.ord(x.xgd_pg_rank)}</td><td class="n">${sgn(x.squad_value,1)}</td></tr>`).join("");
   return `<section class="band" id="tdetail" aria-labelledby="tdet-h"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="tdet-h">Detailed data</h2><p>The numbers behind every chart on this page.</p></div>

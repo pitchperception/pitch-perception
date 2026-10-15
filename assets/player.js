@@ -259,7 +259,7 @@ function impactSection(){
       ${met("Of those, ended in a shot", im.shot_share, im.shot_share_pct, v => Math.round(v*100)+"%")}
       ${met("Attacking value added per 100 possessions touched", im.val_per_inv, im.val_per_inv_pct, v => sgn(v*100,2)+" goals")}
     </div>` : "";
-  const tabs = ch.map((c,i) => { const opp = c.home === c.team ? c.away : c.home; return `<button type="button" role="tab" aria-selected="${i===ST.chainI}" data-i="${i}"><b>${c.ends === "goal" ? "Goal" : c.ends === "shot" ? "Shot" : "Lost"}</b> v ${esc(short(opp))}, ${c.date ? PP.dateLong(c.date) : ""}</button>`; }).join("");
+  const tabs = ch.map((c,i) => { const opp = c.home === c.team ? c.away : c.home; return `<button type="button" role="tab" aria-selected="${i===ST.chainI}" data-i="${i}"><b>${c.ends === "goal" ? "Goal" : c.ends === "shot" ? "Shot" : "Lost"}</b> v ${PP.crestTag(opp)}, ${c.date ? PP.dateLong(c.date) : ""}</button>`; }).join("");
   const partners = pr.length ? `<div class="partners"><h3 class="r-heading">Most valuable connections</h3><p class="r-small">Completed passes with each teammate, either way, and the value those passes added in ${s.year}.</p>
       ${(() => { const mx = Math.max(...pr.map(p => Math.abs(p[3]))); return pr.map(p => `<a class="prow" href="#player-${p[0]}"><span class="nm">${esc(p[1])}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[3])/mx*100)}%;background:${p[3]>=0?"var(--turf)":"var(--flare)"}"></i></span><span class="v num">${sgn(p[3])}</span><span class="r-small">${PP.int(p[2])} passes</span></a>`).join(""); })()}</div>` : "";
   const chains = ch.length ? `<div class="pchains"><div class="fig-cap"><h3 class="r-heading">Possessions shaped most</h3><button type="button" class="btn-text" id="pplay">Play the chain</button></div>
@@ -319,7 +319,9 @@ function drawSeasons(el){
     S("rect",{x:cx-6,y:sy(x.rating)-6,width:12,height:12,fill:sel?"var(--signal)":"var(--paper)",stroke:sel?"var(--paper)":"var(--ink-2)","stroke-width":2,transform:`rotate(45 ${cx} ${sy(x.rating)})`},svg);
     if(band > 46) text(svg, cx+12, sy(x.rating)+4, sgn(x.rating,1), sel?"t-lab halo":"t-lab2 halo", {});
     text(svg, cx, H-m.b+17, x.year, "t-axis", {"text-anchor":"middle",style:sel?"font-weight:700;fill:var(--ink)":""});
-    if(band > 56) text(svg, cx, H-m.b+31, short(x.team), "t-axis", {"text-anchor":"middle"});
+    if(band > 56){ const t = text(svg, cx, H-m.b+31, short(x.team), "t-axis", {"text-anchor":"middle"});
+      if(PP.crestURL(x.team)){ const w = t.getComputedTextLength(), x0 = cx - (w + 18)/2; PP.svgCrest(svg, x.team, x0, H-m.b+20, 14); t.setAttribute("x", x0 + 18); t.setAttribute("text-anchor", "start"); } }
+    else if(band > 22) PP.svgCrest(svg, x.team, cx-7, H-m.b+21, 14);
     S("rect",{x:m.l+band*i,y:m.t,width:band,height:ih,class:"hit","data-tip":`<b>${x.year}, ${esc(full(x.team))}</b><br>${sgn(x.rating)} goals (range ${num(x.lo)} to ${num(x.hi)})<br>${num(x.p90,3)} per 90, ${PP.int(x.mins)} minutes, ${posSing(x.pos)}`},svg);
   });
 }
@@ -359,7 +361,7 @@ function peersSection(){
       <figure class="tfig"><div class="chart" id="ppeers"></div></figure>
       <aside class="aside">
         ${sim.length ? `<div><h3 class="r-heading">Most similar skills profiles</h3><p class="r-small">${cap(posPl(s.pos))} in ${s.year} whose 16 skill percentiles sit closest to his, weighted by how reliable each skill is.</p>
-          <div class="simlist">${sim.map(x => `<div class="sim"><a href="#player-${x[0]}-${s.year}" class="nm">${esc(x[1])}</a><span class="meta">${chip(x[2])}${esc(short(x[2]))}</span><span class="num r-small">${Math.round(x[3]*100)}% alike</span><button type="button" class="btn-text cmpbtn" data-id="${x[0]}">Compare</button></div>`).join("")}</div></div>` : ""}
+          <div class="simlist">${sim.map(x => `<div class="sim"><a href="#player-${x[0]}-${s.year}" class="nm">${esc(x[1])}</a><span class="meta">${PP.crestOr(x[2], 16)}${esc(short(x[2]))}</span><span class="num r-small">${Math.round(x[3]*100)}% alike</span><button type="button" class="btn-text cmpbtn" data-id="${x[0]}">Compare</button></div>`).join("")}</div></div>` : ""}
         <div class="cmpbox"><label class="r-label" for="cmpq">Compare with any player from ${s.year}</label><div class="cfield"><input id="cmpq" type="search" placeholder="Type a name" autocomplete="off"><div class="cres" id="cmpres" hidden></div></div></div>
       </aside>
     </div>
@@ -391,7 +393,7 @@ function drawPeers(el){
 }
 function cmpStrip(){
   const c = ST.cmp, cs = c.s;
-  return `<div class="cmpstrip"><span>Comparing with <a href="#player-${c.rec.id}-${cs.year}"><b>${esc(c.rec.name)}</b></a>, ${esc(short(cs.team))}, ${cs.year}: ${cs.rating!=null?`${sgn(cs.rating)} goals in ${PP.int(cs.mins)} minutes`:"no outfield rating"}. His percentiles show as rings.</span><button type="button" class="btn-text" id="cmpclear">Stop comparing</button></div>`;
+  return `<div class="cmpstrip"><span>Comparing with <a href="#player-${c.rec.id}-${cs.year}"><b>${esc(c.rec.name)}</b></a>, ${PP.crestTag(cs.team)}, ${cs.year}: ${cs.rating!=null?`${sgn(cs.rating)} goals in ${PP.int(cs.mins)} minutes`:"no outfield rating"}. His percentiles show as rings.</span><button type="button" class="btn-text" id="cmpclear">Stop comparing</button></div>`;
 }
 function bindCompare(){
   const setCmp = async id => {
@@ -406,7 +408,7 @@ function bindCompare(){
   q.addEventListener("input", () => {
     const t = q.value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); if(t.length < 2){ box.hidden = true; return; }
     const hits = (PP.data.index || []).filter(r => r[0] !== ST.rec.id && r[1] && r[1].toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(t)).slice(0, 6);
-    box.innerHTML = hits.length ? hits.map(r => `<button type="button" data-id="${r[0]}">${esc(r[1])} <span class="r-small">${esc(short(r[2]))}, ${(PP.POS[r[3]]||r[3]||"player").toLowerCase()}</span></button>`).join("") : `<span class="r-small">No player matches.</span>`;
+    box.innerHTML = hits.length ? hits.map(r => `<button type="button" data-id="${r[0]}">${esc(r[1])} <span class="r-small">${PP.crestTag(r[2])}, ${(PP.POS[r[3]]||r[3]||"player").toLowerCase()}</span></button>`).join("") : `<span class="r-small">No player matches.</span>`;
     box.hidden = false;
     $$("button", box).forEach(b => b.addEventListener("click", () => { box.hidden = true; setCmp(b.dataset.id); }));
   });
@@ -415,10 +417,10 @@ function bindCompare(){
 /* detailed data */
 function detailSection(){
   const {rec, s} = ST, teams = ST.teams;
-  const seasonRows = rec.seasons.slice().sort((a,b) => b.year - a.year).map(x => `<tr><td>${x.year}</td><td>${esc(short(x.team))}</td><td>${posSing(x.pos)}</td><td class="n">${PP.int(x.mins)}</td>
+  const seasonRows = rec.seasons.slice().sort((a,b) => b.year - a.year).map(x => `<tr><td>${x.year}</td><td>${PP.crestTag(x.team)}</td><td>${posSing(x.pos)}</td><td class="n">${PP.int(x.mins)}</td>
     <td class="n">${x.rating!=null?sgn(x.rating):"–"}</td><td class="n">${x.lo!=null?`${num(x.lo)} to ${num(x.hi)}`:"–"}</td><td class="n">${x.p90!=null?num(x.p90,3):"–"}</td><td class="n">${x.attack!=null?sgn(x.attack):"–"}</td><td class="n">${x.defence!=null?sgn(x.defence):"–"}</td>
     <td>${PP.SLOT[x.slot]||x.slot||"–"}</td><td class="n">${x.comp?money(x.comp):"–"}</td><td class="n">${x.slot_value!=null?sgn(x.slot_value):"–"}</td><td class="n">${x.conv&&x.conv.goals!=null?x.conv.goals:"–"}</td><td class="n">${x.conv&&x.conv.shots!=null?x.conv.shots:"–"}</td></tr>`).join("");
-  const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${esc(short(teams[x[1]]||""))}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
+  const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${teams[x[1]] ? PP.crestTag(teams[x[1]]) : ""}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
   const keys = ST.peers.components.map(c => c.key);
   const sk = s.skills ? SKILL_ORDER.filter(k => keys.includes(k)).map(k => { const v = s.skills[keys.indexOf(k)]; return `<tr><td>${COMP[k][0]}</td><td class="n">${sgn(v[1],4)}</td><td class="n">${v[0]!=null?pctile(v[0]):"–"}</td><td class="n">${v[2]!=null?v[2].toFixed(2):"–"}</td></tr>`; }).join("") : "";
   const ry = ST.peers.reliability_years || [];
