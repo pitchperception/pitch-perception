@@ -342,6 +342,7 @@ main{min-width:0}
 .pfacts div{display:grid}
 .pfacts dt{font-size:var(--t-12);color:var(--ink-3);font-weight:550}
 .pfacts dd{margin:0;font-weight:550}
+.pfacts dd.prole{cursor:help;text-decoration:underline dotted var(--rule-strong);text-underline-offset:3px}
 .pseason{justify-self:start;margin-top:var(--s-2);flex-wrap:wrap}
 .plate{background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:var(--s-5);min-width:0}
 @media (max-width:479px){.plate{padding:var(--s-4)}}
@@ -502,6 +503,17 @@ span.dl{cursor:default}
 .sqmore[open] summary::before{content:"− "}
 .metrics.m4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .tstyle{display:grid;gap:6px}
+.tsrc,.tlike{margin-top:var(--s-6)}
+.srow{display:grid;grid-template-columns:minmax(90px,140px) 1fr;gap:var(--s-3);align-items:center;margin-top:var(--s-2)}
+.srow .lbl{font-size:var(--t-13);font-weight:550}
+.sbar{display:flex;height:18px;border-radius:2px;overflow:hidden;background:var(--well)}
+.sbar i{display:block;height:100%;min-width:1px}
+.sbar i+i{box-shadow:inset 1px 0 0 var(--paper)}
+.tsrc .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:var(--t-12);color:var(--ink-2);margin-top:var(--s-2)}
+.tsrc .legend i{margin-right:5px;vertical-align:-1px}
+.likes{list-style:none;margin:var(--s-2) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:var(--s-2) var(--s-5)}
+.likes a{display:inline-flex;align-items:center;gap:8px;font-weight:550;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule-strong);padding-bottom:2px}
+.likes a:hover{border-color:var(--ink)}
 .skills2{display:grid;gap:var(--s-5);margin-top:var(--s-3)}
 @media (min-width:880px){.skills2{grid-template-columns:1fr 1fr;gap:var(--s-7)}}
 .sk-group{display:grid;gap:2px;align-content:start}
@@ -878,3 +890,9 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .plink-svg:hover text,.plink-svg:focus-visible text{text-decoration:underline}
 [data-href][role="link"]:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
 .award[data-href]{cursor:pointer}
+
+/* Method: playing styles (145) */
+.rolelist{display:grid;gap:var(--s-3) var(--s-6);margin:var(--s-2) 0 0}
+@media (min-width:700px){.rolelist{grid-template-columns:1fr 1fr}}
+.rolelist dt{font-weight:650}
+.rolelist dd{margin:2px 0 0;color:var(--ink-2);font-size:var(--t-13)}

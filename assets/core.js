@@ -148,6 +148,22 @@ PP.badgeTip = (k, pos, pct, year, from) => { const A = PP.data.arch, d = A && A.
 PP.badgeChips = (list, pos, year) => list.length ? `<div class="bdgs" aria-label="Archetypes">${list.map(([k, p, from]) => { const d = PP.data.arch.byKey[k]; return d ? `<a class="bdg${from ? " carried" : ""}" href="#method-archetypes" data-tip="${PP.esc(PP.badgeTip(k, pos, p, year, from))}"><span class="bdg-roundel">${PP.badgeSvg(k, 17)}</span>${PP.esc(d.name)}${from ? `<span class="bdg-yr">${from}</span>` : ""}</a>` : ""; }).join("")}</div>` : "";
 PP.badgeMini = list => list.length ? `<span class="bdg-row">${list.map(([k, , from]) => { const d = PP.data.arch && PP.data.arch.byKey[k]; const t = from ? `${d && d.name} (${from})` : d && d.name; return d ? `<span class="bdg-mini${from ? " carried" : ""}" title="${PP.esc(t)}" role="img" aria-label="${PP.esc(t)}">${PP.badgeSvg(k, 12)}</span>` : ""; }).join("")}</span>` : "";
 
+/* ---------- playing styles (data/roles.json from 145_site_styles.py; roles defined and tested in 142) ---------- */
+let roleP = null;
+PP.loadRoles = () => roleP || (roleP = fetch("data/roles.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => (PP.data.roles = d)));
+PP.ROLE_POS = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
+// {label, tip} for a player-season, or null (no role shown: under 900 minutes, or his top role is not one the site shows)
+PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.players[`${id}|${year}|${team}`]; if(!x || x[0] === "none") return null;
+  const defs = R.roles[pos] || [], shown = defs.filter(d => d.shown), by = Object.fromEntries(defs.map(d => [d.role, d]));
+  const [fit, r1, r2, sc] = x, lc = s => s.charAt(0).toLowerCase() + s.slice(1);
+  const label = fit === "clear" ? by[r1].name : fit === "hybrid" ? `${by[r1].name} / ${lc(by[r2].name)}` : "Balanced";
+  const head = fit === "balanced" ? `<b>Balanced</b><br>No one style stands out: no role's score reaches ${R.clear}.`
+    : [r1, r2].filter(Boolean).map(r => `<b>${PP.esc(by[r].name)}</b><br>${PP.esc(by[r].text)}`).join("<br>");
+  const rows = shown.map((d, i) => sc[i] == null ? "" : `${PP.esc(d.name)} ${sc[i] >= 0 ? "+" : "−"}${(Math.trunc(Math.abs(sc[i])*100)/100).toFixed(2)}`).filter(Boolean).join("<br>");
+  const tip = `${head}<br><br>His ${year} style against other ${PP.ROLE_POS[pos]} (0 is typical; a role needs ${R.clear}, and ${R.margin} more than the next):<br>${rows}`
+    + `<br><br>How he plays, not how well. Partly his team's: when players change clubs, their style carries over at about two-thirds strength.`;
+  return {label, tip}; };
+
 /* ---------- Transfermarkt in the scouting hub (62_tm_market.py): value bands, contracts, MLS-move likelihood ---------- */
 let mkP = null;
 /* official MLS headshots and club crests as data URIs (build_images.py; credited in the footer). Crests in one

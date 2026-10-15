@@ -7,6 +7,8 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const cache = {};
 let leagueP = null;
 const loadTeam = slug => cache[slug] || (cache[slug] = fetch(`data/teams/${slug}.json`).then(r => { if(!r.ok) throw new Error(`data/teams/${slug}.json returned ${r.status}`); return r.json(); }));
+let stylesP = null;   // where the chances come from and "plays most like" (145_site_styles.py)
+const loadStyles = () => stylesP || (stylesP = fetch("data/team_styles.json").then(r => r.ok ? r.json() : null).catch(() => null));
 const loadLeague = () => leagueP || (leagueP = fetch("data/league.json").then(r => { if(!r.ok) throw new Error(`league.json returned ${r.status}`); return r.json(); }));
 const COMPL = {passing:"Passing",setpiece:"Set-piece delivery",carrying:"Carrying",dribbling:"Dribbling",shooting:"Shot selection",receiving:"Receiving",security:"Ball security",
   interceptions:"Interceptions",tackles:"Tackles",recoveries:"Loose-ball recoveries",clearances:"Clearances",blocks:"Blocks",aerials:"Aerials won",high_regains:"High regains",not_beaten:"Not dribbled past",fouls:"Fouls"};
@@ -91,11 +93,11 @@ PP.pages.team = async (main, h) => {
   const team = PP.teamBySlug(slug);
   if(!team){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No club with this link</h1><p>Pick a club from the Teams list.</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${clubTag(team)}</div><h1 class="r-name">${esc(full(team))}</h1><p class="r-small">Loading the model's view of this club.</p></section></div>`;
-  let D, L; try { [D, L] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages()]); }
+  let D, L, SY; try { [D, L, , , SY] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages(), loadStyles()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">${team ? "This club's data did not load" : "No club with this link"}</h1><p>${team ? esc(e.message)+". Reload the page; if it persists, the site needs republishing." : "Pick a club from the Teams list."}</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   if(location.hash.slice(1) !== h) return;
   const seasons = D.seasons.slice().sort((a,b) => a.year - b.year), years = seasons.map(s => s.year), y = year && years.includes(year) ? year : years[years.length-1];
-  T = {D, L, seasons, years, year: y, s: seasons.find(s => s.year === y), zoneMode: "create"};
+  T = {D, L, SY, seasons, years, year: y, s: seasons.find(s => s.year === y), zoneMode: "create"};
   render(main);
 };
 
@@ -269,7 +271,24 @@ function playSection(){
     ${metrics}
     ${st ? `<div class="tstyle"><h3 class="r-heading">The squad's skills, per match</h3><p class="r-small">Each bar is the club's rank among MLS clubs (higher is better) for the value its players add with each skill, per match.</p>
       <div class="skills2"><div class="sk-group"><span class="r-label">With the ball</span>${attK.map(bar).join("")}</div><div class="sk-group"><span class="r-label">Winning it back</span>${defK.map(bar).join("")}</div></div></div>` : ""}
+    ${styleBlocks()}
   </div></section>`;
+}
+// where the chances come from (one source per shot) and the clubs' seasons it plays most like (145)
+const SRC_C = ["var(--signal)", "var(--flare)", "var(--turf)", "var(--pct-5)", "var(--mid)"];
+function styleBlocks(){
+  const SY = T.SY, me = SY && (SY.teams[T.D.team] || {})[String(T.year)], lgv = SY && SY.league[String(T.year)];
+  if(!me) return "";
+  const nm = esc(short(T.D.team)), labs = SY.sources.map(x => x[1]);
+  const row = (who, v) => `<div class="srow"><span class="lbl">${who}</span><span class="sbar" role="img" aria-label="${esc(who)}: ${labs.map((l, i) => `${l} ${Math.round(v[i]*100)}%`).join(", ")}">${v.map((x, i) => `<i style="width:${x*100}%;background:${SRC_C[i]}" data-tip="${esc(`<b>${labs[i]}</b><br>${who}: ${Math.round(x*100)}% of non-penalty expected goals`)}"></i>`).join("")}</span></div>`;
+  const ch = SY.check, like = me.like.map(([t, y]) => `<li><a href="#team-${PP.slug(t)}-${y}">${PP.crestOr(t, 18)}<span>${esc(full(t))} <span class="num">${y}</span></span></a></li>`).join("");
+  return `<div class="tstyle tsrc"><h3 class="r-heading">Where their chances come from</h3>
+      <p class="r-small">Each shot's expected goals counted once, by how the move began: a set piece; a counter-attack from the ball won in their own half (the shot within 20 seconds); the ball won high, in the attacking third; a long possession of eight or more actions; or anything else in open play. Penalties are left out.</p>
+      ${row(nm, me.src)}${lgv ? row("MLS average", lgv) : ""}
+      <div class="legend">${labs.map((l, i) => `<span><i style="width:10px;height:10px;background:${SRC_C[i]};display:inline-block;border-radius:2px"></i>${esc(l)}</span>`).join("")}</div></div>
+    <div class="tstyle tlike"><h3 class="r-heading">Plays most like</h3>
+      <p class="r-small">The three other clubs' seasons since 2020 nearest to ${nm} in ${T.year} on twelve measures of style: how much of the ball they have and how long they keep it, how direct and how long their passing is, how hard and how high they press, how often they win the ball straight back, how often they counter, how many chances come from long moves and from crosses, how wide they attack, and how often goal kicks go short. Each measure is taken against that season's league average. A check that it means something: a club that keeps its manager usually looks like its own previous season (the median of ${ch.n} such seasons is nearer than ${Math.round(100 - ch.median_pct)}% of all others).</p>
+      <ol class="likes">${like}</ol></div>`;
 }
 
 /* results and chances */

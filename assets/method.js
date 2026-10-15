@@ -26,7 +26,7 @@ const meaning = (G, EX) => {
 
 PP.pages.method = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">How it works</h1><p class="r-small">Loading.</p></section></div>`;
-  let T; try { [MD, T, SN, , DC] = await Promise.all([load(), loadT(), loadS(), PP.loadArch(), loadD()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The method data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
+  let T; try { [MD, T, SN, , DC] = await Promise.all([load(), loadT(), loadS(), PP.loadArch(), loadD(), PP.loadRoles()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The method data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
   let EX = null;
   try {
     const L0 = ((PP.data.home || {}).leaders || [])[0];
@@ -77,6 +77,7 @@ ${meaning(G, EX)}
 ${SN ? weightsSection(SN) : ""}
 
 ${PP.data.arch ? archSection(PP.data.arch, DC) : ""}
+${PP.data.roles ? stylesSection(PP.data.roles) : ""}
 
   <section class="band mtext" id="m-slot"><div class="band-head"><h2 class="r-title">Against the contract type</h2>
     <p>MLS roster building is a scarcity problem: three Designated Player places and a handful of U22 and allocation-money signings, paid for whether or not the player plays. So the fair comparison for a player is with others on the same type of contract: does a Designated Player produce like a Designated Player? Value against the contract type is a player's rating minus the median season of everyone on that type of contract, 2020–25, pro-rated to the part of the season it was held. The chance of beating it comes from the same resampling as the player's range. How much a player is paid within a type does not enter: a $2m Designated Player and a $20m one face the same bar, because the scarce thing is the place, not the money. ${T && T.points_per_goal ? `A goal of a team's season expected-goal difference has been worth about ${num(T.points_per_goal,2)} points in the table (2021–25).` : ""}</p></div>
@@ -160,6 +161,20 @@ function archSection(A, D){
     <p><b>How a player earns a badge, each season:</b> at least ${PP.int(A.min_minutes)} minutes at a position the badge covers; a value per 90 in the badge's skill in the top 15% (or 10%, where stated) of players at his position with ${PP.int(A.min_minutes)}+ minutes that season; and, for a badge built on a skill, that skill reliable at his minutes (0.5 or more), because below that a season's number is mostly noise. How many minutes that takes depends on the skill and the position, so each badge below says. <b>Early in a season</b>, a player's badges from last season stay on his page, marked with their year and a dashed outline, until this season has enough minutes to judge them.</p>
     <p>A badge is only shown if the players who hold it are at least twice as likely as chance to hold it again the next season, and the low end of the 95% range of that rate still beats chance, so a badge resting on a handful of players cannot pass on luck. A player holds a badge built on a skill only if that skill is reliable at his minutes, so no badge rests on a row his page marks as mostly noise. Interceptions and loose-ball recoveries failed that on their own, so the ball-winning badges count tackles, interceptions and recoveries together${(A.defs.find(d => d.key === "sweeper_keeper") || {}).shown === false ? "; for keepers, claiming and sweeping failed it and has no badge" : ""}. Players abroad in the scouting database earn the same badges, measured against their own league.</p></div>
     ${groups.map(([g, l]) => { const ds = shown.filter(d => d.side === g); return ds.length ? `<h3 class="r-heading" style="margin-top:var(--s-5)">${l}</h3><div class="arch-grid">${ds.map(card).join("")}</div>` : ""; }).join("")}
+  </section>`;
+}
+
+/* playing styles (142 roles, tested; 145 builds the site file) */
+function stylesSection(R){
+  const POSW = {CB:"Centre backs", FB:"Fullbacks", CM_DM:"Central midfielders", AM:"Attacking midfielders", W:"Wingers", ST:"Strikers"};
+  const groups = Object.entries(R.roles).map(([pos, ds]) => { const sh = ds.filter(d => d.shown); return sh.length ? `<h3 class="r-heading" style="margin-top:var(--s-5)">${POSW[pos]}</h3>
+    <dl class="rolelist">${sh.map(d => `<div><dt>${esc(d.name)}</dt><dd>${esc(d.text)}</dd></div>`).join("")}</dl>` : ""; }).join("");
+  return `<section class="band mtext" id="m-styles"><div class="band-head"><h2 class="r-title">Playing styles</h2>
+    <p>Badges say what a player does best by value. A playing style says how he plays: where he gets the ball and what he does with it, with no value or rating in it. Each style is a short list of things a player in that role does more (or less) of than others at his position: touches, progressive passes, carries, crosses, shots, headers, tackles, where on the pitch he plays. The styles were written down before any were tested.</p>
+    <p><b>How a player gets one.</b> Every number is taken per 90 minutes and adjusted for how much of the ball his team has (counts on the ball for his team's share, defending for the opponent's), the usual adjustment in public analytics, which comes from StatsBomb's possession-adjusted defensive numbers; then compared with other players at his position in the same season (${PP.int(R.min_minutes)}+ minutes at one club). His score for a style is how far above or below typical he sits across its list, in standard deviations. His style is the highest: shown when it reaches ${R.clear} and beats the next by ${R.margin}; when two are close, both are shown; when none reaches ${R.clear}, he is balanced.</p>
+    <p><b>How the styles were tested.</b> Each had to be reliable within a season (one half of a player's matches agrees with the other) and repeat the next season at least twice as often as chance. Nineteen of 21 passed both; two centre-back styles (clearing and heading in his own third; stepping up to win the ball) did not repeat well enough and are not shown. A third test, whether a player keeps his style after changing clubs, had too few players to judge. A first look says styles carry over a move at about two-thirds of their usual strength, so a style is mostly the player's and partly his coach's (cutting inside, for wingers, much more the coach's). That test is fixed in advance and runs on fresh players after the 2026 season; it can take styles off the site.</p>
+    <p><b>Teams.</b> Each club page shows where its chances come from, and the three other clubs' seasons since 2020 it plays most like. Tactical labels (possession, direct, high press, counter-pressing, counter-attacking, low or mid block) were tested too: only possession and direct both held from one half of a season to the other and showed up in the chances a team created. A high press held, but did not show up in the chances it should create; pressing high and sitting deep mostly measure how good a team is (better teams press higher), so neither is used as a label.</p>
+    ${groups}
   </section>`;
 }
 

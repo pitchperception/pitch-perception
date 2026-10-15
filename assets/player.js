@@ -53,7 +53,7 @@ PP.pages.player = async (main, h) => {
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${ix ? clubTag(ix[2], true) : ""}</div><h1 class="r-name">${ix ? esc(ix[1]) : "Player"}</h1><p class="r-small">Loading the model's numbers for this player.</p></section></div>`;
   let rec, peers, teams;
   let photo = null;
-  try { [{rec, teams}, peers, , , photo] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id)]); }
+  try { [{rec, teams}, peers, , , photo] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">This player's data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   if(location.hash.slice(1) !== h && !(h === "player-"+id && location.hash === "")) return;
   if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No player with this link</h1><p>Search for him by name above.</p></section></div>`; return; }
@@ -81,7 +81,7 @@ function render(main){
   PP.chart($("#pmatches"), drawMatches);
   PP.chart($("#ppeers"), drawPeers);
   bindCompare();
-  ["#psignal","#fingerprint","#decomp","#ppitch","#psteps","#pseasons","#ppeers",".pid .bdgs",".pplate .pp-left"].forEach(q => $$(q).forEach(PP.bindTips));
+  ["#psignal","#fingerprint","#decomp","#ppitch","#psteps","#pseasons","#ppeers",".pid .bdgs",".pid .pfacts",".pplate .pp-left"].forEach(q => $$(q).forEach(PP.bindTips));
 }
 
 /* ---------------- identity ---------------- */
@@ -91,6 +91,8 @@ function identity(){
   const facts = [["Position", PP.POS[s.pos] || s.pos || "Not recorded"], age != null ? ["Age", `${age} in ${year}`] : null,
     s.slot ? ["Contract type", PP.SLOT[s.slot] || s.slot] : null, ["Minutes, "+year, PP.int(s.mins)],
     s.comp ? ["Guaranteed pay", money(s.comp)] : null].filter(Boolean);
+  const role = s.pos !== "GK" ? PP.roleFor(rec.id, year, s.team, s.pos) : null;           // playing style (145), 900+ minutes
+  if(role) facts.splice(1, 0, ["Playing style", role.label, role.tip]);
   // in his latest season the header shows his current club (latest appearance, 72); figures stay with the club they came from
   const latest = year === Math.max(...years), club = latest && rec.team ? rec.team : s.team, moved = club !== s.team;
   const ph = PP.headshot(ST.photo, club, 120);
@@ -100,7 +102,7 @@ function identity(){
     ${moved ? `<p class="r-small" style="margin:0">Now at ${esc(short(club))}. The ${year} figures below are from his ${PP.int(s.mins)} minutes at ${esc(short(s.team))}.</p>` : ""}
     <h1 class="r-name" id="pname">${esc(rec.name)}</h1>
     ${PP.badgeChips(PP.badgesFor(rec.id, year, s.team), s.pos, year)}
-    <dl class="pfacts">${facts.map(([k,v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+    <dl class="pfacts">${facts.map(([k,v,tip]) => `<div><dt>${k}</dt><dd${tip ? ` class="prole" data-tip="${esc(tip)}"` : ""}>${esc(v)}</dd></div>`).join("")}</dl>
     ${years.length > 1 ? `<div class="seg pseason" role="group" aria-label="Season">${years.map(y => `<button type="button" data-y="${y}" aria-pressed="${y===year}">${y}</button>`).join("")}</div>` : ""}
   </section></div>`;
 }
