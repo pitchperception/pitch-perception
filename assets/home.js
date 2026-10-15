@@ -81,7 +81,14 @@ function lead(H){
   const cupLine = cr === 0
     ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(o.team))} favourites for MLS Cup (${pct(t.p_champion)}).`
     : `The playoff forecast, which weighs results and chances equally, gives ${esc(short(o.team))} a ${pct(t.p_champion)} chance of MLS Cup, ${PP.ordWord(cr + 1)} behind ${esc(short(cup[0].team))} (${pct(cup[0].p_champion)}).`;
-  const note2 = `${cupLine} Finishing and shot-stopping are the least repeatable parts of the game in our tests: year-to-year correlations of about 0.05 and 0.18.`;
+  // the record chase (owner, 2026-10-15), while it is live: only for the points leader, between 2% and 98%, or once broken
+  const rc = H.record_chase, N = n => PP.WORDS[n] || String(n);
+  const recLine = !(rc && first && rc.team === o.team) ? "" : rc.points > rc.record
+    ? `${esc(short(o.team))} have broken the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
+    : rc.p_break >= 0.02 && rc.p_break <= 0.98
+      ? `The model gives them a ${pct(rc.p_break)} chance of breaking the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}): they need ${N(rc.need)} points from their last ${N(rc.left)} matches. `
+      : "";
+  const note2 = `${recLine}${cupLine} Finishing and shot-stopping are the least repeatable parts of the game in our tests: year-to-year correlations of about 0.05 and 0.18.`;
   return `<article class="lead" aria-labelledby="lead-h">
     <span class="kicker">Results against chances</span>
     <h2 id="lead-h">${head}</h2>
@@ -164,7 +171,20 @@ function ins(id, kicker, head, body, micro, why){
 }
 function formText(f){ if(!f.n) return "no matches"; const parts = []; if(f.w) parts.push(`${PP.WORDS[f.w]||f.w} win${f.w>1?"s":""}`); if(f.d) parts.push(`${PP.WORDS[f.d]||f.d} draw${f.d>1?"s":""}`); if(f.l) parts.push(`${PP.WORDS[f.l]||f.l} defeat${f.l>1?"s":""}`); return `${f.pts===0?"no":f.pts} point${f.pts===1?"":"s"} from ${PP.WORDS[f.n]||f.n} match${f.n>1?"es":""} (${parts.join(", ")})`; }
 
+/* which playoff story leads (owner, 2026-10-15): one team's swing of 20+ points from a single match this week, with the team on
+   the other side of that result; otherwise the biggest four-week rise and fall */
+function raceStory(H){
+  const T = H.race.teams, wk = T.filter(x => x.form_week && x.form_week.n === 1 && x.move_week != null).sort((a,b) => Math.abs(b.move_week) - Math.abs(a.move_week))[0];
+  if(wk && Math.abs(wk.move_week) >= 0.20){
+    const o = T.find(x => x.team === wk.form_week.last.opp), other = o && Math.sign(o.move_week) === -Math.sign(wk.move_week) ? o : null;
+    return {mode: "week", main: wk, other};
+  }
+  const t = T.slice().sort((a,b) => b.move_playoffs - a.move_playoffs);
+  return {mode: "4w", up: t[0], dn: t[t.length-1]};
+}
 function insRace(H){
+  const st = raceStory(H);
+  if(st.mode === "week") return insRaceWeek(H, st);
   const t = H.race.teams.slice().sort((a,b) => b.move_playoffs - a.move_playoffs), up = t[0], dn = t[t.length-1];
   const ago = h => h.hist_playoffs[h.hist_playoffs.length-5];
   const head = `<a href="#team-${PP.slug(up.team)}">${esc(short(up.team))}</a>'s playoff chances rose from ${pct(ago(up))} to ${pct(up.p_playoffs)} in four weeks`;
@@ -174,14 +194,30 @@ function insRace(H){
     <p class="r-small">Chance of reaching the playoffs (top nine in each conference). Points are percentage points. Each week is the forecast reconstructed with today's model, using only the results known by then, ${H.race.dates.length} weeks in all.</p>`;
   return ins("ins-race", "Playoff race", head, body, `<div class="chart micro" id="spark"></div>`, why);
 }
+function insRaceWeek(H, st){
+  const m = st.main, L = m.form_week.last, hi = Math.max(L.gf, L.ga), lo = Math.min(L.gf, L.ga), opp = esc(short(L.opp));
+  const res = L.gf > L.ga ? `beating ${opp} ${hi}–${lo}` : L.gf < L.ga ? `losing ${hi}–${lo} to ${opp}` : `a ${hi}–${lo} draw with ${opp}`;
+  const head = `<a href="#team-${PP.slug(m.team)}">${esc(short(m.team))}</a>'s playoff chances ${m.move_week > 0 ? "jumped" : "fell"} from ${pct(m.p_week_ago)} to ${pct(m.p_playoffs)} after ${res}`;
+  const o = st.other;
+  const body = o ? `${esc(short(o.team))}, on the other side of that result, ${o.move_week < 0 ? "fell" : "rose"} from ${pct(o.p_week_ago)} to ${pct(o.p_playoffs)}.`
+    : `The biggest swing from a single match this week.`;
+  const t = H.race.teams.slice().sort((a,b) => b.move_week - a.move_week);
+  const rows = arr => arr.map(x => `<tr><td>${clubTag(x.team)}</td><td class="n">${pctShort(x.p_week_ago)}</td><td class="n">${pctShort(x.p_playoffs)}</td><td class="n" style="font-weight:600">${pp(x.move_week)}</td></tr>`).join("");
+  const why = `<table class="mini-table"><thead><tr><th>Biggest moves this week</th><th class="n">Last week</th><th class="n">Now</th><th class="n">Points</th></tr></thead><tbody>${rows(t.slice(0,3))}${rows(t.slice(-3).reverse())}</tbody></table>
+    <p class="r-small">Chance of reaching the playoffs (top nine in each conference). Points are percentage points. Last week is the forecast reconstructed with today's model from the results known then.</p>`;
+  return ins("ins-race", "Playoff race", head, body, `<div class="chart micro" id="spark"></div>`, why);
+}
 function drawSpark(el){
-  const H = PP.data.home, t = H.race.teams.slice().sort((a,b) => b.move_playoffs - a.move_playoffs), lines = [[t[0],"var(--turf)"],[t[t.length-1],"var(--flare)"]];
+  const H = PP.data.home, st = raceStory(H), t = H.race.teams.slice().sort((a,b) => b.move_playoffs - a.move_playoffs);
+  const week = st.mode === "week", col = x => x.move_week > 0 ? "var(--turf)" : "var(--flare)";
+  const lines = week ? [[st.main, col(st.main)]].concat(st.other ? [[st.other, col(st.other)]] : []) : [[t[0],"var(--turf)"],[t[t.length-1],"var(--flare)"]];
+  const span = week ? 1 : 4;
   const W = el.clientWidth; if(!W) return; const Ht = 110; el.innerHTML = "";
   const svg = S("svg",{width:W,height:Ht,viewBox:`0 0 ${W} ${Ht}`,role:"img","aria-label":"Playoff chances through the season for the biggest riser and faller"},el);
   const n = H.race.dates.length, m = {l:30,r:96,t:8,b:18}, iw = W-m.l-m.r, ih = Ht-m.t-m.b, sx = i => m.l + i/(n-1)*iw, sy = v => m.t + ih - v*ih;
-  S("rect",{x:sx(n-5),y:m.t,width:sx(n-1)-sx(n-5),height:ih,fill:"var(--well)"},svg);
+  S("rect",{x:sx(n-1-span),y:m.t,width:sx(n-1)-sx(n-1-span),height:ih,fill:"var(--well)"},svg);
   [0,0.5,1].forEach(v => { S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, m.l-6, sy(v)+4, (v*100)+"%", "t-axis", {"text-anchor":"end"}); });
-  text(svg, sx(n-5)+4, Ht-4, "last 4 weeks", "t-axis", {});
+  text(svg, week ? sx(n-1) : sx(n-5)+4, Ht-4, week ? "last week" : "last 4 weeks", "t-axis", week ? {"text-anchor":"end"} : {});
   text(svg, m.l, Ht-4, "Feb", "t-axis", {});
   const ends = [];
   lines.forEach(([tm, c]) => {
@@ -196,12 +232,22 @@ function drawSpark(el){
 
 function insContract(H){
   const top = H.contract, cheapSlots = ["Senior","Supplemental","Homegrown"], cheap = top.filter(p => cheapSlots.includes(p.slot));
-  const maxPay = Math.max(...cheap.map(p => p.comp)), under = Math.ceil((maxPay+1)/5000)*5000;
-  const rest = top.filter(p => !cheapSlots.includes(p.slot));
-  const head = `${cap(PP.WORDS[cheap.length]||String(cheap.length))} of the ${PP.WORDS[top.length]} most valuable players this season earn under ${money(under)}`;
-  const names = cheap.map(p => `<a href="#player-${p.ws_player_id}">${esc(p.player)}</a>`);
-  const list = names.length > 1 ? names.slice(0,-1).join(", ") + " and " + names[names.length-1] : names[0];
-  const body = (rest.length ? `Behind ${rest.map(p => `<a href="#player-${p.ws_player_id}">${esc(p.player)}</a> (${money(p.comp)})`).join(" and ")} come ` : "") + `${list}, on Senior, Supplemental and Homegrown contracts rather than Designated Player or TAM deals.`;
+  const rest = top.filter(p => !cheapSlots.includes(p.slot)), N = n => PP.WORDS[n] || String(n);
+  const link = p => `<a href="#player-${p.ws_player_id}">${esc(p.player)}</a>`;
+  const and = a => a.length > 1 ? a.slice(0,-1).join(", ") + " and " + a[a.length-1] : (a[0] || "");
+  const type = p => (PP.SLOT[p.slot] || p.slot).toLowerCase();
+  const pay = rest.length ? (rest.length === 1 ? ` The other one in the top ${N(top.length)}, ${link(rest[0])}, earns ${money(rest[0].comp)}.`
+    : ` The other ${N(rest.length)} in the top ${N(top.length)} earn between ${money(Math.min(...rest.map(x => x.comp)))} and ${money(Math.max(...rest.map(x => x.comp)))}.`) : "";
+  let head, body;
+  if(cheap.length === 1){                         // owner, 2026-10-15: "One of the six ... earn" when only one did
+    const p = cheap[0];
+    head = `One of the most valuable players in MLS this season earns ${money(p.comp)}`;
+    body = `${link(p)} has added ${num(p.rating,1)} goals above replacement for ${esc(short(p.team))} on a ${type(p)} contract.${pay}`;
+  } else {
+    const maxPay = Math.max(...cheap.map(p => p.comp)), under = Math.ceil((maxPay+1)/5000)*5000;
+    head = `${cap(N(cheap.length))} of the ${N(top.length)} most valuable players this season earn under ${money(under)}`;
+    body = `${and(cheap.map(link))} play on ${and([...new Set(cheap.map(type))])} contracts.${pay}`;
+  }
   const why = `<table class="mini-table"><thead><tr><th>Player</th><th>Contract type</th><th class="n">Pay</th><th class="n">Value</th><th class="n">Beats typical</th></tr></thead><tbody>${top.map(p => `<tr><td><a href="#player-${p.ws_player_id}" style="font-weight:600;text-decoration:none">${esc(p.player)}</a></td><td>${PP.SLOT[p.slot]||p.slot}</td><td class="n">${money(p.comp)}</td><td class="n">${sgn(p.rating)}</td><td class="n">${pctShort(p.p_above_slot)}</td></tr>`).join("")}</tbody></table>
     <p class="r-small">Value is goals above a replacement-level player at the same position, 2026 to date. "Beats typical" is the chance the season beats what a typical player on the same contract type returns (${H.slot_benchmarks.map(b=>`${b.slot} ${b.benchmark.toFixed(2)}`).join(", ")} goals per season on average). Pay is guaranteed compensation from the MLS Players Association.</p>`;
   return ins("ins-contract", "Contracts", head, body, `<div class="chart micro" id="payvalue"></div>`, why);
@@ -221,7 +267,8 @@ function drawPayValue(el){
   text(PP.svgA(svg, messi.ws_player_id), sx(messi.comp)-9, sy(messi.rating)+4, surname(messi.player), "t-lab halo", {"text-anchor":"end"});
   const cheap = H.contract.filter(p => p !== messi), cx = Math.max(...cheap.map(p => sx(p.comp))), cy = Math.min(...cheap.map(p => sy(p.rating)));
   const lim = Math.ceil((Math.max(...cheap.map(p=>p.comp))+1)/5000)*5000;
-  text(svg, cx+10, cy+2, W < 420 ? `${cheap.length} more, under $${Math.round(lim/1000)}k` : `${cheap.length} more, all under ${money(lim)}`, "t-anno halo", {});
+  const lab = text(svg, cx+10, cy+2, W < 420 ? `${cheap.length} more, under $${Math.round(lim/1000)}k` : `${cheap.length} more, all under ${money(lim)}`, "t-anno halo", {});
+  if(cx + 10 + lab.getComputedTextLength() > W - 4){ lab.setAttribute("x", W - 4); lab.setAttribute("y", cy - 12); lab.setAttribute("text-anchor", "end"); }   // keep it on the chart
 }
 
 
