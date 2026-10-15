@@ -220,7 +220,7 @@ function decompSection(){
       ${sub("Value above replacement", s.rating, "dtotal")}
       ${O ? `<div class="dgroup">Outside the rating</div>${O}` : ""}
     </div>
-    <div class="pct-key">${[1,2,3,4,5].map(i => `<span><i style="background:var(--pct-${i})"></i>${["0–20","20–40","40–60","60–80","80–100"][i-1]}</span>`).join("")}<span><i class="hatchkey"></i>Mostly noise at his minutes (reliability under ${NOISE})</span>${ST.cmp?`<span><i class="cmp-key"></i>${esc(ST.cmp.rec.name)}</span>`:""}</div>
+    <div class="pct-key">${[1,2,3,4,5].map(i => `<span><i style="background:var(--pct-${i})"></i>${["0–20","20–40","40–60","60–80","80–100"][i-1]}</span>`).join("")}<span><i class="hatchkey"></i>Mostly noise at his minutes (reliability under ${NOISE})</span>${ST.cmp?`<span><i class="cmp-key"></i>${PP.plink(ST.cmp.rec.id, ST.cmp.rec.name, ST.cmp.s && ST.cmp.s.year)}</span>`:""}</div>
   </div></section>`;
 }
 function bindDecomp(){
@@ -275,7 +275,7 @@ function impactSection(){
   </div></section>`;
 }
 function chainObj(c){
-  return {steps: c.steps.map(r => { const shot = /shot|goal/.test(r[1]); return {key:String(r[0]), player:c.who[r[0]] || "", action:r[1], x:r[2], y:r[3], ex:r[4], ey:r[5], vb:r[6], va:shot ? null : r[7], xg:shot ? r[7] : null, delta:r[8], goal:r[9]}; }), c};
+  return {steps: c.steps.map(r => { const shot = /shot|goal/.test(r[1]); return {key:String(r[0]), id:r[0], player:c.who[r[0]] || "", action:r[1], x:r[2], y:r[3], ex:r[4], ey:r[5], vb:r[6], va:shot ? null : r[7], xg:shot ? r[7] : null, delta:r[8], goal:r[9]}; }), c};
 }
 function bindChains(){
   const ch = ST.s.chains || []; if(!ch.length) return;
@@ -385,9 +385,9 @@ function drawPeers(el){
   const cmpId = ST.cmp ? ST.cmp.rec.id : null;
   pts.forEach(p => { const isC = p.id === cmpId; S("circle",{cx:sx(p.a),cy:sy(p.d),r:isC?6:4,fill:isC?"var(--paper)":"var(--dot)",stroke:isC?"var(--ink)":"var(--paper)","stroke-width":isC?2:1.5},svg);
     S("circle",{cx:sx(p.a),cy:sy(p.d),r:9,class:"hit","data-tip":`<b>${esc(p.name)}</b>, ${esc(short(p.team))}<br>Attack ${sgn(p.a,3)}, winning it back ${sgn(p.d,3)} per 90<br>Total ${sgn(p.p90,3)} per 90`},svg);
-    if(isC) text(svg, sx(p.a)+9, sy(p.d)+4, surname(p.name), "t-lab halo", {}); });
+    if(isC) text(PP.svgA(svg, p.id, ST.year), sx(p.a)+9, sy(p.d)+4, surname(p.name), "t-lab halo", {}); });
   const top = pts.slice().sort((a,b) => b.p90 - a.p90).slice(0,3);
-  top.forEach(p => { if(p.id !== cmpId) text(svg, sx(p.a) + (sx(p.a) > m.l+iw-80 ? -8 : 8), sy(p.d)+4, surname(p.name), "t-lab2 halo", {"text-anchor": sx(p.a) > m.l+iw-80 ? "end" : "start"}); });
+  top.forEach(p => { if(p.id !== cmpId) text(PP.svgA(svg, p.id, ST.year), sx(p.a) + (sx(p.a) > m.l+iw-80 ? -8 : 8), sy(p.d)+4, surname(p.name), "t-lab2 halo", {"text-anchor": sx(p.a) > m.l+iw-80 ? "end" : "start"}); });
   S("rect",{x:sx(me.a)-7,y:sy(me.d)-7,width:14,height:14,fill:"var(--signal)",stroke:"var(--paper)","stroke-width":2,transform:`rotate(45 ${sx(me.a)} ${sy(me.d)})`,"data-tip":`<b>${esc(me.name)}</b><br>Attack ${sgn(me.a,3)}, winning it back ${sgn(me.d,3)} per 90`},svg);
   text(svg, sx(me.a) + (sx(me.a) > m.l+iw-90 ? -11 : 11), sy(me.d)+4, surname(me.name), "t-lab halo", {"text-anchor": sx(me.a) > m.l+iw-90 ? "end" : "start"});
 }

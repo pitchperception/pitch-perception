@@ -175,7 +175,7 @@ function drawSwarm(el){
     const hl = ST.slot !== "all", lead = hl ? rs.filter(slotOn) : rs;
     (hl ? [...rs.filter(r => !slotOn(r)), ...lead] : rs).forEach((r,i) => { const jit = ((r.id * 9301 + 49297) % 233280) / 233280 - 0.5; const top = hl ? slotOn(r) : i < 2, dim = hl && !top;
       S("circle",{cx:sx(val(r)),cy:y + jit*(lane-12),r:top?4.5:3,fill:top?"var(--signal)":"var(--dot)",opacity:dim?0.35:1,stroke:top?"var(--paper)":"none","stroke-width":1.5,"data-tip":`<b>${esc(r.name)}</b>, ${esc(short(r.team))}<br>${r.pos==="GK"?`${sgn(r.gp,1)} goals prevented`:`${sgn(r.rating)} goals above replacement`}<br>${PP.int(r.mins)} minutes`},svg); });
-    const t0 = lead[0]; if(t0 && W >= 520) text(svg, sx(val(t0)) + (sx(val(t0)) > W-110 ? -8 : 8), y - 6, PP.surname(t0.name), "t-lab halo", {"text-anchor": sx(val(t0)) > W-110 ? "end" : "start"});
+    const t0 = lead[0]; if(t0 && W >= 520) text(PP.svgA(svg, t0.id), sx(val(t0)) + (sx(val(t0)) > W-110 ? -8 : 8), y - 6, PP.surname(t0.name), "t-lab halo", {"text-anchor": sx(val(t0)) > W-110 ? "end" : "start"});
   });
 }
 })();

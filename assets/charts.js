@@ -69,7 +69,7 @@ PP.chainPitch = (el, ch, opts={}) => {
   });
   const last = ch.steps[ch.steps.length-1];
   if(last && last.goal) S("rect",{x:sx(105)-5,y:sy(34)-5,width:10,height:10,fill:"var(--signal)",transform:`rotate(45 ${sx(105)} ${sy(34)})`},svg);
-  const lab = (s, dy, anchor) => text(svg, Math.min(W-4, Math.max(4, sx(s.x))), sy(s.y)+dy, surname(s.player), "t-lab halo-w", {"text-anchor":anchor||"middle"});
+  const lab = (s, dy, anchor) => text(PP.svgA(svg, s.id), Math.min(W-4, Math.max(4, sx(s.x))), sy(s.y)+dy, surname(s.player), "t-lab halo-w", {"text-anchor":anchor||"middle"});
   (opts.labels || [0, ch.steps.length-1]).forEach((i,k) => { const s = ch.steps[i]; if(s) lab(s, s.y > 60 ? 20 : -12, sx(s.x) > W-60 ? "end" : sx(s.x) < 60 ? "start" : "middle"); });
   if(opts.animate && !reduced()){
     const total = segs.reduce((a,x) => a + x.len, 0) || 1; let delay = 0;
@@ -103,7 +103,7 @@ PP.chainSteps = (el, ch, opts={}) => {
   text(svg, m.l, H-8, "Action 1", "t-axis", {}); text(svg, m.l+iw, H-8, `Action ${n}${st[n-1].goal?", the goal":""}`, "t-axis", {"text-anchor":"end"});
   if(opts.annotate !== false && W >= 560){
     const bi = deltas.slice(0,-1).reduce((bi, v, i) => v > deltas[bi] ? i : bi, 0);
-    if(deltas[bi] > 0.03){ const xx = bx(bi)+band/2-bw/2, ym = (sy(0)+sy(deltas[bi]))/2; text(svg, xx-8, ym+4, `${surname(st[bi].player)}'s ${st[bi].action}: ${sgn(deltas[bi],2)}`, "t-anno halo", {"text-anchor":"end"}); }
+    if(deltas[bi] > 0.03){ const xx = bx(bi)+band/2-bw/2, ym = (sy(0)+sy(deltas[bi]))/2; text(PP.svgA(svg, st[bi].id), xx-8, ym+4, `${surname(st[bi].player)}'s ${st[bi].action}: ${sgn(deltas[bi],2)}`, "t-anno halo", {"text-anchor":"end"}); }
   }
   if(opts.animate && !reduced()) bars.forEach((b,i) => b.animate([{opacity:.12},{opacity:1}],{duration:200,delay:i*(900/n),easing:"ease-out",fill:"backwards"}));
 };
@@ -111,7 +111,7 @@ PP.focusChain = (root, key) => PP.$$("[data-key]", root).forEach(e => { if(!e.cl
 
 /* a chain as exported (71 / 82) -> the chart format; labels the first, last and biggest step */
 PP.chainFrom = c => {
-  const st = c.steps.map(s => ({key:s.player, player:s.player, action:s.action, x:s.x, y:s.y, ex:s.end_x, ey:s.end_y, vb:s.v_before, va:s.v_after, xg:s.xg, delta:s.delta, goal:s.goal}));
+  const st = c.steps.map(s => ({key:s.player, id:s.id, player:s.player, action:s.action, x:s.x, y:s.y, ex:s.end_x, ey:s.end_y, vb:s.v_before, va:s.v_after, xg:s.xg, delta:s.delta, goal:s.goal}));
   const big = st.slice(0,-1).reduce((bi, s, i) => (s.delta||0) > (st[bi].delta||0) ? i : bi, 0);
   return {steps: st, labels: [0, st.length-1].concat(big ? [big] : [])};
 };
@@ -132,10 +132,13 @@ PP.drawEleven = (el, xi, opts={}) => {
   const at = p => { const L = 6 + (1 - p.y) * 88; return portrait ? {cx: (6 + p.x * 56)/68*W, cy: H - L/105*H} : {cx: sx(L), cy: sy(6 + (1 - p.x) * 56)}; };
   const maxV = opts.maxV || 1;
   xi.forEach(p => { const c = at(p), v = p.value || 0, rr = Math.max(13, Math.min(W/(portrait?14:22), 13 + Math.abs(v) / maxV * 8)), f = PP.valueFill(v, maxV);
-    S("circle",{cx:c.cx,cy:c.cy,r:rr+3,fill:PP.kit(p.team),opacity:.9},svg);
-    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":1.5,"data-tip":opts.tip ? opts.tip(p) : `<b>${PP.esc(p.player)}</b>, ${PP.esc(PP.short(p.team))}<br>${PP.sgn(v,2)}`},svg);
-    text(svg, c.cx, c.cy+4, PP.sgn(v, 2), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:${portrait?10:11}px;pointer-events:none`});
-    text(svg, c.cx, c.cy+rr+15, PP.surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
+    // each player opens his page, and his club's crest sits on the ring (owner, 2026-10-15)
+    const g = p.id != null ? S("a",{href:`#player-${p.id}`,class:"xi-link","aria-label":`${p.player}, ${PP.short(p.team)}: open his page`},svg) : svg;
+    S("circle",{cx:c.cx,cy:c.cy,r:rr+3,fill:PP.kit(p.team),opacity:.9},g);
+    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":1.5,"data-tip":opts.tip ? opts.tip(p) : `<b>${PP.esc(p.player)}</b>, ${PP.esc(PP.short(p.team))}<br>${PP.sgn(v,2)}`},g);
+    text(g, c.cx, c.cy+4, PP.sgn(v, 2), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:${portrait?10:11}px;pointer-events:none`});
+    PP.svgCrest(g, p.team, c.cx+rr*0.7-8, c.cy-rr*0.7-8, 16);
+    text(g, c.cx, c.cy+rr+15, PP.surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
 };
 })();

@@ -830,8 +830,8 @@ table.cmp th.n,table.cmp td.n{text-align:right}
 .wkb.on{background:var(--navy);border-color:var(--navy);color:var(--on-navy-2)}
 .wkb.on b{color:var(--on-navy)}
 .wkhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s-3);margin-top:var(--s-3)}
-.wknav{width:38px;height:38px;border:1px solid var(--rule);border-radius:50%;background:var(--raised);color:var(--ink);font:inherit;font-size:var(--t-21);line-height:1;cursor:pointer}
-.wknav:disabled{opacity:.35;cursor:default}
+button.wknav{width:38px;height:38px;border:1px solid var(--rule);border-radius:50%;background:var(--raised);color:var(--ink);font:inherit;font-size:var(--t-21);line-height:1;cursor:pointer}
+button.wknav:disabled{opacity:.35;cursor:default}
 .mdk{font-size:var(--t-13);font-weight:600;color:var(--ink-3);margin-left:6px}
 .wksum{display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-6);margin:var(--s-4) 0 var(--s-2)}
 .wksum>div{display:grid;gap:1px}
@@ -872,3 +872,9 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .crest{filter:var(--crest-halo)}
 /* the Teams index: a crest is wider than the colour chip, so the club column gets more of the row */
 @media (min-width:641px){.tindex .thead,.tindex .trow{grid-template-columns:24px minmax(0,1.9fr) minmax(0,1fr) 84px minmax(90px,1fr)}}
+
+/* club crests for every chip, and player links everywhere (owner, 2026-10-15) */
+.plink-svg{cursor:pointer}
+.plink-svg:hover text,.plink-svg:focus-visible text{text-decoration:underline}
+[data-href][role="link"]:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.award[data-href]{cursor:pointer}

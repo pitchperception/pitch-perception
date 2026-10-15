@@ -96,6 +96,7 @@ PP.bindDisclosures = root => $$("[data-disc]", root).forEach(b => b.addEventList
 }));
 
 document.addEventListener("click", e => { const r = e.target.closest("[data-href]"); if(r && !e.target.closest("a,button")) location.hash = r.dataset.href; });
+document.addEventListener("keydown", e => { if(e.key === "Enter" && e.target.matches && e.target.matches("[data-href]")) location.hash = e.target.dataset.href; });
 
 /* ---------- logo ---------- */
 PP.drawLogo = svg => {   /* the 12 x 8 grid mark; since 2026-10-08 the masthead uses the owner's logo image instead */
@@ -163,9 +164,20 @@ PP.loadPhoto = async id => { const n = (await PP.loadImages()).photo_shards; if(
 PP.headshot = (src, team, size) => src ? `<span class="hshot" style="--c:${PP.kit(team)};width:${size}px;height:${size}px"><img src="${src}" alt="" decoding="async"></span>` : "";
 PP.crestImg = (team, size) => { const u = PP.data.images && PP.data.images.crests[team]; return u ? `<img class="crest" src="${u}" alt="" width="${size}" height="${size}">` : ""; };
 /* a club's crest wherever the site names it, or its colour chip if there is no crest (owner, 2026-10-15) */
-PP.crestURL = team => (PP.data.images && PP.data.images.crests[team]) || null;
+PP.crestURL = team => (PP.data.images && PP.data.images.crests[team]) || (PP.data.crestsSmall && PP.data.crestsSmall[team]) || null;
 PP.crestOr = (team, size) => PP.crestImg(team, size || 16) || PP.chip(team);
 PP.crestTag = (team, full, size) => `<span class="club">${PP.crestOr(team, size)}${PP.esc(full ? PP.full(team) : PP.short(team))}</span>`;
+/* every club chip shows the club's crest (owner, 2026-10-15): one stylesheet paints each i.chip[data-team] from
+   data/crests_small.json, so chips drawn before it loads change too; a club without a crest keeps its colour */
+let crP = null;
+PP.loadCrests = () => crP || (crP = fetch("data/crests_small.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
+  const c = d && d.crests; if(!c) return null; PP.data.crestsSmall = c;
+  const css = Object.entries(c).map(([t, u]) => `i.chip[data-team="${t.replace(/"/g, '\\"')}"]{background:url("${u}") center/contain no-repeat;border-radius:0;width:14px;height:14px;filter:var(--crest-halo)}`).join("\n");
+  const st = document.createElement("style"); st.id = "crest-css"; st.textContent = css; document.head.appendChild(st);
+  return c; }));
+/* a player's name as a link to his page, in HTML or around SVG text (owner, 2026-10-15: every name opens the player) */
+PP.plink = (id, name, year) => id != null && id !== "" ? `<a class="plink" href="#player-${id}${year ? "-" + year : ""}">${PP.esc(name)}</a>` : PP.esc(name);
+PP.svgA = (parent, id, year) => id != null && id !== "" ? PP.S("a", {href:`#player-${id}${year ? "-" + year : ""}`, class:"plink-svg"}, parent) : parent;
 PP.svgCrest = (parent, team, x, y, size) => { const u = PP.crestURL(team); return u ? PP.S("image", {href:u, x, y, width:size, height:size, class:"crest", preserveAspectRatio:"xMidYMid meet"}, parent) : null; };
 PP.loadMarket = () => mkP || (mkP = fetch("data/scouts/market.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => { d = d && !d.pending ? d : null; PP.data.market = d; return d; }));
 PP.contractText = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c || "").trim()); return m ? new Date(Date.UTC(+m[3], +m[2]-1, +m[1])).toLocaleDateString("en-GB", {month:"long", year:"numeric", timeZone:"UTC"}) : (c && c !== "-" ? String(c) : null); };
@@ -275,6 +287,7 @@ PP.initSearch = () => {
 /* ---------- boot ---------- */
 PP.boot = async () => {
   PP.loadImages();                                   // crests + headshot setting (also sets the footer image credit)
+  const crestsP = PP.loadCrests();                   // the small crests every club chip shows (2026-10-15)
   PP.drawLogo($("#logo"));
   addEventListener("scroll", () => $(".mast").classList.toggle("scrolled", scrollY > 8), {passive:true});
   $$(".theme-seg button").forEach(b => b.addEventListener("click", () => PP.setTheme(b.dataset.t, true)));
@@ -290,6 +303,7 @@ PP.boot = async () => {
   }
   PP.initSearch();
   fetch("data/scouts/index.json").then(r => r.ok ? r.json() : null).then(d => { PP.data.scouts = d; }).catch(() => {});
+  await Promise.race([crestsP, new Promise(r => setTimeout(r, 1500))]);   // logos on the first page; late ones still apply
   PP.route();
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => PP.redraw());
 };

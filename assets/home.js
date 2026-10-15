@@ -49,8 +49,8 @@ async function weekTeaser(){
   const wk = PP.latestWeek(I); let W; try { [W] = await Promise.all([PP.loadWeek(wk.week), PP.loadArch()]); } catch(e){ return; }
   const el = $("#wkteaser"); if(!el || location.hash.replace("#","") && location.hash !== "#today") return;
   const P = (W.players || []).slice(0, 5), top = P[0];
-  el.innerHTML = `<div class="wrap"><div class="band-head"><span class="kicker">The week in review</span><h2 class="r-title" id="wkt-h">${top ? `${esc(top[1])} was the player of the week` : "The week in review"}</h2>
-      <p>${esc(PP.weekRange(wk))}. ${top ? `${esc(surname(top[1]))} added ${sgn(top[6],2)} goals above replacement for ${esc(short(top[2]))}, the most in MLS. ` : ""}<a href="#week-${wk.week}">The full week: team of the week, awards and every match report</a>.</p></div>
+  el.innerHTML = `<div class="wrap"><div class="band-head"><span class="kicker">The week in review</span><h2 class="r-title" id="wkt-h">${top ? `${PP.plink(top[0], top[1])} was the player of the week` : "The week in review"}</h2>
+      <p>${esc(PP.weekRange(wk))}. ${top ? `${PP.plink(top[0], surname(top[1]))} added ${sgn(top[6],2)} goals above replacement for ${esc(short(top[2]))}, the most in MLS. ` : ""}<a href="#week-${wk.week}">The full week: team of the week, awards and every match report</a>.</p></div>
     <div class="wkteaser"><div class="wklist">${P.map((p,k) => `<a class="wkrow" href="#player-${p[0]}"><span class="rk">${k+1}</span><span class="nm">${esc(p[1])}${PP.badgeMini(PP.badgesFor(p[0], 2026, p[2]))}</span><span class="meta">${chip(p[2])}${esc(short(p[2]))}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[6])/Math.abs(P[0][6]||1)*100)}%;background:var(--turf)"></i></span><span class="v num">${sgn(p[6],2)}</span></a>`).join("")}</div>
       <figure style="margin:0"><div class="fig-cap"><span class="r-label">Team of the week</span><span class="r-small">${esc(W.formation || "4-3-3")}; hover a player</span></div><div class="chart" id="hometotw"></div></figure></div></div>`;
   el.hidden = false;
@@ -75,7 +75,7 @@ function lead(H){
   const head = first
     ? `${esc(short(o.team))} lead MLS by ${gap} points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`
     : `${esc(short(o.team))} are ${PP.ordWord(o.pts_rank)} on points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`;
-  const note = `They have scored ${Math.round(o.gf)} goals from chances worth ${o.xgf.toFixed(1)} and conceded ${Math.round(o.ga)} from chances worth ${o.xga.toFixed(1)}: a goal difference of ${sgn(o.gd,0)} where the chances added up to ${sgn(o.xgd,1)}. Keeper ${esc(k.player)} accounts for ${k.goals_prevented.toFixed(1)} of the goals saved (range ${num(k.lo,1)} to ${num(k.hi,1)}).`;
+  const note = `They have scored ${Math.round(o.gf)} goals from chances worth ${o.xgf.toFixed(1)} and conceded ${Math.round(o.ga)} from chances worth ${o.xga.toFixed(1)}: a goal difference of ${sgn(o.gd,0)} where the chances added up to ${sgn(o.xgd,1)}. Keeper ${PP.plink(k.ws_player_id, k.player)} accounts for ${k.goals_prevented.toFixed(1)} of the goals saved (range ${num(k.lo,1)} to ${num(k.hi,1)}).`;
   // the cup line reads the actual order (owner, 2026-10-09: it called this team favourites when it was second)
   const cup = H.race.teams.slice().sort((a,b) => b.p_champion - a.p_champion), cr = cup.findIndex(x => x.team === o.team);
   const cupLine = cr === 0
@@ -218,7 +218,7 @@ function drawPayValue(el){
   H.pay_value.filter(p => !topIds.has(p[5])).forEach(p => S("circle",{cx:sx(p[0]),cy:sy(p[1]),r:2.6,fill:"var(--dot)","data-tip":`<b>${esc(p[3])}</b>, ${esc(short(p[4]))}<br>${money(p[0])}, ${sgn(p[1])} goals`},svg));
   H.contract.forEach(p => { S("circle",{cx:sx(p.comp),cy:sy(p.rating),r:5,fill:"var(--signal)",stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b>, ${esc(short(p.team))}<br>${money(p.comp)}, ${sgn(p.rating)} goals<br>${PP.SLOT[p.slot]||p.slot}`},svg); });
   const messi = H.contract.reduce((a,b) => a.comp > b.comp ? a : b);
-  text(svg, sx(messi.comp)-9, sy(messi.rating)+4, surname(messi.player), "t-lab halo", {"text-anchor":"end"});
+  text(PP.svgA(svg, messi.ws_player_id), sx(messi.comp)-9, sy(messi.rating)+4, surname(messi.player), "t-lab halo", {"text-anchor":"end"});
   const cheap = H.contract.filter(p => p !== messi), cx = Math.max(...cheap.map(p => sx(p.comp))), cy = Math.min(...cheap.map(p => sy(p.rating)));
   const lim = Math.ceil((Math.max(...cheap.map(p=>p.comp))+1)/5000)*5000;
   text(svg, cx+10, cy+2, W < 420 ? `${cheap.length} more, under $${Math.round(lim/1000)}k` : `${cheap.length} more, all under ${money(lim)}`, "t-anno halo", {});
@@ -324,7 +324,7 @@ function chainBand(H){
   const head = c.n_players >= 11 ? `All eleven ${esc(team)} players touched this goal` : `${cap(PP.WORDS[c.n_players]||String(c.n_players))} ${esc(team)} players touched this goal`;
   const [gh, ga] = c.score.split(":").map(s => s.trim());
   const opp = c.home === c.team ? c.away : c.home;
-  const lede = `${esc(short(c.home))} ${gh}–${ga} ${esc(short(c.away))}, ${PP.dateLong(c.date)}, ${c.minute} minutes in. ${c.n_actions} actions from ${esc(first.player)}'s ${esc(first.action)} to ${esc(last.player)}'s finish. Each action is valued by how much it changed the chance that ${esc(team)}'s possession would end in a goal; the chart below the pitch shows what each one added.`;
+  const lede = `${esc(short(c.home))} ${gh}–${ga} ${esc(short(c.away))}, ${PP.dateLong(c.date)}, ${c.minute} minutes in. ${c.n_actions} actions from ${PP.plink(first.id, first.player)}'s ${esc(first.action)} to ${PP.plink(last.id, last.player)}'s finish. Each action is valued by how much it changed the chance that ${esc(team)}'s possession would end in a goal; the chart below the pitch shows what each one added.`;
   const max = Math.max(...c.totals.map(t => Math.abs(t.value)));
   const credits = c.totals.map(t => { const w = Math.abs(t.value)/max*50; return `<button type="button" aria-pressed="false" data-player="${esc(t.player)}"><span class="nm">${esc(t.player)}</span><span class="tr"><span class="z" style="left:50%"></span><i style="${t.value>=0?`left:50%;width:${w}%;background:var(--turf);border-radius:0 3px 3px 0`:`left:${50-w}%;width:${w}%;background:var(--flare);border-radius:3px 0 0 3px`}"></i></span><span class="v">${sgn(t.value,3)}</span></button>`; }).join("");
   return `<section class="band" id="chain-band" aria-labelledby="chain-h"><div class="wrap">
@@ -338,7 +338,7 @@ function chainBand(H){
       <div class="credits" aria-label="Credit by player">
         <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see his actions.</span>
         ${credits}
-        <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${esc(first.player)}'s ${esc(first.action)}) counts toward defence and is not included here.`:""}</p>
+        <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${PP.plink(first.id, first.player)}'s ${esc(first.action)}) counts toward defence and is not included here.`:""}</p>
       </div>
     </div>
   </div></section>`;
@@ -392,7 +392,7 @@ function leadersBand(H){
       <span class="val">${PP.ibar(p.rating, p.lo, p.hi, d0, d1)}<span style="min-width:42px;text-align:right">${sgn(p.rating)}</span></span>
       <span class="meta">${chip(p.team)}${esc(short(p.team))}, ${PP.POS[p.pos].toLowerCase()}</span></a>`).join("");
   const def = L.filter(p => p.defence > p.attack), att = L.filter(p => p.attack >= p.defence);
-  const names = a => a.map(p => esc(surname(p.player))); const and = a => a.length > 1 ? a.slice(0,-1).join(", ") + " and " + a[a.length-1] : a[0] || "";
+  const names = a => a.map(p => PP.plink(p.ws_player_id, surname(p.player))); const and = a => a.length > 1 ? a.slice(0,-1).join(", ") + " and " + a[a.length-1] : a[0] || "";
   return `<section class="band" id="leaders-band" aria-labelledby="lead-h2"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="lead-h2">The most valuable players of 2026</h2><p>Goals added above a replacement-level player at the same position, with the model's 90% range. Outfield players with 900+ minutes.</p></div>
     <div class="leaders">

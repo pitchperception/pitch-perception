@@ -68,10 +68,10 @@ PP.pages.matches = async main => {
         <div class="plab"><span><b>${pctShort(m.pH)}</b> win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> win</span></div></div>
       <div class="stake">${hot ? `<span class="motw-tag">Match of the week</span>` : ""}${watchChip(m)}${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.watchability!=null?`; quality ${r0(m.quality)}, importance ${r0(m.importance)}`:""}</span></div></a>`;
     const pastRow = m => { const d = M.detail[String(m.id)] || {}, th = (d.top_home||[])[0], ta = (d.top_away||[])[0];
-      return `<a class="fx fxl fxp" href="#match-${m.id}"><span class="score num">${m.g_home}–${m.g_away}</span>
+      return `<div class="fx fxl fxp" data-href="#match-${m.id}" role="link" tabindex="0"><span class="score num">${m.g_home}–${m.g_away}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="xgpair num"><span>xG ${num(m.xg_home,2)}</span><span>xG ${num(m.xg_away,2)}</span></div>
-      <div class="stake r-small">${th && ta ? `Most value added: ${esc(th[1])} (${sgn(th[2],2)}) and ${esc(ta[1])} (${sgn(ta[2],2)})` : ""}</div></a>`; };
+      <div class="stake r-small">${th && ta ? `Most value added: ${PP.plink(th[0], th[1])} (${sgn(th[2],2)}) and ${PP.plink(ta[0], ta[1])} (${sgn(ta[2],2)})` : ""}</div></div>`; };
     if(FILTER === "all"){ weekView(group, upRow, pastRow); return; }
     const motw = null;
     const upAll = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m));      // ranked across every remaining match

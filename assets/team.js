@@ -241,9 +241,10 @@ function drawXI(el){
   // lineup x: 0 = left flank, 1 = right flank; y: 1 = own goal. Attacking right, the right flank is at the bottom.
   const at = p => { const L = 6 + (1 - p.y) * 88; return portrait ? {cx: (6 + p.x * 56)/68*W, cy: H - L/105*H} : {cx: sx(L), cy: sy(6 + (1 - p.x) * 56)}; };
   xi.forEach(p => { const c = at(p), q = {x:0,y:0}, v = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(v||0) * 3.2)), f = PP.valueFill(v||0, 5);
-    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, started ${Math.round((p.share||0)*100)}% of matches<br>${p.pos==="GK"?"Keeper value":"Value above replacement"}: ${sgn(v,2)}<br>${PP.SLOT[p.contract]||p.contract||""}`},svg);
-    text(svg, c.cx, c.cy+4, sgn(v,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
-    text(svg, c.cx, c.cy+rr+13, surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
+    const g = p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open his page`},svg) : svg;
+    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, started ${Math.round((p.share||0)*100)}% of matches<br>${p.pos==="GK"?"Goals prevented":"Value above replacement"}: ${sgn(v,2)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
+    text(g, c.cx, c.cy+4, sgn(v,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
+    text(g, c.cx, c.cy+rr+13, surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
 }
 
