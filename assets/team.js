@@ -282,13 +282,36 @@ function styleBlocks(){
   const nm = esc(short(T.D.team)), labs = SY.sources.map(x => x[1]);
   const row = (who, v) => `<div class="srow"><span class="lbl">${who}</span><span class="sbar" role="img" aria-label="${esc(who)}: ${labs.map((l, i) => `${l} ${Math.round(v[i]*100)}%`).join(", ")}">${v.map((x, i) => `<i style="width:${x*100}%;background:${SRC_C[i]}" data-tip="${esc(`<b>${labs[i]}</b><br>${who}: ${Math.round(x*100)}% of non-penalty expected goals`)}"></i>`).join("")}</span></div>`;
   const ch = SY.check, like = me.like.map(([t, y]) => `<li><a href="#team-${PP.slug(t)}-${y}">${PP.crestOr(t, 18)}<span>${esc(full(t))} <span class="num">${y}</span></span></a></li>`).join("");
-  return `<div class="tstyle tsrc"><h3 class="r-heading">Where their chances come from</h3>
+  return ballScale(me) + `<div class="tstyle tsrc"><h3 class="r-heading">Where their chances come from</h3>
       <p class="r-small">Each shot's expected goals counted once, by how the move began: a set piece; a counter-attack from the ball won in their own half (the shot within 20 seconds); the ball won high, in the attacking third; a long possession of eight or more actions; or anything else in open play. Penalties are left out.</p>
       ${row(nm, me.src)}${lgv ? row("MLS average", lgv) : ""}
       <div class="legend">${labs.map((l, i) => `<span><i style="width:10px;height:10px;background:${SRC_C[i]};display:inline-block;border-radius:2px"></i>${esc(l)}</span>`).join("")}</div></div>
     <div class="tstyle tlike"><h3 class="r-heading">Plays most like</h3>
       <p class="r-small">The three other clubs' seasons since 2020 nearest to ${nm} in ${T.year} on twelve measures of style: how much of the ball they have and how long they keep it, how direct and how long their passing is, how hard and how high they press, how often they win the ball straight back, how often they counter, how many chances come from long moves and from crosses, how wide they attack, and how often goal kicks go short. Each measure is taken against that season's league average. A check that it means something: a club that keeps its manager usually looks like its own previous season (the median of ${ch.n} such seasons is nearer than ${Math.round(100 - ch.median_pct)}% of all others).</p>
       <ol class="likes">${like}</ol></div>`;
+}
+
+// with the ball, from direct to possession (98's axis, tested in 99; owner 2026-10-15: a scale, not labels)
+function ballScale(me){
+  const SY = T.SY, B = SY.ball, yr = String(T.year);
+  if(!me.ball || !B) return "";
+  const pc = v => PP.ord(Math.round(v*100)), pos = v => `${(2 + v*96).toFixed(2)}%`;
+  const where = r => { const f = r >= 0.5 ? r : 1 - r, end = r >= 0.5 ? "possession" : "direct";
+    return `nearer the ${end} end than ${f >= 0.995 ? "every other MLS club season" : `${Math.round(f*100)}% of other MLS club seasons`} since 2020`; };
+  const tip = (t, y, b) => esc(`<b>${full(t)} ${y}</b><br>Possession: ${Math.round(b[2]*100)}% of passes (${pc(b[4])} percentile)<br>Directness: ${num(b[3],1)} m forward per completed pass (${pc(b[5])} percentile)<br>${cap(where(b[0]))}`);
+  const others = Object.entries(SY.teams).filter(([t, v]) => t !== T.D.team && v[yr] && v[yr].ball)
+    .map(([t, v]) => `<i class="bdot" style="left:${pos(v[yr].ball[0])}" data-tip="${tip(t, yr, v[yr].ball)}"></i>`).join("");
+  const mine = Object.entries(SY.teams[T.D.team]).filter(([, e]) => e.ball).sort((a, b) => a[0] === yr ? -1 : b[0] === yr ? 1 : b[0] - a[0]);
+  const shown = [];
+  const own = mine.map(([y, e]) => { const x = e.ball[0], lab = shown.every(z => Math.abs(z - x) > 0.13); if(lab) shown.push(x);
+    return `<i class="bdot${y === yr ? " me" : " past"}${x < 0.1 ? " lo" : x > 0.9 ? " hi" : ""}" style="left:${pos(x)}" data-tip="${tip(T.D.team, y, e.ball)}">${lab ? `<b>${y === yr ? y : "’" + y.slice(2)}</b>` : ""}</i>`; }).join("");
+  const r = me.ball[0], nm = esc(short(T.D.team));
+  return `<div class="tstyle tball"><h3 class="r-heading">With the ball: direct or possession</h3>
+      <p class="r-small">${nm} in ${T.year}: ${where(r)}. One end plays forward quickly; the other keeps the ball and passes short.</p>
+      <div class="bscale"><div class="bends"><span>Direct</span><span>Possession</span></div>
+        <div class="brow"><span class="lbl">${T.year} clubs</span><span class="btrack">${others}<i class="bdot me" style="left:${pos(r)}" data-tip="${tip(T.D.team, yr, me.ball)}"></i></span></div>
+        <div class="brow"><span class="lbl">${nm} by season</span><span class="btrack">${own}</span></div></div>
+      <p class="r-small">Where a team sits combines two numbers: its share of the passes, and how far forward each completed pass goes. Each is taken against that season's league average, so league-wide changes since 2020 don't move a team along the scale, and the scale ranks all ${B.n} club seasons since 2020 with ${B.matches_min}+ matches. It is a steady trait: over a season possession repeats at ${num(B.rel_poss,2)} and directness at ${num(B.rel_fwd,2)}, and next season it carries over at ${num(B.next_same_mgr,2)} when the manager stays (${num(B.next_new_mgr,2)} when he changes). It says little about how good a team is (correlation ${num(B.r_quality,2)} with expected-goal difference). And it shows up in the chances: teams nearer the possession end in one half of a season get more of their chances from long possessions in the other (correlation ${num(B.r_long,2)}).</p></div>`;
 }
 
 /* results and chances */
