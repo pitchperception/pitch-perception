@@ -555,3 +555,4 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-17T03:52:20Z,1953056,2026-10-18T02:30:00Z,San Jose Earthquakes,Nashville SC,0.3342,0.2643,0.4016,availability
 2026-10-17T03:52:20Z,1953057,2026-10-18T02:30:00Z,Seattle Sounders FC,CF Montreal,0.6306,0.2126,0.1568,availability
 2026-10-17T03:52:20Z,1953053,2026-10-18T00:30:00Z,Sporting Kansas City,Real Salt Lake,0.3255,0.2636,0.4109,availability
+2026-10-17T05:07:59Z,1953058,2026-10-18T21:00:00Z,FC Cincinnati,Columbus Crew,0.4727,0.2557,0.2717,elo
