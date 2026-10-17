@@ -563,3 +563,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-17T22:31:03Z,1953047,2026-10-17T23:30:00Z,New York City FC,Los Angeles FC,0.3542,0.2651,0.3807,lineups
 2026-10-17T22:36:01Z,1953044,2026-10-17T23:30:00Z,Atlanta United,Inter Miami CF,0.3144,0.2626,0.423,lineups
 2026-10-17T22:39:04Z,1953046,2026-10-17T23:30:00Z,New England Revolution,Chicago Fire FC,0.3666,0.2653,0.3681,lineups
+2026-10-17T23:29:11Z,1953051,2026-10-18T00:30:00Z,Austin FC,Vancouver Whitecaps,0.1768,0.2235,0.5997,lineups
+2026-10-17T23:29:11Z,1953052,2026-10-18T00:30:00Z,Houston Dynamo FC,FC Dallas,0.3973,0.2645,0.3382,lineups
