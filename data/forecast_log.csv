@@ -572,3 +572,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-18T01:32:25Z,1953057,2026-10-18T02:30:00Z,Seattle Sounders FC,CF Montreal,0.5438,0.2403,0.2158,lineups
 2026-10-18T01:33:26Z,1953054,2026-10-18T02:30:00Z,LA Galaxy,San Diego FC,0.3547,0.2652,0.3801,lineups
 2026-10-18T01:36:26Z,1953056,2026-10-18T02:30:00Z,San Jose Earthquakes,Nashville SC,0.3618,0.2653,0.3729,lineups
+2026-10-18T06:04:08Z,1953058,2026-10-18T21:00:00Z,FC Cincinnati,Columbus Crew,0.4492,0.2595,0.2913,availability
+2026-10-18T06:04:08Z,1952941,2026-10-21T23:00:00Z,FC Cincinnati,DC United,0.5484,0.2391,0.2125,availability
