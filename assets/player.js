@@ -420,7 +420,7 @@ function bindCompare(){
 function detailSection(){
   const {rec, s} = ST, teams = ST.teams;
   const seasonRows = rec.seasons.slice().sort((a,b) => b.year - a.year).map(x => `<tr><td>${x.year}</td><td>${PP.crestTag(x.team)}</td><td>${posSing(x.pos)}</td><td class="n">${PP.int(x.mins)}</td>
-    <td class="n">${x.rating!=null?sgn(x.rating):"–"}</td><td class="n">${x.lo!=null?`${num(x.lo)} to ${num(x.hi)}`:"–"}</td><td class="n">${x.p90!=null?num(x.p90,3):"–"}</td><td class="n">${x.attack!=null?sgn(x.attack):"–"}</td><td class="n">${x.defence!=null?sgn(x.defence):"–"}</td>
+    <td class="n">${x.rating!=null?sgn(x.rating):x.gk&&x.gk.skill!=null?sgn(x.gk.skill):"–"}</td><td class="n">${x.lo!=null?`${num(x.lo)} to ${num(x.hi)}`:x.gk&&x.gk.skill_lo!=null?`${num(x.gk.skill_lo)} to ${num(x.gk.skill_hi)}`:"–"}</td><td class="n">${x.p90!=null?num(x.p90,3):"–"}</td><td class="n">${x.attack!=null?sgn(x.attack):"–"}</td><td class="n">${x.defence!=null?sgn(x.defence):"–"}</td>
     <td>${PP.SLOT[x.slot]||x.slot||"–"}</td><td class="n">${x.comp?money(x.comp):"–"}</td><td class="n">${x.slot_value!=null?sgn(x.slot_value):"–"}</td><td class="n">${x.conv&&x.conv.goals!=null?x.conv.goals:"–"}</td><td class="n">${x.conv&&x.conv.shots!=null?x.conv.shots:"–"}</td></tr>`).join("");
   const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${teams[x[1]] ? PP.crestTag(teams[x[1]]) : ""}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
   const keys = ST.peers.components.map(c => c.key);
@@ -432,7 +432,7 @@ function detailSection(){
     ${disc("d-seasons","Every season", `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Season</th><th>Club</th><th>Position</th><th class="n">Minutes</th><th class="n">Value</th><th class="n">90% range</th><th class="n">Per 90</th><th class="n">Attack</th><th class="n">Winning it</th><th>Contract type</th><th class="n">Pay</th><th class="n">Against type</th><th class="n">Goals</th><th class="n">Shots</th></tr></thead><tbody>${seasonRows}</tbody></table></div>`)}
     ${ms ? disc("d-matches", `Every match in ${s.year}`, `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Date</th><th>Opponent</th><th class="n">Score</th><th class="n">Minutes</th><th class="n">Value added</th></tr></thead><tbody>${ms}</tbody></table></div><p class="r-small">Value added per match sums exactly to the season total. Scores are home–away.</p>`) : ""}
     ${sk ? disc("d-skills", `Skills per 90, ${s.year}`, `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Skill</th><th class="n">Goals per 90 (raw)</th><th class="n">Percentile</th><th class="n">Reliability</th></tr></thead><tbody>${sk}</tbody></table></div><p class="r-small">Raw possession value before calibration and replacement. Reliability is how consistently a skill ranks ${posPl(s.pos)} over a season of his ${PP.int(s.mins)} minutes, estimated from how closely one half of a season agrees with the other (${ry.length ? `${ry[0]}–${String(ry[1]).slice(2)} ` : ""}players with 900+ minutes, within each position); under ${ST.peers.noise_below} is mostly noise.</p>`) : ""}
-    ${disc("d-method", "How this is calculated", `<div class="r-small" style="font-size:var(--t-13);color:var(--ink-2);display:grid;gap:8px;max-width:72ch">
+    ${disc("d-method", "How this is calculated", s.pos === "GK" ? keeperMethod() : `<div class="r-small" style="font-size:var(--t-13);color:var(--ink-2);display:grid;gap:8px;max-width:72ch">
       <p>Every on-ball action is valued by how much it changes the value of the possession: the chance it ends in a goal for his team minus the chance it ends in one for the opponent, from a model of how possessions move between 96 zones of the pitch, taking account of how the ball arrived. A completed pass splits its value equally between passer and receiver. Winning the ball is valued by the danger it removes.</p>
       <p>Attack is his on-ball value minus what a replacement-level ${posSing(s.pos)} would add in the same minutes; winning it back is his ball-winning minus what a replacement would have won back: a fixed amount per 90 plus a share of the danger that came his way. Both are in goals of expected-goal difference${ST.peers.w_off === 1 && ST.peers.w_def === 1 ? " and count as they are" : ` (weights ${ST.peers.w_off.toFixed(2)} for attack, ${ST.peers.w_def.toFixed(2)} for ball-winning)`}; the Method page explains the ball-winning weight. Replacement level is set per position and season.</p>
       <p>The 90% range comes from resampling the season's matches 1,000 times. It shows how much the season's numbers could have differed, not uncertainty in the model itself.</p></div>`)}
@@ -440,53 +440,67 @@ function detailSection(){
 }
 
 /* ---------------- keepers ---------------- */
+/* Keepers are ranked and valued by shot-stopping (owner, 2026-10-17): the season's goals prevented shrunk by its
+   reliability, shots / (shots + 500) (GK_SHRINK_STUDY.md, chosen by a test fixed in advance). The raw season figure
+   stays as this season's description. */
+const GK_K = 500;
+const gkRel = n => n > 0 ? n / (n + GK_K) : 0;
+function keeperMethod(){
+  return `<div class="r-small" style="font-size:var(--t-13);color:var(--ink-2);display:grid;gap:8px;max-width:72ch">
+      <p>Each shot on target gets a post-shot expected-goal value from where it was struck, where it was heading in the goal mouth and how high, the body part and the situation, from a model fitted on other seasons. Goals prevented is that value minus the goals he conceded, measured against the season's average keeper.</p>
+      <p>A season of shots is mostly luck, so shot-stopping keeps only the share of goals prevented that repeats: shots / (shots + ${GK_K}). The ${GK_K} comes from how well one season predicted the next for keepers in MLS and eleven other leagues, chosen by a test fixed in advance; its 90% range held 89% of the time in seasons it was not fitted on. Both figures are against an average keeper.</p>
+      <p>The 90% range on goals prevented comes from resampling the season's shots 1,000 times. It shows how much the season could have differed, not uncertainty in the model itself.</p></div>`;
+}
 function keeperBody(){
-  const s = ST.s, g = s.gk || {}, pc = s.pct || {}, prev = (() => { const i = ST.years.indexOf(ST.year); for(let k = i-1; k >= 0; k--){ const p = ST.byYear[ST.years[k]]; if(p.gk && p.mins >= 900) return p; } return null; })();
+  const s = ST.s, g = s.gk || {}, pc = s.pct || {}, prev = (() => { const i = ST.years.indexOf(ST.year); for(let k = i-1; k >= 0; k--){ const p = ST.byYear[ST.years[k]]; if(p.gk && p.gk.skill != null && p.mins >= 900) return p; } return null; })();
+  const n = g.shots_faced || 0, rel = Math.round(gkRel(n) * 100), nm = esc(surname(ST.rec.name));
   return `<div class="wrap"><section class="plate pplate pk" aria-label="Model signal">
       <div class="pp-left">
-        <span class="r-label">Goals prevented, ${s.year}</span>
-        <span class="r-figure">${sgn(g.goals_prevented,1)}</span>
-        <div class="sub-fig"><span>goals saved beyond an average keeper</span></div>
+        <span class="r-label">Shot-stopping, ${s.year}</span>
+        <span class="r-figure">${sgn(g.skill,1)}</span>
+        <div class="sub-fig"><span>goals saved beyond an average keeper, allowing for luck</span></div>
         ${pctBars([["Among goalkeepers", pc.model]], s)}
-        <div class="sig-cap"><span class="r-label">90% range</span><span class="r-small">${num(g.gp_lo,1)} to ${num(g.gp_hi,1)} goals</span></div>
+        <div class="sig-cap"><span class="r-label">90% range</span><span class="r-small">${num(g.skill_lo,1)} to ${num(g.skill_hi,1)} goals</span></div>
         <div class="indicators">
-          <div class="ind"><span class="r-label">Shots faced</span><span class="v num">${PP.int(g.shots_faced||0)}</span><span class="r-small">Worth ${num(g.psxg_faced,1)} post-shot expected goals; he conceded ${PP.int(g.goals_conceded||0)}.</span></div>
-          <div class="ind"><span class="r-label">Movement</span>${prev ? `<span class="v"><span class="tri ${g.goals_prevented-prev.gk.goals_prevented>=0?"up":"down"}" aria-hidden="true"></span>${sgn(g.goals_prevented - prev.gk.goals_prevented,1)} goals</span><span class="r-small">Since ${prev.year} (${sgn(prev.gk.goals_prevented,1)}).</span>` : `<span class="v">No earlier season</span>`}</div>
+          <div class="ind"><span class="r-label">Goals prevented this season</span><span class="v num">${sgn(g.goals_prevented,1)}</span><span class="r-small">${PP.int(n)} shots on target worth ${num(g.psxg_faced,1)} post-shot expected goals; he conceded ${PP.int(g.goals_conceded||0)}. Range ${num(g.gp_lo,1)} to ${num(g.gp_hi,1)}.</span></div>
+          <div class="ind"><span class="r-label">Movement</span>${prev ? `<span class="v"><span class="tri ${g.skill-prev.gk.skill>=0?"up":"down"}" aria-hidden="true"></span>${sgn(g.skill - prev.gk.skill,1)} goals</span><span class="r-small">Shot-stopping since ${prev.year} (${sgn(prev.gk.skill,1)}).</span>` : `<span class="v">No earlier season</span>`}</div>
         </div>
       </div>
-      <div class="pp-right"><p class="r-note pp-why">${esc(surname(ST.rec.name))} faced shots worth ${num(g.psxg_faced,1)} goals on target and let in ${PP.int(g.goals_conceded||0)}. Shot-stopping is the only part of a keeper's game that relates to goals conceded in our tests, and it barely repeats from one season to the next (year-to-year correlation 0.18), so a single season describes more than it predicts.</p>
-        ${g.distribution!=null?`<p class="r-small">Distribution (${sgn(g.distribution,2)}) and claims and sweeping (${sgn(g.claims_sweeping,2)}) are measured but showed no link to goals conceded beyond shot-stopping, so they are reported, not rated.</p>`:""}</div>
+      <div class="pp-right"><p class="r-note pp-why">${nm} faced shots on target worth ${num(g.psxg_faced,1)} goals and let in ${PP.int(g.goals_conceded||0)}: ${sgn(g.goals_prevented,1)} goals prevented. Most of a season's goals prevented is luck. Over ${PP.int(n)} shots on target, about ${rel}% of the difference between keepers is skill, judged by how well one season predicts the next, so his shot-stopping keeps ${rel}% of it: ${sgn(g.skill,1)} goals. That is the figure keepers are ranked by.</p>
+        <p class="r-small">Shot-stopping is the only part of a keeper's game that relates to goals conceded in our tests.${g.distribution!=null?` Distribution (${sgn(g.distribution,2)}) and claims and sweeping (${sgn(g.claims_sweeping,2)}) are measured but showed no link to goals conceded beyond it, so they are reported, not rated.`:""}</p></div>
     </section></div>
-    <section class="band" id="trajectory"><div class="wrap"><div class="band-head"><h2 class="r-title">Over time</h2><p>Goals prevented in every MLS season in our data, with the 90% range.</p></div><div class="chart" id="kseasons"></div></div></section>
-    <section class="band" id="peers"><div class="wrap"><div class="band-head"><h2 class="r-title">Among his peers</h2><p>Goalkeepers with 900+ minutes in ${s.year}: shots faced across, goals prevented up.</p></div><div class="chart" id="kpeers"></div></div></section>
+    <section class="band" id="trajectory"><div class="wrap"><div class="band-head"><h2 class="r-title">Over time</h2><p>Shot-stopping in every MLS season in our data, with its 90% range; the small circle is that season's raw goals prevented.</p></div><div class="chart" id="kseasons"></div></div></section>
+    <section class="band" id="peers"><div class="wrap"><div class="band-head"><h2 class="r-title">Among his peers</h2><p>Goalkeepers with 900+ minutes in ${s.year}: shots faced across, shot-stopping up.</p></div><div class="chart" id="kpeers"></div></div></section>
     ${detailSection()}`;
 }
 function drawKeeper(){
   PP.chart($("#kseasons"), el => {
-    const all = ST.years.map(y => ST.byYear[y]).filter(x => x.gk && x.gk.goals_prevented != null), W = el.clientWidth; if(!W) return; const H = 220; el.innerHTML = "";
-    const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Goals prevented by season"},el);
+    const all = ST.years.map(y => ST.byYear[y]).filter(x => x.gk && x.gk.skill != null), W = el.clientWidth; if(!W) return; const H = 220; el.innerHTML = "";
+    const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Shot-stopping by season"},el);
     const m = {l:34,r:12,t:14,b:36}, iw = W-m.l-m.r, ih = H-m.t-m.b;
-    const y0 = Math.floor(Math.min(-2, ...all.map(x => x.gk.gp_lo ?? x.gk.goals_prevented))), y1 = Math.ceil(Math.max(2, ...all.map(x => x.gk.gp_hi ?? x.gk.goals_prevented))), sy = v => m.t + ih - (v-y0)/(y1-y0)*ih;
+    const lo_ = all.map(x => Math.min(x.gk.skill_lo ?? x.gk.skill, x.gk.goals_prevented ?? x.gk.skill)), hi_ = all.map(x => Math.max(x.gk.skill_hi ?? x.gk.skill, x.gk.goals_prevented ?? x.gk.skill));
+    const y0 = Math.floor(Math.min(-2, ...lo_)), y1 = Math.ceil(Math.max(2, ...hi_)), sy = v => m.t + ih - (v-y0)/(y1-y0)*ih;
     const st = y1-y0 > 12 ? 4 : 2;
     for(let v = Math.ceil(y0/st)*st; v <= y1; v += st){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, m.l-8, sy(v)+4, (v<0?"−":"")+Math.abs(v), "t-axis", {"text-anchor":"end"}); }
     const band = iw/Math.max(1, all.length);
     all.forEach((x,i) => { const cx = m.l+band*i+band/2, g = x.gk, sel = x.year === ST.year;
-      if(g.gp_lo != null) S("rect",{x:cx-7,y:sy(g.gp_hi),width:14,height:Math.max(2,sy(g.gp_lo)-sy(g.gp_hi)),rx:2,fill:"var(--band)"},svg);
-      S("rect",{x:cx-6,y:sy(g.goals_prevented)-6,width:12,height:12,fill:sel?"var(--signal)":"var(--paper)",stroke:sel?"var(--paper)":"var(--ink-2)","stroke-width":2,transform:`rotate(45 ${cx} ${sy(g.goals_prevented)})`},svg);
+      if(g.skill_lo != null) S("rect",{x:cx-7,y:sy(g.skill_hi),width:14,height:Math.max(2,sy(g.skill_lo)-sy(g.skill_hi)),rx:2,fill:"var(--band)"},svg);
+      if(g.goals_prevented != null) S("circle",{cx:cx+15,cy:sy(g.goals_prevented),r:3.5,fill:"var(--paper)",stroke:"var(--ink-3)","stroke-width":1.5},svg);
+      S("rect",{x:cx-6,y:sy(g.skill)-6,width:12,height:12,fill:sel?"var(--signal)":"var(--paper)",stroke:sel?"var(--paper)":"var(--ink-2)","stroke-width":2,transform:`rotate(45 ${cx} ${sy(g.skill)})`},svg);
       text(svg, cx, H-m.b+17, x.year, "t-axis", {"text-anchor":"middle",style:sel?"font-weight:700;fill:var(--ink)":""});
-      S("rect",{x:m.l+band*i,y:m.t,width:band,height:ih,class:"hit","data-tip":`<b>${x.year}, ${esc(full(x.team))}</b><br>${sgn(g.goals_prevented,1)} goals prevented${g.gp_lo!=null?` (range ${num(g.gp_lo,1)} to ${num(g.gp_hi,1)})`:""}<br>${PP.int(g.shots_faced||0)} shots faced, ${PP.int(x.mins)} minutes`},svg); });
+      S("rect",{x:m.l+band*i,y:m.t,width:band,height:ih,class:"hit","data-tip":`<b>${x.year}, ${esc(full(x.team))}</b><br>Shot-stopping ${sgn(g.skill,1)} (range ${num(g.skill_lo,1)} to ${num(g.skill_hi,1)})<br>Goals prevented ${sgn(g.goals_prevented,1)}<br>${PP.int(g.shots_faced||0)} shots faced, ${PP.int(x.mins)} minutes`},svg); });
   });
   PP.chart($("#kpeers"), el => {
     const s = ST.s, grp = ST.peers.groups[`${s.year}|GK`] || [], W = el.clientWidth; if(!W) return; const H = Math.round(Math.min(340, Math.max(240, W*0.5))); el.innerHTML = "";
-    const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Goals prevented against shots faced, goalkeepers"},el);
-    const pts = grp.map(r => ({id:r[0], name:r[1], team:r[2], gp:r[4], sf:r[5]})).filter(p => p.gp != null && p.sf != null), m = {l:40,r:14,t:12,b:36}, iw = W-m.l-m.r, ih = H-m.t-m.b;
-    const me = pts.find(p => p.id === ST.rec.id) || {id:ST.rec.id, name:ST.rec.name, gp:s.gk.goals_prevented, sf:s.gk.shots_faced};
+    const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Shot-stopping against shots faced, goalkeepers"},el);
+    const pts = grp.map(r => ({id:r[0], name:r[1], team:r[2], raw:r[4], sf:r[5], gp:r[7]})).filter(p => p.gp != null && p.sf != null), m = {l:40,r:14,t:12,b:36}, iw = W-m.l-m.r, ih = H-m.t-m.b;
+    const me = pts.find(p => p.id === ST.rec.id) || {id:ST.rec.id, name:ST.rec.name, gp:s.gk.skill, raw:s.gk.goals_prevented, sf:s.gk.shots_faced};
     const xs = pts.map(p=>p.sf).concat(me.sf), ys = pts.map(p=>p.gp).concat(me.gp), x0 = Math.floor(Math.min(...xs)/20)*20, x1 = Math.ceil(Math.max(...xs)/20)*20, y0 = Math.floor(Math.min(...ys,-1)), y1 = Math.ceil(Math.max(...ys,1));
     const sx = v => m.l + (v-x0)/(x1-x0||1)*iw, sy = v => m.t + ih - (v-y0)/(y1-y0||1)*ih, st = y1-y0 > 12 ? 4 : 2;
     for(let v = Math.ceil(y0/st)*st; v <= y1; v += st){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, m.l-8, sy(v)+4, (v<0?"−":v>0?"+":"")+Math.abs(v), "t-axis", {"text-anchor":"end"}); }
     for(let v = x0; v <= x1; v += 20) text(svg, sx(v), H-m.b+16, v, "t-axis", {"text-anchor":"middle"});
     text(svg, m.l+iw, H-4, "Shots on target faced", "t-axis", {"text-anchor":"end"});
-    pts.filter(p => p.id !== me.id).forEach(p => { S("circle",{cx:sx(p.sf),cy:sy(p.gp),r:4,fill:"var(--dot)",stroke:"var(--paper)","stroke-width":1.5},svg); S("circle",{cx:sx(p.sf),cy:sy(p.gp),r:9,class:"hit","data-tip":`<b>${esc(p.name)}</b>, ${esc(short(p.team))}<br>${sgn(p.gp,1)} goals prevented from ${PP.int(p.sf)} shots`},svg); });
+    pts.filter(p => p.id !== me.id).forEach(p => { S("circle",{cx:sx(p.sf),cy:sy(p.gp),r:4,fill:"var(--dot)",stroke:"var(--paper)","stroke-width":1.5},svg); S("circle",{cx:sx(p.sf),cy:sy(p.gp),r:9,class:"hit","data-tip":`<b>${esc(p.name)}</b>, ${esc(short(p.team))}<br>Shot-stopping ${sgn(p.gp,1)} from ${PP.int(p.sf)} shots<br>Goals prevented ${sgn(p.raw,1)}`},svg); });
     S("rect",{x:sx(me.sf)-7,y:sy(me.gp)-7,width:14,height:14,fill:"var(--signal)",stroke:"var(--paper)","stroke-width":2,transform:`rotate(45 ${sx(me.sf)} ${sy(me.gp)})`},svg);
     text(svg, sx(me.sf)+11, sy(me.gp)+4, surname(me.name), "t-lab halo", {});
     PP.bindTips(el);

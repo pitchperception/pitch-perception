@@ -21,7 +21,7 @@ PP.pages.players = async (main, h) => {
   const ak = hh.slice(8); if(ak && PP.data.arch && PP.data.arch.byKey[ak]){ ST.arch = ak; ST.pos = "all"; ST.slot = "all"; if(ST.view === "tiers") ST.view = "value"; }
   const ix = Object.fromEntries(D.cols.map((c,i) => [c,i]));
   E = {rows: D.rows.map(r => ({id:r[ix.ws_player_id], name:r[ix.player], team:r[ix.team], year:r[ix.year], pos:r[ix.pos], mins:r[ix.mins], rating:r[ix.rating], lo:r[ix.rating_lo], hi:r[ix.rating_hi], p90:r[ix.rating_p90],
-    attack:r[ix.attack], defence:r[ix.defence], slot:r[ix.slot], comp:r[ix.comp], slot_value:r[ix.slot_value], p_slot:r[ix.p_above_slot], gp:r[ix.goals_prevented], mp:r[ix.model_pct], d90:r[ix.d90], clear:r[ix.clear], age:r[ix.age],
+    attack:r[ix.attack], defence:r[ix.defence], slot:r[ix.slot], comp:r[ix.comp], slot_value:r[ix.slot_value], p_slot:r[ix.p_above_slot], gp:r[ix.goals_prevented], sk:r[ix.gp_skill], mp:r[ix.model_pct], d90:r[ix.d90], clear:r[ix.clear], age:r[ix.age],
     p90_prev:r[ix.p90_prev], slot_prev:r[ix.slot_prev], team_prev:r[ix.team_prev]}))};
   E.years = [...new Set(E.rows.map(r => r.year))].sort();
   E.teams = [...new Set(E.rows.map(r => r.team))].sort((a,b) => short(a).localeCompare(short(b)));
@@ -34,8 +34,8 @@ function filtered(){
   let rows = E.rows.filter(r => r.year === ST.year && (ST.pos === "all" ? r.pos !== "GK" : r.pos === ST.pos) && (ST.team === "all" || r.team === ST.team) && slotOn(r) && (ST.arch === "all" || PP.badgesFor(r.id, r.year, r.team).some(b => b[0] === ST.arch))
     && (r.mins || 0) >= (ST.view === "p90" || ST.view === "tiers" ? Math.max(900, ST.minMins) : ST.minMins)
     && (!q || (r.name||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(q)));
-  const gkv = r => r.pos === "GK" ? r.gp : r.rating;
-  const by = {value: r => gkv(r), tiers: r => r.pos === "GK" || r.lo == null ? null : r.rating, p90: r => r.pos === "GK" ? (r.gp||0)/Math.max(1,r.mins)*90 : r.p90, contract: r => r.slot_value,
+  const gkv = r => r.pos === "GK" ? r.sk : r.rating;          // keepers by shot-stopping skill (owner, 2026-10-17)
+  const by = {value: r => gkv(r), tiers: r => r.pos === "GK" || r.lo == null ? null : r.rating, p90: r => r.pos === "GK" ? (r.sk == null ? null : r.sk/Math.max(1,r.mins)*90) : r.p90, contract: r => r.slot_value,
     rising: r => r.clear === 1 ? r.d90 : null, falling: r => r.clear === -1 ? -r.d90 : null}[ST.view];
   rows = rows.filter(r => by(r) != null);
   if(ST.sort){ const [k, dir] = ST.sort; rows.sort((a,b) => ((a[k] ?? -1e9) - (b[k] ?? -1e9)) * dir); }
@@ -83,7 +83,9 @@ function list(){
     rising:"Value per 90 against the previous season, where this season's 90% range sits wholly above last season's (900+ minutes, one club each season).", falling:"Value per 90 against the previous season, where this season's range sits wholly below last season's."};
   const preNote = ST.year < 2024 && ST.slot !== "all" ? " Before 2024 contracts are inferred from salary, so only Designated Players and TAM / GAM can be told apart; everyone else counts as Senior roster." : "";
   const slotNote = (v === "rising" || v === "falling") ? " Contracts play no part in the change: both seasons are measured against a replacement at the same position, whatever the player is paid. The contract filter uses this season's contract." : "";
-  $("#exnote").textContent = `${PP.int(rows.length)} players. ${notes[v]}${slotNote}${preNote}`;
+  // keepers: shot-stopping skill, the season's goals prevented shrunk by its reliability (24, owner 2026-10-17)
+  const gkNote = ST.pos === "GK" && (v === "value" || v === "p90") ? " Keepers: shot-stopping, the goals saved beyond an average keeper after allowing for luck; each keeper's page has this season's raw goals prevented." : "";
+  $("#exnote").textContent = `${PP.int(rows.length)} players. ${notes[v]}${gkNote}${slotNote}${preNote}`;
   const all = rows.filter(r => r.pos !== "GK"), d0 = Math.min(-1, ...all.map(r => r.lo ?? r.rating ?? 0)), d1 = Math.max(1, ...all.map(r => r.hi ?? r.rating ?? 0));
   const th = (k, l, n) => `<th class="${n?"n":""}${ST.sort && ST.sort[0]===k?" sorted":""}"><button type="button" data-k="${k}">${l}${ST.sort && ST.sort[0]===k ? (ST.sort[1] < 0 ? " ▾" : " ▴") : ""}</button></th>`;
   const head = {value:[["rating","Value",1],["p90","Per 90",1],["attack","Attack",1],["defence","Winning it",1],["mins","Minutes",1],["slot_value","Against type",1]],
@@ -91,8 +93,8 @@ function list(){
     contract:[["slot_value","Against type",1],["p_slot","Chance beats typical",1],["comp","Pay",1],["rating","Value",1]],
     rising:[["d90","Change per 90",1],["p90","Per 90 now",1],["mins","Minutes",1]], falling:[["d90","Change per 90",1],["p90","Per 90 now",1],["mins","Minutes",1]]}[v];
   const cell = (r, k) => { switch(k){
-    case "rating": return r.pos === "GK" ? `<b>${sgn(r.gp,1)}</b>` : `<span class="valcell">${v==="value"?PP.ibar(r.rating, r.lo, r.hi, d0, d1):""}<b>${sgn(r.rating)}</b></span>`;
-    case "p90": return r.pos === "GK" ? sgn((r.gp||0)/Math.max(1,r.mins)*90,3) : num(r.p90,3);
+    case "rating": return r.pos === "GK" ? `<b>${sgn(r.sk,1)}</b>` : `<span class="valcell">${v==="value"?PP.ibar(r.rating, r.lo, r.hi, d0, d1):""}<b>${sgn(r.rating)}</b></span>`;
+    case "p90": return r.pos === "GK" ? sgn((r.sk||0)/Math.max(1,r.mins)*90,3) : num(r.p90,3);
     case "attack": case "defence": return r[k] != null ? sgn(r[k]) : "–";
     case "mins": return PP.int(r.mins||0);
     case "slot_value": return r.slot_value != null ? `<b>${sgn(r.slot_value)}</b>` : "–";
@@ -101,7 +103,7 @@ function list(){
     case "mp": return r.mp != null ? pctile(r.mp) : "–";
     case "d90": return `<span class="tri ${r.d90>=0?"up":"down"}" aria-hidden="true"></span> <b>${sgn(r.d90,3)}</b>`;
     default: return ""; } };
-  if(ST.pos === "GK") head.forEach(h => { if(h[0] === "rating") h[1] = "Goals prevented"; if(h[0] === "p90") h[1] = "Prevented per 90"; });
+  if(ST.pos === "GK") head.forEach(h => { if(h[0] === "rating") h[1] = "Shot-stopping"; if(h[0] === "p90") h[1] = "Shot-stopping per 90"; });
   /* Labels before 2024 are inferred from salary (DP reliably, TAM / GAM less so), so a change into a 2024 season is tagged only when a DP is involved. */
   const moved = r => [r.team_prev && r.team_prev !== r.team ? "new club" : "", r.slot_prev && r.slot && r.slot_prev !== r.slot && (r.year > 2024 || r.slot_prev === "DP" || r.slot === "DP") ? "new contract" : ""].filter(Boolean).map(t => `<span class="tag">${t}</span>`).join("");
   const lastYr = r => (v === "rising" || v === "falling") && r.p90_prev != null ? `<small class="prevline">${r.year-1}: ${num(r.p90_prev,3)} per 90 at ${esc(short(r.team_prev||r.team))}, ${esc(PP.SLOT[r.slot_prev]||r.slot_prev||"no contract on record")}${moved(r)}</small>` : "";
@@ -130,7 +132,7 @@ function makeTiers(rows, conf){
   return out;
 }
 function tierList(rows, el){
-  if(ST.pos === "GK"){ el.innerHTML = `<div class="missing"><b>Keepers are not tiered yet</b><span>Their goals-prevented ranges are on each keeper's page; tiers cover outfield players in this pilot.</span></div>`; return; }
+  if(ST.pos === "GK"){ el.innerHTML = `<div class="missing"><b>Keepers are not tiered yet</b><span>Their shot-stopping ranges are on each keeper's page; tiers cover outfield players in this pilot.</span></div>`; return; }
   if(rows.length < 5){ el.innerHTML = `<div class="missing"><b>Too few players to tier</b><span>Loosen a filter: all positions, all clubs or all contracts.</span></div>`; return; }
   const T = makeTiers(rows, ST.tconf), confs = [[0.8,"80%"],[0.9,"90%"],[0.95,"95%"]];
   const key = r => PP.surname(r.name).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -168,13 +170,13 @@ function drawSwarm(el){
   const W = el.clientWidth; if(!W) return;
   const POS6 = POSO.filter(p => p !== "GK"), rows = E.rows.filter(r => r.year === ST.year && r.mins >= 900 && r.pos !== "GK"), lane = 34, m = {l:W<520?44:130,r:16,t:8,b:26}, H = m.t + POS6.length*lane + m.b; el.innerHTML = "";
   const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`Value of every player with 900+ minutes in ${ST.year}, by position`},el);
-  const val = r => r.pos === "GK" ? r.gp : r.rating, vs = rows.map(val).filter(v => v != null), lo = Math.floor(Math.min(-2, ...vs)), hi = Math.ceil(Math.max(2, ...vs)), sx = v => m.l + (v-lo)/(hi-lo)*(W-m.l-m.r);
+  const val = r => r.pos === "GK" ? r.sk : r.rating, vs = rows.map(val).filter(v => v != null), lo = Math.floor(Math.min(-2, ...vs)), hi = Math.ceil(Math.max(2, ...vs)), sx = v => m.l + (v-lo)/(hi-lo)*(W-m.l-m.r);
   for(let v = Math.ceil(lo/2)*2; v <= hi; v += 2){ S("line",{x1:sx(v),x2:sx(v),y1:m.t,y2:H-m.b,class:v===0?"g-base":"g-line"},svg); text(svg, sx(v), H-8, (v>0?"+":v<0?"−":"")+Math.abs(v), "t-axis", {"text-anchor":"middle"}); }
   POS6.forEach((p,k) => { const y = m.t + k*lane + lane/2, rs = rows.filter(r => r.pos === p && val(r) != null).sort((a,b) => val(b) - val(a));
     text(svg, m.l-10, y+4, W < 520 ? p.replace("CM_DM","CM") : PP.POS[p], "t-lab2", {"text-anchor":"end"});
     const hl = ST.slot !== "all", lead = hl ? rs.filter(slotOn) : rs;
     (hl ? [...rs.filter(r => !slotOn(r)), ...lead] : rs).forEach((r,i) => { const jit = ((r.id * 9301 + 49297) % 233280) / 233280 - 0.5; const top = hl ? slotOn(r) : i < 2, dim = hl && !top;
-      S("circle",{cx:sx(val(r)),cy:y + jit*(lane-12),r:top?4.5:3,fill:top?"var(--signal)":"var(--dot)",opacity:dim?0.35:1,stroke:top?"var(--paper)":"none","stroke-width":1.5,"data-tip":`<b>${esc(r.name)}</b>, ${esc(short(r.team))}<br>${r.pos==="GK"?`${sgn(r.gp,1)} goals prevented`:`${sgn(r.rating)} goals above replacement`}<br>${PP.int(r.mins)} minutes`},svg); });
+      S("circle",{cx:sx(val(r)),cy:y + jit*(lane-12),r:top?4.5:3,fill:top?"var(--signal)":"var(--dot)",opacity:dim?0.35:1,stroke:top?"var(--paper)":"none","stroke-width":1.5,"data-tip":`<b>${esc(r.name)}</b>, ${esc(short(r.team))}<br>${r.pos==="GK"?`${sgn(r.sk,1)} goals of shot-stopping`:`${sgn(r.rating)} goals above replacement`}<br>${PP.int(r.mins)} minutes`},svg); });
     const t0 = lead[0]; if(t0 && W >= 520) text(PP.svgA(svg, t0.id), sx(val(t0)) + (sx(val(t0)) > W-110 ? -8 : 8), y - 6, PP.surname(t0.name), "t-lab halo", {"text-anchor": sx(val(t0)) > W-110 ? "end" : "start"});
   });
 }
