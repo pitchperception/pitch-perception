@@ -566,3 +566,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-17T23:29:11Z,1953051,2026-10-18T00:30:00Z,Austin FC,Vancouver Whitecaps,0.1768,0.2235,0.5997,lineups
 2026-10-17T23:29:11Z,1953052,2026-10-18T00:30:00Z,Houston Dynamo FC,FC Dallas,0.3973,0.2645,0.3382,lineups
 2026-10-17T23:32:11Z,1953053,2026-10-18T00:30:00Z,Sporting Kansas City,Real Salt Lake,0.2727,0.2562,0.471,lineups
+2026-10-18T00:01:37Z,1953058,2026-10-18T21:00:00Z,FC Cincinnati,Columbus Crew,0.4496,0.2595,0.2909,availability
+2026-10-18T00:01:37Z,1952941,2026-10-21T23:00:00Z,FC Cincinnati,DC United,0.5482,0.2392,0.2127,availability
