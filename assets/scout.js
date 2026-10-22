@@ -24,7 +24,7 @@ const ctInd = (c, age) => { if(!c) return "";
   const bar = `<span class="ctbar" role="img" aria-label="${CT.map((k,j) => `${k[1]} ${Math.round(c[j]*100)}%`).join(", ")}">${CT.map((k,j) => c[j] >= 0.005 ? `<i style="width:${c[j]*100}%;background:${k[2]}" data-tip="${esc(`<b>${k[1]}</b><br>${Math.round(c[j]*100)}%`)}"></i>` : "").join("")}</span>`;
   return `<div class="ind ctind"><span class="r-label">Likely contract type</span><span class="v">${top[1]}, ${Math.round(c[i]*100)}%</span>${bar}
     <span class="r-small">${(() => { const t = [CT.filter((k,j) => j !== i && c[j] >= 0.05).map(k => `${k[1]} ${Math.round(c[CT.indexOf(k)]*100)}%`).join(", "), age != null && age > 22 ? "too old for U22" : ""].filter(Boolean).join("; ");
-      return t ? t.charAt(0).toUpperCase() + t.slice(1) + ". " : ""; })()}If he signed in MLS: learned from 315 foreign signings of 2024&ndash;26 by age, league, ratings and output; it cannot see the transfer fee.</span></div>`; };
+      return t ? t.charAt(0).toUpperCase() + t.slice(1) + ". " : ""; })()}If they signed in MLS: learned from 315 foreign signings of 2024&ndash;26 by age, league, ratings and output; it cannot see the transfer fee.</span></div>`; };
 let ST = null;
 const rangeText = (lo, hi) => hi >= 0.995 ? `${pctile(lo)} percentile to the very top` : lo <= 0.005 ? `the very bottom to the ${pctile(hi)} percentile` : `${pctile(lo)} to ${pctile(hi)} percentile`;
 

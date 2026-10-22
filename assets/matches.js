@@ -220,7 +220,7 @@ PP.pages.match = async (main, h) => {
         </div>
         <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>
       </section></div>
-      <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
+      <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by their value above replacement this season. Click a player for their page.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
   } else {
     const I = await PP.loadRounds(), wn = I ? PP.roundOfMatch(I, id) : null;
@@ -232,7 +232,7 @@ PP.pages.match = async (main, h) => {
   if(played && !body){
     const list = (arr, t) => { const mx = Math.max(0.05, ...arr.map(x => Math.abs(x[2]||0)));
       return `<div class="mtop"><h3 class="r-heading">${clubTag(t, true)}</h3>${arr.map(x => `<a class="prow" href="#player-${x[0]}"><span class="nm">${esc(x[1]||"")}</span><span class="tr"><i style="width:${Math.max(2,Math.abs(x[2])/mx*100)}%;background:${x[2]>=0?"var(--turf)":"var(--flare)"}"></i></span><span class="v num">${sgn(x[2],2)}</span><span class="r-small">${PP.int(x[3])} min</span></a>`).join("")}</div>`; };
-    body = `<section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>Each player's contribution to the match: his share of the value his team created and won back, above what a replacement player would have added in his minutes. These add up to his season rating.</p></div>
+    body = `<section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>Each player's contribution to the match: their share of the value their team created and won back, above what a replacement player would have added in their minutes. These add up to their season rating.</p></div>
       <div class="mtops">${list(d.top_home||[], m.home)}${list(d.top_away||[], m.away)}</div></div></section>`;
   }
   const h2h = (d.h2h || []).filter(x => x[0] < (played ? "9999" : m.date) && !(played && x[0] === m.date && x[1] === m.home)).slice(0,5);
@@ -268,8 +268,8 @@ function drawDuel(el, m, d){
     const L = home ? 4 + (1 - p.y) * 46 : 101 - (1 - p.y) * 46, Wd = home ? (portrait ? 6 + p.x*56 : 6 + (1-p.x)*56) : (portrait ? 62 - p.x*56 : 6 + p.x*56);
     const rated = p.value != null, c = P(L, Wd), v = p.value || 0, rr = Math.max(8, Math.min(16, 8 + Math.abs(v)*2.6)), f = rated ? PP.valueFill(v, 5) : "var(--paper)";
     const pk = PP.pairKit(m.home, m.away), id = p.ws_player_id, linked = id != null && (!pages.size || pages.has(id));
-    const g = linked ? S("a",{href:`#player-${id}`,class:"xi-link","aria-label":`${p.player}, ${short(home ? m.home : m.away)}: open his page`},svg) : svg;
-    S("circle",{cx:c.x,cy:c.y,r:rr,fill:f,stroke:home ? pk[0] : pk[1],"stroke-width":2.5,"stroke-dasharray":!home && pk[2] ? "3 2" : "","data-tip":`<b>${esc(p.player)}</b>, ${esc(short(home ? m.home : m.away))}<br>${rated ? `${sgn(v,2)} this season` : "No MLS rating yet"}${p.kind && p.kind !== "same" ? `<br>${p.kind === "changed" ? "Change from the usual eleven" : esc(p.kind)}` : ""}${linked ? `<br>Click for his page` : ""}`},g);
+    const g = linked ? S("a",{href:`#player-${id}`,class:"xi-link","aria-label":`${p.player}, ${short(home ? m.home : m.away)}: open their page`},svg) : svg;
+    S("circle",{cx:c.x,cy:c.y,r:rr,fill:f,stroke:home ? pk[0] : pk[1],"stroke-width":2.5,"stroke-dasharray":!home && pk[2] ? "3 2" : "","data-tip":`<b>${esc(p.player)}</b>, ${esc(short(home ? m.home : m.away))}<br>${rated ? `${sgn(v,2)} this season` : "No MLS rating yet"}${p.kind && p.kind !== "same" ? `<br>${p.kind === "changed" ? "Change from the usual eleven" : esc(p.kind)}` : ""}${linked ? `<br>Click for their page` : ""}`},g);
     text(g, c.x, c.y+4, rated ? sgn(v,1) : "–", "t-axis", {"text-anchor":"middle",style:`fill:${rated ? PP.inkOn(f) : "var(--ink-3)"};font-weight:650;font-size:10.5px`});
     text(g, c.x, c.y+rr+12, p.player ? PP.surname(p.player) : "?", "t-lab halo-w", {"text-anchor":"middle",style:"font-size:11px"});
   });

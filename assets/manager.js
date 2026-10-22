@@ -12,11 +12,11 @@ const STYLE = [       // key, label, how to read the raw value, invert (lower ra
   ["poss", "Possession", v => `${Math.round(v*100)}% of passes`, false],
   ["fwd_per_pass", "Directness", v => `${num(v,1)} m forward per completed pass`, false],
   ["ppda", "Pressing", v => `${num(v,1)} opponent passes per defensive action (lower is more pressing)`, true],
-  ["def_height", "Defensive line height", v => `wins the ball ${num(v,0)} m from his own goal on average`, false],
+  ["def_height", "Defensive line height", v => `wins the ball ${num(v,0)} m from their own goal on average`, false],
   ["crosses", "Crossing", v => `${num(v,1)} crosses per match`, false],
   ["sp_share", "Set-piece reliance", v => `${Math.round(v*100)}% of non-penalty xG from set pieces`, false],
   ["xg_per_shot", "Chance quality", v => `${num(v,3)} xG per non-penalty shot`, false]];
-const scoreWords = sc => sc.lo > 0 ? "Clearly above what his squads predict" : sc.hi < 0 ? "Clearly below what his squads predict" : "Within the range of what his squads predict";
+const scoreWords = sc => sc.lo > 0 ? "Clearly above what their squads predict" : sc.hi < 0 ? "Clearly below what their squads predict" : "Within the range of what their squads predict";
 
 /* ---------------- index ---------------- */
 PP.pages.managers = async main => {
@@ -31,7 +31,7 @@ PP.pages.managers = async main => {
       <span class="num">${sc ? sc.n : 0}</span><span class="val">${sc ? `${PP.ibar(sc.value, sc.lo, sc.hi, d0, d1)}<b>${sgn(sc.value)}</b>` : `<span class="r-small">no matches with ratings</span>`}</span></a>`; };
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Managers</h1>
       <p class="r-note" style="max-width:66ch">How each MLS manager's teams have done against what their players predict, and how they play. The score is expected-goal difference per match above what the starting elevens' pre-season player ratings predict, 2021&ndash;26 regular seasons, pulled toward zero for managers with few matches. The bar is the 90% range.</p>
-      <p class="r-small" style="max-width:66ch">${esc(M.reading === "plain" ? "Steady within a season (reliability 0.64), but it carries over only modestly from one season to the next, so read it as how his teams have performed, not a fixed trait." : M.reading)}</p></section>
+      <p class="r-small" style="max-width:66ch">${esc(M.reading === "plain" ? "Steady within a season (reliability 0.64), but it carries over only modestly from one season to the next, so read it as how their teams have performed, not a fixed trait." : M.reading)}</p></section>
     <section class="band"><div class="band-head"><h2 class="r-title">Current managers</h2><p>The 30 clubs' managers at their latest match. Matches count only 2021&ndash;26, the seasons with player ratings to compare against.</p></div>
       <div class="mlist"><div class="mghead"><span></span><span>Manager</span><span>Matches</span><span>xG per match above the squad</span></div>${cur.map((m,i) => row(m, i, m.current)).join("")}</div></section>
     <section class="band"><div class="band-head"><h2 class="r-title">Former managers</h2><p>Managers with ${MINN}+ matches since 2021 who are no longer at an MLS club.</p></div>
@@ -76,10 +76,10 @@ function mIdentity(){
 function mPlate(){
   const {M, m, st} = MS, sc = m.score;
   const big = sc ? `<span class="r-label">Manager score, 2021&ndash;26</span><span class="r-figure">${sgn(sc.value)}</span>
-      <div class="sub-fig"><span>expected goals per match above what his starting elevens' pre-season ratings predict</span>${sc.n >= MINN && sc.pct != null ? `<span>${pctile(sc.pct)} percentile of managers with ${MINN}+ matches</span>` : `<span>${sc.n} matches: too few to rank against other managers</span>`}</div>
+      <div class="sub-fig"><span>expected goals per match above what their starting elevens' pre-season ratings predict</span>${sc.n >= MINN && sc.pct != null ? `<span>${pctile(sc.pct)} percentile of managers with ${MINN}+ matches</span>` : `<span>${sc.n} matches: too few to rank against other managers</span>`}</div>
       <div class="sig-cap"><span class="r-label">${esc(scoreWords(sc))}</span><span class="r-small">90% range ${sgn(sc.lo)} to ${sgn(sc.hi)}</span></div><div class="chart" id="msignal"></div>`
     : `<span class="r-label">Manager score</span><span class="r-figure">–</span><div class="sub-fig"><span>No matches in 2021&ndash;26, the seasons the score covers.</span></div>`;
-  const ppm = st.ppm != null && st.xppm != null ? `<span class="v num">${num(st.ppm,2)} points per match</span><span class="r-small">${st.xppm != null ? `Expected from the players he fielded: ${num(st.xppm,2)}` : ""}</span>` : `<span class="v num">${st.ppm != null ? num(st.ppm,2) : "–"}</span><span class="r-small">No expectation for ${st.season}.</span>`;
+  const ppm = st.ppm != null && st.xppm != null ? `<span class="v num">${num(st.ppm,2)} points per match</span><span class="r-small">${st.xppm != null ? `Expected from the players they fielded: ${num(st.xppm,2)}` : ""}</span>` : `<span class="v num">${st.ppm != null ? num(st.ppm,2) : "–"}</span><span class="r-small">No expectation for ${st.season}.</span>`;
   return `<div class="wrap"><section class="plate pplate" aria-label="Manager score"><div class="pp-left">${big}
       <div class="indicators">
         <div class="ind"><span class="r-label">${st.season}, ${esc(short(st.team))}</span>${ppm}</div>
@@ -87,7 +87,7 @@ function mPlate(){
         <div class="ind"><span class="r-label">That season, above the squad</span><span class="v num">${st.resid != null ? sgn(st.resid) + " xG per match" : "–"}</span><span class="r-small">Unshrunk; one season is noisy.</span></div>
       </div></div>
     <div class="pp-right"><p class="r-note">${esc(note(m, st))}</p>
-      <p class="r-small">How it works: the starting elevens' pre-season player ratings (last season, plus contract-type and previous-league estimates for newcomers; nothing from the season being played) predict each match's expected-goal difference, and the score is how far his matches beat that prediction. It is steady within a season but carries over only modestly from one season to the next (a correlation of about 0.2), so it describes how his teams have done more than it predicts how his next team will do. Expected points use the same prediction: the predicted expected-goal difference of each match is turned into win, draw and defeat chances by a model fitted on MLS matches from other seasons, and expected points are three times the win chance plus the draw chance, averaged over his matches.</p></div>
+      <p class="r-small">How it works: the starting elevens' pre-season player ratings (last season, plus contract-type and previous-league estimates for newcomers; nothing from the season being played) predict each match's expected-goal difference, and the score is how far their matches beat that prediction. It is steady within a season but carries over only modestly from one season to the next (a correlation of about 0.2), so it describes how their teams have done more than it predicts how their next team will do. Expected points use the same prediction: the predicted expected-goal difference of each match is turned into win, draw and defeat chances by a model fitted on MLS matches from other seasons, and expected points are three times the win chance plus the draw chance, averaged over their matches.</p></div>
   </section></div>`;
 }
 function note(m, st){
@@ -114,7 +114,7 @@ function mStyle(){
     const p = inv ? 1 - v[1] : v[1];
     return `<div class="pctrow" data-tip="${esc(`<b>${l}</b><br>${fmt(v[0])}${v[2] != null ? ` (${st.season} league average ${fmt(v[2])})` : ""}<br>${pctile(p)} percentile of manager-seasons since 2020, each against its season's league average`)}"><span class="pl">${l}</span><span class="pt" role="img" aria-label="${l}: ${pctile(p)}"><b style="width:${Math.max(1, p*100)}%;background:var(--pct-${band(p)})"></b><i style="left:${p*100}%"></i><u></u></span><span class="pv num">${pctile(p)}</span></div>`; }).join("");
   const sb = st.subs, sq = st.squad;
-  return `<section class="band" aria-labelledby="mst-h"><div class="wrap"><div class="band-head"><h2 class="r-title" id="mst-h">How his team plays</h2><p>${st.season}, ${esc(short(st.team))}: each trait as a percentile of all manager-seasons since 2020 with 10+ matches (0 lowest, 100 highest). Each season is measured against that season's league average, because the league as a whole has changed: passes travel about a quarter less far forward than in 2020&ndash;22, and teams press less. Hover for the measure behind it.</p></div>
+  return `<section class="band" aria-labelledby="mst-h"><div class="wrap"><div class="band-head"><h2 class="r-title" id="mst-h">How their team plays</h2><p>${st.season}, ${esc(short(st.team))}: each trait as a percentile of all manager-seasons since 2020 with 10+ matches (0 lowest, 100 highest). Each season is measured against that season's league average, because the league as a whole has changed: passes travel about a quarter less far forward than in 2020&ndash;22, and teams press less. Hover for the measure behind it.</p></div>
     <div class="mgrid"><div class="pctbars mstyle">${rows}</div>
       <div class="facts2">
         <div><span class="r-label">Substitutions</span><span class="v num">${sb.per_match != null ? num(sb.per_match,1) : "–"} per match</span><span class="r-small">First change around minute ${sb.first_minute ?? "–"}${sb.first_trailing != null && sb.first_not_trailing != null ? ` (minute ${sb.first_trailing} when behind, ${sb.first_not_trailing} otherwise)` : ""}; ${sb.before_60 != null ? num(sb.before_60,1) : "–"} before the hour per match.</span></div>

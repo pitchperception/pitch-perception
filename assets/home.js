@@ -100,7 +100,7 @@ function lead(H){
     </div>
     <div><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="why-lead" id="why-lead-btn">How this is measured</button>
     <div class="disc" id="why-lead" aria-hidden="true"><div><div class="why-body">
-      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Expected goals come from a shot model fitted to MLS for this site: each shot is worth the share of similar shots that were scored. Goals prevented compare the goals a keeper conceded with the post-shot expected goals of the shots he faced, centred so an average keeper is zero. The dashed line on the chart is the league-wide fit of points on expected-goal difference; a team's height above it is points the chances alone would not explain.</p>
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Expected goals come from a shot model fitted to MLS for this site: each shot is worth the share of similar shots that were scored. Goals prevented compare the goals a keeper conceded with the post-shot expected goals of the shots they faced, centred so an average keeper is zero. The dashed line on the chart is the league-wide fit of points on expected-goal difference; a team's height above it is points the chances alone would not explain.</p>
     </div></div></div></div>
   </article>`;
 }
@@ -383,7 +383,7 @@ function chainBand(H){
         <div class="chart" id="steps"></div>
       </figure>
       <div class="credits" aria-label="Credit by player">
-        <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see his actions.</span>
+        <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see their actions.</span>
         ${credits}
         <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${PP.plink(first.id, first.player)}'s ${esc(first.action)}) counts toward defence and is not included here.`:""}</p>
       </div>
@@ -445,8 +445,8 @@ function leadersBand(H){
     <div class="leaders">
       <div class="lboard" id="lboard">${rows}</div>
       <aside class="aside">
-        <p class="r-note" style="font-size:var(--t-15)">Every action is valued by how much it changes the chance that a possession ends in a goal, at either end. A player's value is the sum, measured against what a replacement-level player at his position would add in the same minutes.</p>
-        ${def.length ? `<p class="r-note" style="font-size:var(--t-15)">${cap(PP.WORDS[def.length]||String(def.length))} of the top ten earn most of their value by winning the ball back: ${and(names(def))}. ${att.length ? `${and(names(att))} earn${att.length===1?"s":""} most of ${att.length===1?"his":"theirs"} on the ball.` : ""}</p>` : ""}
+        <p class="r-note" style="font-size:var(--t-15)">Every action is valued by how much it changes the chance that a possession ends in a goal, at either end. A player's value is the sum, measured against what a replacement-level player at the same position would add in the same minutes.</p>
+        ${def.length ? `<p class="r-note" style="font-size:var(--t-15)">${cap(PP.WORDS[def.length]||String(def.length))} of the top ten earn most of their value by winning the ball back: ${and(names(def))}. ${att.length ? `${and(names(att))} earn${att.length===1?"s":""} most of theirs on the ball.` : ""}</p>` : ""}
         <a href="#players" class="btn-text">Every player</a>
       </aside>
     </div>
