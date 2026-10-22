@@ -15,7 +15,7 @@ const save = () => { try{ localStorage.setItem("pp-explore", JSON.stringify({vie
 
 PP.pages.players = async (main, h) => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Players</h1><p class="r-small">Loading every player-season.</p></section></div>`;
-  let D; try { [D] = await Promise.all([load(), PP.loadArch()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The player data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
+  let D; try { [D] = await Promise.all([load(), PP.loadArch(), PP.loadInjuries()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The player data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   const hh = location.hash.slice(1);
   if(hh !== "players" && !hh.startsWith("players-")) return;
   const ak = hh.slice(8); if(ak && PP.data.arch && PP.data.arch.byKey[ak]){ ST.arch = ak; ST.pos = "all"; ST.slot = "all"; if(ST.view === "tiers") ST.view = "value"; }
@@ -86,6 +86,8 @@ function list(){
   // keepers: shot-stopping skill, the season's goals prevented shrunk by its reliability (24, owner 2026-10-17)
   const gkNote = ST.pos === "GK" && (v === "value" || v === "p90") ? " Keepers: shot-stopping, the goals saved beyond an average keeper after allowing for luck; each keeper's page has this season's raw goals prevented." : "";
   $("#exnote").textContent = `${PP.int(rows.length)} players. ${notes[v]}${gkNote}${slotNote}${preNote}`;
+  const I = PP.data.inj;                                    // injuries key (160): the current season only
+  if(I && ST.year === I.season) $("#exnote").insertAdjacentHTML("beforeend", ` <span class="injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</span>`);
   const all = rows.filter(r => r.pos !== "GK"), d0 = Math.min(-1, ...all.map(r => r.lo ?? r.rating ?? 0)), d1 = Math.max(1, ...all.map(r => r.hi ?? r.rating ?? 0));
   const th = (k, l, n) => `<th class="${n?"n":""}${ST.sort && ST.sort[0]===k?" sorted":""}"><button type="button" data-k="${k}">${l}${ST.sort && ST.sort[0]===k ? (ST.sort[1] < 0 ? " ▾" : " ▴") : ""}</button></th>`;
   const head = {value:[["rating","Value",1],["p90","Per 90",1],["attack","Attack",1],["defence","Winning it",1],["mins","Minutes",1],["slot_value","Against type",1]],
@@ -107,14 +109,15 @@ function list(){
   /* Labels before 2024 are inferred from salary (DP reliably, TAM / GAM less so), so a change into a 2024 season is tagged only when a DP is involved. */
   const moved = r => [r.team_prev && r.team_prev !== r.team ? "new club" : "", r.slot_prev && r.slot && r.slot_prev !== r.slot && (r.year > 2024 || r.slot_prev === "DP" || r.slot === "DP") ? "new contract" : ""].filter(Boolean).map(t => `<span class="tag">${t}</span>`).join("");
   const lastYr = r => (v === "rising" || v === "falling") && r.p90_prev != null ? `<small class="prevline">${r.year-1}: ${num(r.p90_prev,3)} per 90 at ${esc(short(r.team_prev||r.team))}, ${esc(PP.SLOT[r.slot_prev]||r.slot_prev||"no contract on record")}${moved(r)}</small>` : "";
-  const rowsH = show.map((r,i) => `<tr><td class="n rk">${i+1}</td><td class="who"><a href="#player-${r.id}-${r.year}">${esc(r.name)}</a>${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}<small>${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"position not recorded").toLowerCase()}${r.slot?`, ${esc(PP.SLOT[r.slot]||r.slot)}`:""}</small>${lastYr(r)}</td>${head.map(([k]) => `<td class="n">${cell(r,k)}</td>`).join("")}</tr>`).join("");
-  const listH = show.map((r,i) => `<a class="lrow" href="#player-${r.id}-${r.year}"><span class="rk">${i+1}</span><span class="nm">${esc(r.name)}${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}</span><span class="val">${cell(r, head[0][0])}</span><span class="meta">${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"–").toLowerCase()}${ST.slot !== "all" && r.slot ? `, ${esc(PP.SLOT[r.slot]||r.slot)}` : ""}</span>${(v === "rising" || v === "falling") && r.p90_prev != null ? `<span class="meta prev">${r.year-1}: ${num(r.p90_prev,3)} per 90${moved(r)}</span>` : ""}</a>`).join("");
+  const rowsH = show.map((r,i) => `<tr><td class="n rk">${i+1}</td><td class="who"><a href="#player-${r.id}-${r.year}">${esc(r.name)}</a>${PP.injMark(r.id, r.year)}${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}<small>${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"position not recorded").toLowerCase()}${r.slot?`, ${esc(PP.SLOT[r.slot]||r.slot)}`:""}</small>${lastYr(r)}</td>${head.map(([k]) => `<td class="n">${cell(r,k)}</td>`).join("")}</tr>`).join("");
+  const listH = show.map((r,i) => `<a class="lrow" href="#player-${r.id}-${r.year}"><span class="rk">${i+1}</span><span class="nm">${esc(r.name)}${PP.injMark(r.id, r.year)}${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}</span><span class="val">${cell(r, head[0][0])}</span><span class="meta">${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"–").toLowerCase()}${ST.slot !== "all" && r.slot ? `, ${esc(PP.SLOT[r.slot]||r.slot)}` : ""}</span>${(v === "rising" || v === "falling") && r.p90_prev != null ? `<span class="meta prev">${r.year-1}: ${num(r.p90_prev,3)} per 90${moved(r)}</span>` : ""}</a>`).join("");
   el.innerHTML = rows.length ? `<div class="board-table tbl-wrap"><table class="board extable"><thead><tr><th class="n">#</th><th>Player</th>${head.map(([k,l,n]) => th(k,l,n)).join("")}</tr></thead><tbody>${rowsH}</tbody></table></div>
     <div class="board-list exlist2">${listH}</div>
     ${rows.length > ST.n ? `<div style="margin-top:var(--s-4)"><button type="button" class="btn btn-secondary" id="exmore">Show ${Math.min(50, rows.length - ST.n)} more</button></div>` : ""}`
     : `<div class="missing"><b>No players match</b><span>Loosen a filter: fewer minutes, all positions, all clubs, all contracts or all archetypes.</span></div>`;
   $$(".extable th button").forEach(b => b.addEventListener("click", () => { const k = b.dataset.k; ST.sort = ST.sort && ST.sort[0] === k ? [k, -ST.sort[1]] : [k, -1]; list(); }));
   const more = $("#exmore"); if(more) more.addEventListener("click", () => { ST.n += 50; list(); });
+  PP.bindTips(el);
 }
 
 /* ---------- Tiers (pilot) ----------
@@ -141,7 +144,7 @@ function tierList(rows, el){
     <div class="chart" id="tierladder"></div>
     <div class="tiers">${T.map((t,i) => { const lo = t.rows[t.rows.length-1].rating, hi = t.lead.rating;
       return `<section class="tier" aria-labelledby="tier-h${i}"><div class="tier-head"><h3 class="r-heading" id="tier-h${i}">Tier ${i+1}</h3><span class="r-small">${t.rows.length} player${t.rows.length>1?"s":""}, ${sgn(lo)} to ${sgn(hi)} goals above replacement</span></div>
-        <div class="tier-grid">${t.rows.slice().sort((a,b) => key(a).localeCompare(key(b))).map(r => `<a class="tchip" href="#player-${r.id}-${r.year}"><span class="nm">${esc(r.name)}${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}</span><span class="meta">${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"–").toLowerCase()}</span><span class="v num">${sgn(r.rating)}</span></a>`).join("")}</div></section>`; }).join("")}</div>
+        <div class="tier-grid">${t.rows.slice().sort((a,b) => key(a).localeCompare(key(b))).map(r => `<a class="tchip" href="#player-${r.id}-${r.year}"><span class="nm">${esc(r.name)}${PP.injMark(r.id, r.year)}${PP.badgeMini(PP.badgesFor(r.id, r.year, r.team))}</span><span class="meta">${chip(r.team)}${esc(short(r.team))}, ${(PP.POS[r.pos]||"–").toLowerCase()}</span><span class="v num">${sgn(r.rating)}</span></a>`).join("")}</div></section>`; }).join("")}</div>
     <p class="r-small tiernote">Pilot. Names are alphabetical within a tier because the order inside a tier is not meaningful: every player in it is within reach of its best player once match-to-match luck is allowed for. The ranges cover that luck only, not uncertainty in the model itself, so true tiers are, if anything, wider. Filters apply: choose a position or contract type to tier within it.</p>`;
   $$(".tierctl button").forEach(b => b.addEventListener("click", () => { ST.tconf = +b.dataset.c; save(); list(); }));
   PP.chart($("#tierladder"), e => drawLadder(e, T)); PP.bindTips($("#tierladder"));

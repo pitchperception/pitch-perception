@@ -151,6 +151,21 @@ PP.badgeMini = list => list.length ? `<span class="bdg-row">${list.map(([k, , fr
 /* ---------- playing styles (data/roles.json from 145_site_styles.py; roles defined and tested in 142) ---------- */
 let roleP = null;
 PP.loadRoles = () => roleP || (roleP = fetch("data/roles.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => (PP.data.roles = d)));
+/* injuries (160, owner 2026-10-21): Transfermarkt's injury history for the player pages; the current status (Transfermarkt's
+   club injury lists, and the league's availability report for questionable players) marks names in the rankings */
+let injP = null;
+PP.loadInjuries = () => injP || (injP = fetch("data/injuries.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => (PP.data.inj = d)));
+PP.dayShort = iso => iso ? new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "";
+PP.injStatus = (id, year) => { const I = PP.data.inj; return I && +year === I.season ? (I.status || {})[id] || null : null; };
+PP.injTip = st => {
+  const I = PP.data.inj || {}, bits = [`${st.s === "q" ? "Questionable" : "Out"}: ${st.r}`];
+  if(st.since) bits.push(`since ${PP.dayShort(st.since)}`);
+  if(st.src === "tm") bits.push(st.back ? `expected back ${PP.dayShort(st.back)}` : "no expected return given");
+  bits.push(st.src === "tm" ? `Transfermarkt, ${PP.dayShort(I.tm_date)}` : `MLS availability report, ${PP.dayShort(I.mls_report)}`);
+  return bits.join(". ") + ".";
+};
+PP.INJ_SVG = '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z" fill="currentColor"/></svg>';
+PP.injMark = (id, year) => { const st = PP.injStatus(id, year); if(!st) return ""; const t = PP.esc(PP.injTip(st)); return `<span class="injm ${st.s === "q" ? "q" : "out"}" role="img" aria-label="${t}" data-tip="${t}">${PP.INJ_SVG}</span>`; };
 PP.ROLE_POS = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
 // {label, tip} for a player-season, or null (no role shown: under 900 minutes, or his top role is not one the site shows)
 PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.players[`${id}|${year}|${team}`]; if(!x || x[0] === "none") return null;

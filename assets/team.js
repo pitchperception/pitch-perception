@@ -93,7 +93,7 @@ PP.pages.team = async (main, h) => {
   const team = PP.teamBySlug(slug);
   if(!team){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No club with this link</h1><p>Pick a club from the Teams list.</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${clubTag(team)}</div><h1 class="r-name">${esc(full(team))}</h1><p class="r-small">Loading the model's view of this club.</p></section></div>`;
-  let D, L, SY; try { [D, L, , , SY] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages(), loadStyles()]); }
+  let D, L, SY; try { [D, L, , , SY] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages(), loadStyles(), PP.loadInjuries()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">${team ? "This club's data did not load" : "No club with this link"}</h1><p>${team ? esc(e.message)+". Reload the page; if it persists, the site needs republishing." : "Pick a club from the Teams list."}</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   if(location.hash.slice(1) !== h) return;
   const seasons = D.seasons.slice().sort((a,b) => a.year - b.year), years = seasons.map(s => s.year), y = year && years.includes(year) ? year : years[years.length-1];
@@ -103,11 +103,13 @@ PP.pages.team = async (main, h) => {
 
 function lg(){ const L = T.L, rows = L.seasons[String(T.year)] || [], c = L.cols; return rows.map(r => Object.fromEntries(c.map((k,i) => [k, r[i]]))); }
 function rankOf(key, hiGood=true){ const rows = lg().filter(r => r[key] != null), me = rows.find(r => r.team === T.D.team); if(!me) return null; const sorted = rows.slice().sort((a,b) => hiGood ? b[key]-a[key] : a[key]-b[key]); return {rank: sorted.indexOf(me)+1, of: rows.length}; }
+// injury status (160) for this club's own players only; an injured player missing from recent matchday squads has not left
+function injHere(id){ const st = PP.injStatus(id, T.year); return st && st.t === T.D.team ? st : null; }
 function confRank(){ const conf = T.D.conference, east = new Set(T.L.east), rows = lg().filter(r => (east.has(r.team) ? "East" : "West") === conf).map(r => ({team:r.team, pts:(r.pts_pg||0)*(r.games||0), g:r.games})); rows.sort((a,b) => b.pts - a.pts || a.g - b.g); return {rank: rows.findIndex(r => r.team === T.D.team)+1, of: rows.length}; }
 
 function render(main){
   const s = T.s, cur = s.year === 2026 && s.forecast;
-  main.innerHTML = identity() + plate() + `<div id="tmgr"></div>` + piecesSection() + playSection() + resultsSection() + (cur ? runinSection() : "") + rankSection() + moneySection() + detailSection();
+  main.innerHTML = identity() + plate() + `<div id="tmgr"></div>` + piecesSection() + injSection() + playSection() + resultsSection() + (cur ? runinSection() : "") + rankSection() + moneySection() + detailSection();
   if(PP.managerCard) PP.managerCard(T.D.team, T.year).then(html => { const el = $("#tmgr"); if(el) el.outerHTML = html; });
   PP.bindDisclosures(main);
   $$(".tseason button", main).forEach(b => b.addEventListener("click", () => { location.hash = `#team-${T.D.slug}-${b.dataset.y}`; }));
@@ -119,7 +121,7 @@ function render(main){
   if($("#televo")) PP.chart($("#televo"), drawElo);
   if($("#tseeds")) PP.chart($("#tseeds"), drawSeeds);
   $$(".cstrip").forEach(el => PP.chart(el, drawStrip));
-  ["#tstrength","#tzones","#txi","#tresults","#televo","#tseeds",".cstrips","#tsquad",".tstyle"].forEach(q => $$(q).forEach(PP.bindTips));
+  ["#tstrength","#tzones","#txi","#tresults","#televo","#tseeds",".cstrips","#tsquad",".tstyle","#tdetail","#tinj"].forEach(q => $$(q).forEach(PP.bindTips));
 }
 
 /* identity */
@@ -204,9 +206,9 @@ function piecesSection(){
   const groups = {}; ros.forEach(p => { const g = POSG[p.pos] || "Position not recorded"; (groups[g] = groups[g] || []).push(p); });
   const val = p => p.pos === "GK" ? p.skill : p.rating;          // keepers by shot-stopping (owner, 2026-10-17)
   const all = ros.map(val).filter(v => v != null), M = Math.max(1, ...all.map(Math.abs));
-  const row = p => { const v = val(p), gone = squad && !squad.has(p.id), off = out.has(p.id);
+  const row = p => { const v = val(p), hurt = injHere(p.id), gone = squad && !squad.has(p.id) && !hurt, off = out.has(p.id);
     return `<a class="sqrow${gone?" gone":""}" href="#player-${p.id}-${s.year}" data-tip="${esc(`<b>${esc(p.name)}</b><br>${PP.POS[p.pos]||"Position not recorded"}, ${PP.int(p.mins)} minutes<br>${p.pos==="GK"?`${sgn(p.skill,1)} goals of shot-stopping`:`${sgn(p.rating)} goals above replacement`}${p.lo!=null?` (range ${num(p.lo,1)} to ${num(p.hi,1)})`:""}${p.pos==="GK"&&p.gp!=null?`<br>${sgn(p.gp,1)} goals prevented this season`:""}<br>${PP.SLOT[p.slot]||p.slot||"No contract type on record"}${p.comp?`, ${money(p.comp)}`:""}`)}">
-      <span class="nm">${esc(p.name)}${PP.badgeMini(PP.badgesFor(p.id, s.year, T.D.team))}${off?` <span class="tag">out</span>`:""}${gone?` <span class="tag">left</span>`:""}</span><span class="r-small">${PP.int(p.mins)} min</span>
+      <span class="nm">${esc(p.name)}${PP.badgeMini(PP.badgesFor(p.id, s.year, T.D.team))}${hurt?PP.injMark(p.id, s.year):""}${off&&!hurt?` <span class="tag">out</span>`:""}${gone?` <span class="tag">left</span>`:""}</span><span class="r-small">${PP.int(p.mins)} min</span>
       <span class="dz"><span class="z"></span>${v!=null?`<span class="b ${v>=0?"pos":"neg"}" style="${v>=0?`left:50%;width:${v/M*50}%`:`left:${50+v/M*50}%;width:${-v/M*50}%`}"></span>`:""}</span><span class="num v">${v!=null?sgn(v,2):"–"}</span></a>`; };
   const order = ["Goalkeepers","Defence","Midfield","Attack","Position not recorded"];
   const sq = order.filter(g => groups[g]).map(g => { const tot = groups[g].map(val).filter(v => v != null).reduce((a,b)=>a+b,0);
@@ -216,7 +218,7 @@ function piecesSection(){
   const impH = imp.length ? `<div class="impact"><h3 class="r-heading">Who they can least afford to lose</h3><p class="r-small">The rest of the season re-simulated with each of their four most valuable outfield players replaced by a replacement-level player. Computed ${PP.dateLong(s.impact_date)} with the earlier lineup model (Elo plus lineup strength).</p>
       <div class="tbl-wrap"><table class="dtable"><thead><tr><th>Without</th><th class="n">Points</th><th class="n">Playoffs</th><th class="n">MLS Cup</th></tr></thead><tbody>${imp.map(p => `<tr><td><a href="#player-${p.id}">${esc(p.name)}</a></td><td class="n">${sgn(p.d_points,1)}</td><td class="n">${PP.pp(p.d_playoffs)} pts</td><td class="n">${PP.pp(p.d_cup)} pts</td></tr>`).join("")}</tbody></table></div></div>` : "";
   return `<section class="band" id="pieces" aria-labelledby="pieces-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>The most-used starting eleven of ${s.year}, each player drawn by the value he adds above a replacement at his position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p></div>
+    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>The most-used starting eleven of ${s.year}, each player drawn by the value he adds above a replacement at his position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p>${ros.some(p => injHere(p.id)) ? `<p class="r-small injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</p>` : ""}</div>
     <div class="pieces">
       <div class="pleft"><figure class="tfig"><div class="fig-cap"><span class="r-label">Most-used eleven${s.formation?`, ${esc(s.formation)}`:""}</span><span class="r-small">Size and colour: value added in ${s.year}</span></div><div class="chart" id="txi"></div></figure>${impH}</div>
       <aside class="aside" id="tsquad">
@@ -245,9 +247,35 @@ function drawXI(el){
   xi.forEach(p => { const c = at(p), q = {x:0,y:0}, v = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(v||0) * 3.2)), f = PP.valueFill(v||0, 5);
     const g = p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open his page`},svg) : svg;
     S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, started ${Math.round((p.share||0)*100)}% of matches<br>${p.pos==="GK"?"Shot-stopping":"Value above replacement"}: ${sgn(v,2)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
+    const st = injHere(p.ws_player_id);
+    if(st){ const m = S("g",{transform:`translate(${c.cx + rr*0.55},${c.cy - rr*0.55 - 14})`,class:"xi-inj","data-tip":esc(PP.injTip(st))},g);
+      S("rect",{width:13,height:13,rx:3,style:`fill:${st.s === "q" ? "#B07A00" : "var(--flare)"}`,stroke:"var(--paper)","stroke-width":1.5},m);
+      S("path",{d:"M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z",transform:"translate(1.5,1.5)",fill:"#fff"},m); }
     text(g, c.cx, c.cy+4, sgn(v,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
     text(g, c.cx, c.cy+rr+13, surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
+}
+
+/* injuries (160): league games the club's players missed through injury, as Transfermarkt records them */
+function injSection(){
+  const I = PP.data.inj, s = T.s, y = String(s.year), tm = I && ((I.teams || {})[T.D.team] || {})[y];
+  if(!tm) return "";                                                   // only club-seasons whose histories cover 80%+ of minutes
+  const dm = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"});
+  const rows = (s.roster || []).map(p => { const sp = ((I.history || {})[p.id] || []).filter(x => x[4] === s.year && x[5] === T.D.team).sort((a,b) => a[0] < b[0] ? -1 : 1);
+      return {p, sp, n: ((I.missed || {})[p.id] || {})[y] || 0}; }).filter(r => r.sp.length && (r.n || injHere(r.p.id))).sort((a,b) => b.n - a.n || (a.sp[0][0] < b.sp[0][0] ? -1 : 1));
+  const now = (s.roster || []).filter(p => injHere(p.id));
+  const all = Object.values(I.teams).map(v => v[y]).filter(Boolean), clubs = lg().length;
+  const above = all.filter(v => v.g > tm.g).length, tied = all.filter(v => v.g === tm.g).length > 1;
+  const rank = all.length === clubs && clubs ? `: the ${tied ? "joint " : ""}${above ? PP.ord(above + 1) + " " : ""}most of ${clubs} clubs` : "";
+  const M = Math.max(1, ...rows.map(r => r.n));
+  const spells = sp => sp.map(x => `${esc(cap(x[2]))} <span class="r-small">${dm(x[0])} to ${x[1] ? dm(x[1]) : "now"}</span>`).join("<br>");
+  const tr = rows.map(r => `<tr><td><a href="#player-${r.p.id}-${s.year}">${esc(r.p.name)}</a>${injHere(r.p.id) ? PP.injMark(r.p.id, s.year) : ""}</td><td>${spells(r.sp)}</td><td class="n">${PP.int(r.p.mins)}</td>
+      <td><span class="ibar"><span style="width:${r.n/M*100}%"></span></span></td><td class="n">${r.n}</td></tr>`).join("");
+  return `<section class="band" id="tinj" aria-labelledby="tinj-h"><div class="wrap">
+    <div class="band-head"><h2 class="r-title" id="tinj-h">Injuries</h2><p>${esc(short(T.D.team))}'s players missed ${PP.int(tm.g)} league game${tm.g === 1 ? "" : "s"} through injury or illness in ${s.year}${rank}.${now.length ? ` Out or questionable now: ${now.map(p => `<a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${PP.injMark(p.id, s.year)}`).join(", ")}.` : ""}</p></div>
+    ${rows.length ? `<div class="tbl-wrap"><table class="dtable injtable"><thead><tr><th>Player</th><th>Injury</th><th class="n">Minutes played</th><th></th><th class="n">League games missed</th></tr></thead><tbody>${tr}</tbody></table></div>` : `<p>No league games missed through injury recorded for the club's players this season.</p>`}
+    <p class="r-small injfoot">A league game counts once per player, however many injuries overlap it: regular-season games the club played while the player was injured and did not play. Injuries are listed under the club the player played most for that season. Covers players with ${Math.round(tm.cov*100)}% of the club's ${s.year} minutes. Injuries: Transfermarkt${s.year === (I.season || 0) ? "; out and questionable now also from the MLS availability report" : ""}.</p>
+  </div></section>`;
 }
 
 /* how they play */
@@ -439,7 +467,7 @@ function moneySection(){
 function detailSection(){
   const s = T.s, ros = s.roster || [], ms = (s.matches || []).slice().reverse(), out = new Set(s.out || []), squad = s.squad ? new Set(s.squad) : null;
   const disc = (id, title, inner) => `<div class="ddisc"><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="${id}">${title}</button><div class="disc" id="${id}" aria-hidden="true"><div><div class="why-body">${inner}</div></div></div></div>`;
-  const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${out.has(p.id)?" (out)":""}${squad&&!squad.has(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?`${sgn(p.skill,1)} shot-stopping`:sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
+  const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${injHere(p.id)?PP.injMark(p.id, s.year):""}${out.has(p.id)&&!injHere(p.id)?" (out)":""}${squad&&!squad.has(p.id)&&!injHere(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?`${sgn(p.skill,1)} shot-stopping`:sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
   const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${PP.crestTag(x[1])}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
   const hr = T.seasons.slice().reverse().map(x => `<tr><td><a href="#team-${T.D.slug}-${x.year}">${x.year}</a></td><td class="n">${x.games}</td><td class="n">${x.w}–${x.d}–${x.l}</td><td class="n">${x.pts}</td><td class="n">${x.gf}–${x.ga}</td><td class="n">${num(x.xgf,1)}–${num(x.xga,1)}</td><td class="n">${PP.ord(x.pts_pg_rank)}</td><td class="n">${PP.ord(x.xgd_pg_rank)}</td><td class="n">${sgn(x.squad_value,1)}</td></tr>`).join("");
   return `<section class="band" id="tdetail" aria-labelledby="tdet-h"><div class="wrap">

@@ -909,3 +909,19 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 @media (min-width:700px){.rolelist{grid-template-columns:1fr 1fr}}
 .rolelist dt{font-weight:650}
 .rolelist dd{margin:2px 0 0;color:var(--ink-2);font-size:var(--t-13)}
+
+/* injuries (160, 2026-10-21): a cross after a name in the rankings (red out, amber questionable); the player page note */
+.injm{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:6px;border-radius:3px;vertical-align:-2px;cursor:help;color:#fff}
+.injm.out{background:var(--flare)}
+.injm.q{background:#B07A00}
+.pinj{margin-top:var(--s-4);padding:var(--s-3) var(--s-4);border-left:3px solid var(--flare);background:var(--well);border-radius:0 6px 6px 0;max-width:720px}
+.pinj p{margin:var(--s-1) 0}
+.pinj .injm{margin:0 6px 0 0;cursor:default}
+.pinj-list{margin:var(--s-1) 0;padding-left:20px;list-style:disc}
+.injkey{white-space:normal}
+.injkey .injm{margin:0 2px 0 4px;cursor:default}
+.pinj-list li{margin:2px 0}
+.ibar{display:block;height:8px;min-width:80px;background:var(--well);border-radius:2px;overflow:hidden}
+.ibar span{display:block;height:100%;background:var(--flare);opacity:.8}
+.injtable td{vertical-align:top}
+.injfoot{margin-top:var(--s-3);max-width:900px}

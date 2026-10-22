@@ -53,7 +53,7 @@ PP.pages.player = async (main, h) => {
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${ix ? clubTag(ix[2], true) : ""}</div><h1 class="r-name">${ix ? esc(ix[1]) : "Player"}</h1><p class="r-small">Loading the model's numbers for this player.</p></section></div>`;
   let rec, peers, teams;
   let photo = null;
-  try { [{rec, teams}, peers, , , photo] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles()]); }
+  try { [{rec, teams}, peers, , , photo] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles(), PP.loadInjuries()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">This player's data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   if(location.hash.slice(1) !== h && !(h === "player-"+id && location.hash === "")) return;
   if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No player with this link</h1><p>Search for him by name above.</p></section></div>`; return; }
@@ -103,8 +103,25 @@ function identity(){
     <h1 class="r-name" id="pname">${esc(rec.name)}</h1>
     ${PP.badgeChips(PP.badgesFor(rec.id, year, s.team), s.pos, year)}
     <dl class="pfacts">${facts.map(([k,v,tip]) => `<div><dt>${k}</dt><dd${tip ? ` class="prole" data-tip="${esc(tip)}"` : ""}>${esc(v)}</dd></div>`).join("")}</dl>
+    ${injNote(rec.id, year)}
     ${years.length > 1 ? `<div class="seg pseason" role="group" aria-label="Season">${years.map(y => `<button type="button" data-y="${y}" aria-pressed="${y===year}">${y}</button>`).join("")}</div>` : ""}
   </section></div>`;
+}
+
+/* injuries (160, owner 2026-10-21): the current status, then Transfermarkt's spells that touch this season, each with the
+   club's regular-season games in that time that he did not play in (our count; Transfermarkt's covers every competition) */
+function injNote(id, year){
+  const I = PP.data.inj; if(!I) return "";
+  const st = PP.injStatus(id, year), sp = ((I.history || {})[id] || []).filter(x => x[4] === year).sort((a,b) => a[0] < b[0] ? -1 : 1);
+  if(!st && !sp.length) return "";
+  const games = n => n === 0 ? "no league games missed" : `${n} league game${n === 1 ? "" : "s"} missed`;
+  const missed = ((I.missed || {})[id] || {})[year] || 0;          // each game once, however many spells overlap it
+  const cap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
+  const src = st ? (st.src === "tm" ? `Transfermarkt, ${PP.dayShort(I.tm_date)}` : `MLS availability report, ${PP.dayShort(I.mls_report)}`) : "";
+  const now = st ? `<p class="pinj-now"><span class="injm ${st.s === "q" ? "q" : "out"}" aria-hidden="true">${PP.INJ_SVG}</span><b>${st.s === "q" ? "Questionable" : "Out"}</b>: ${esc(st.r)}${st.since ? `, since ${PP.dayShort(st.since)}` : ""}${st.src === "tm" ? (st.back ? `. Expected back ${PP.dayShort(st.back)}` : ". No expected return given") : ""}. <span class="r-small">${src}</span></p>` : "";
+  const list = sp.length ? `<ul class="pinj-list">${sp.map(x => `<li>${esc(cap(x[2]))}, ${PP.dayShort(x[0])} to ${x[1] ? PP.dayShort(x[1]) : "now"}${x[3] != null ? ` (${PP.int(x[3])} days)` : ""}: ${games(x[6])}${x[6] && x[5] ? ` for ${esc(short(x[5]))}` : ""}</li>`).join("")}</ul>` : "";
+  const sum = sp.length ? `<p class="r-small">${missed ? `${PP.int(missed)} league game${missed === 1 ? "" : "s"} missed through injury in ${year}. ` : ""}Season totals count only the minutes played. Injuries: Transfermarkt.</p>` : "";
+  return `<div class="pinj"><div class="r-label">Injuries, ${year}</div>${now}${list}${sum}</div>`;
 }
 
 /* ---------------- outfield ---------------- */
