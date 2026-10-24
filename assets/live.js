@@ -87,6 +87,9 @@ async function stats(id){
     corners: t.corner_kicks_sum, fouls: t.fouls_sum, offsides: t.offsides, yellow: t.cards_yellow, red: red(t)});
   return {status: s.match_status, clock: clock(s.minute_of_play, s.match_status), gh, ga, rh: red(h), ra: red(a), home: row(h), away: row(a)};
 }
+/* our own xG and player ratings for the match, from the live poller (165) via the site's R2 bucket; null when absent */
+const ours = (L, wsId) => !L.live_base ? Promise.resolve(null)
+  : fetch(`${L.live_base}/m/${wsId}.json?v=${Math.floor(Date.now() / 20e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
 async function events(id){
   const d = await get(`/matches/${id}/key_events?per_page=500`);
   const ev = ((d && d.events) || []).slice().sort((x, y) => String(x.event.event_time).localeCompare(String(y.event.event_time)));
@@ -148,9 +151,11 @@ function drawCurve(el, m, C, ev){
   if(W >= 520){ let prev = Infinity; lab.map(([v, s]) => [sy(v) + 4, s]).sort((a, b) => b[0] - a[0]).forEach(([y, s]) => { const yy = Math.min(y, prev - 14); prev = yy; text(svg, xr, Math.max(yy, mg.t + 4), s, "t-lab", {}); }); }
 }
 const statRows = [["shots", "Shots"], ["on", "On target"], ["poss", "Possession"], ["corners", "Corners"], ["fouls", "Fouls"], ["yellow", "Yellow cards"], ["red", "Red cards"]];
-function statsHtml(m, s){
+function statsHtml(m, s, O){
   const [ch, ca] = PP.pairKit(m.home, m.away);
-  return `<div class="lstats">${statRows.map(([k, l]) => { const a = +s.home[k] || 0, b = +s.away[k] || 0, t = a + b, f = k === "poss" ? v => Math.round(v) + "%" : v => v;
+  const rows = O ? [["xg", "Expected goals"]].concat(statRows) : statRows;
+  if(O){ s = {home: {...s.home, xg: O.xg[0]}, away: {...s.away, xg: O.xg[1]}}; }
+  return `<div class="lstats">${rows.map(([k, l]) => { const a = +s.home[k] || 0, b = +s.away[k] || 0, t = a + b, f = k === "poss" ? v => Math.round(v) + "%" : k === "xg" ? v => PP.num(v, 2) : v => v;
     return `<div class="lsr"><span class="num">${f(a)}</span><span class="lsl">${l}</span><span class="num">${f(b)}</span><div class="lsb">${t ? `<i style="width:${a / t * 100}%;background:${ch}"></i><i style="width:${b / t * 100}%;background:${ca}"></i>` : `<i style="width:100%;background:var(--well)"></i>`}</div></div>`; }).join("")}</div>`;
 }
 const ICON = {goal: `<i class="lev-i goal" aria-hidden="true"></i>`, yellow: `<i class="lev-i card y" aria-hidden="true"></i>`, red: `<i class="lev-i card r" aria-hidden="true"></i>`, second: `<i class="lev-i card yr" aria-hidden="true"></i>`, sub: `<i class="lev-i sub" aria-hidden="true">⇄</i>`};
@@ -160,6 +165,16 @@ function eventsHtml(m, ev){
   if(!ev.length) return `<p class="r-small">No goals, cards or substitutions yet.</p>`;
   return `<ol class="levents">${ev.slice().reverse().map(e => `<li class="lev ${e.side ? "a" : "h"}${e.kind === "goal" ? " is-goal" : ""}"><span class="num lmin">${esc(e.label)}</span>${ICON[e.kind]}
     <span class="lwho">${PP.chip(e.side ? m.away : m.home)}<span class="sr">${KIND[e.kind]}: </span>${e.kind === "sub" ? `${esc(e.who)} <span class="r-small">for ${esc(e.off)}</span>` : `${esc(e.who)}${e.kind === "goal" ? ` <b class="num">${e.score[0]}–${e.score[1]}</b>${e.own ? ` <span class="r-small">own goal</span>` : e.assist ? ` <span class="r-small">assist ${esc(e.assist)}</span>` : ""}` : ""}`}</span></li>`).join("")}</ol>`;
+}
+const POSN = {CB: "CB", FB: "FB", CM_DM: "CM", AM: "AM", W: "W", ST: "ST", GK: "GK"};
+function playersHtml(m, O){
+  const pages = PP._pageIds || (PP._pageIds = new Set((PP.data.index || []).map(r => r[0])));
+  const side = k => { const arr = O.players.filter(p => p[2] === k && p[3] !== "GK" && p[7] != null).sort((a, b) => b[7] - a[7]);
+    const mx = Math.max(0.05, ...arr.map(p => Math.abs(p[7])));
+    return `<div class="mtop"><h3 class="r-heading">${PP.clubTag(k ? m.away : m.home, true)}</h3>${arr.map(p => {
+      const nm = esc(p[1] || ""), link = !pages.size || pages.has(p[0]);
+      return `<${link ? `a href="#player-${p[0]}"` : "div"} class="prow" data-tip="${esc(`<b>${p[1]}</b><br>Attack ${PP.sgn(p[5], 2)}, ball-winning ${PP.sgn(p[6], 2)}`)}"><span class="nm">${nm}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[7]) / mx * 100)}%;background:${p[7] >= 0 ? "var(--turf)" : "var(--flare)"}"></i></span><span class="v num">${PP.sgn(p[7], 2)}</span><span class="r-small">${POSN[p[3]] || ""}, ${Math.round(p[4])} min</span></${link ? "a" : "div"}>`; }).join("")}</div>`; };
+  return `<div class="mtops">${side(0)}${side(1)}</div>`;
 }
 const ingredients = L => L.variant === "L2" ? "the score, red cards, how teams play when ahead or behind, and the time left" : L.variant === "L1" ? "the score, red cards and the time left" : "the score and the time left";
 const note = L => `Live score and events from the league's match feed, refreshed every 30 seconds. The live chances start from the forecast before kickoff and update with ${ingredients(L)}, including typical stoppage time: each side's scoring rate through a match (after Dixon and Robinson, 1998), fitted on MLS regular-season matches 2021–25.`;
@@ -185,9 +200,11 @@ async function page(m, el){
   const id = L.ids[String(m.id)]; if(!id) return false;
   const hash = location.hash.slice(1); let C = null, EV = [];
   el.innerHTML = `<div class="wrap"><section class="plate pplate mplate lplate" aria-live="polite"><div class="pp-left"><span class="r-label">Live</span><p class="r-small">Checking the match feed.</p></div><div class="pp-right"></div></section></div>
-    <section class="band" id="lcurvesec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>${esc(short(m.home))} win (bottom), draw, ${esc(short(m.away))} win (top), as the match has gone. Circles are goals, rectangles red cards; hover them.</p></div><div class="chart" id="lcurve"></div></div></section>`;
+    <section class="band" id="lcurvesec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>${esc(short(m.home))} win (bottom), draw, ${esc(short(m.away))} win (top), as the match has gone. Circles are goals, rectangles red cards; hover them.</p></div><div class="chart" id="lcurve"></div></div></section>
+    <section class="band" id="lxgsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, shot by shot</h2><p>Expected goals added up through the match, from the same model as the match reports; filled circles are goals. Hover a shot.</p></div><div class="chart" id="lxg"></div></div></section>
+    <section class="band" id="lplsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">Player ratings, live</h2><p>Each player's value added so far above a replacement player in the same minutes: the same model as the season ratings. Provisional: about two minutes behind play, updated every two minutes, and recalculated overnight with the final data. Hover a player for attack and ball-winning; keepers are rated after the match.</p></div><div id="lpl"></div><p class="r-small" id="lplup"></p></div></section>`;
   every(POLL_PAGE, hash, async () => {
-    const [s, ev] = await Promise.all([stats(id), events(id)]);
+    const [s, ev, O] = await Promise.all([stats(id), events(id), ours(L, m.id)]);
     if(location.hash.slice(1) !== hash) return false;
     if(!s){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">The match feed is not answering; trying again shortly.</p>`; return true; }
     if(!s.clock.on && !s.clock.done){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">${s.clock.pre ? "Not kicked off yet. The live score and chances appear here from kickoff." : "No live data for this match."}</p>`; return true; }
@@ -201,8 +218,14 @@ async function page(m, el){
       <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[0])}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[1])}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[2])}</b><br>${esc(short(m.away))} win</span></div>
       <p class="r-small">Before kickoff: ${pctShort(m.pH)} ${esc(short(m.home))} win, ${pctShort(m.pD)} draw, ${pctShort(m.pA)} ${esc(short(m.away))} win.</p>
       <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
-    $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s)}<p class="r-small">${note(L)}</p>`;
+    $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
     C = curve(L, m, EV, now);
+    if(O && O.players && O.players.length){
+      $("#lxgsec").hidden = false; $("#lplsec").hidden = false;
+      if(PP.drawRace) { PP.chart($("#lxg"), e2 => PP.drawRace(e2, m, {xg: O.xg, shots: O.shots})); PP.bindTips($("#lxg")); }
+      $("#lpl").innerHTML = playersHtml(m, O); PP.bindTips($("#lpl"));
+      $("#lplup").textContent = `Last updated ${new Date(O.updated).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", timeZone: "America/New_York"})} ET, at ${O.elapsed || "kickoff"}.`;
+    }
     $("#lcurvesec").hidden = false;
     PP.chart($("#lcurve"), e2 => drawCurve(e2, m, C, EV)); PP.bindTips($("#lcurve"));
     return !now.done;

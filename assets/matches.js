@@ -181,6 +181,8 @@ function drawRace(el, m, R){
     "data-tip":`<b>${p[3] ? "Goal" : "Shot"}</b>, ${p[0]}'<br>${esc(p[4]||"")}, ${esc(short(p[1] ? m.away : m.home))}<br>${num(p[2],2)} expected goals`},svg));
 }
 
+PP.drawRace = drawRace;          // the live page draws the same chart from the live poller's shots (live.js)
+
 /* ---------------- match page ---------------- */
 PP.pages.match = async (main, h) => {
   const id = h.split("-")[1];
