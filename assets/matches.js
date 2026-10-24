@@ -83,21 +83,25 @@ PP.pages.matches = async main => {
       <div class="fixtures">${group(past).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(pastRow).join("")}`).join("")}</div></section>`;
     if(PP.live) PP.live.list($("#mlist"), M.matches);
   };
-  /* matchdays, as on the previous site (owner, 2026-10-09): walk the season in kickoff order; a new matchday starts after
-     a day without matches or when a club would play twice; rounds of six or more matches are numbered, and a round played
-     only Tuesday to Thursday is midweek. Days are US Eastern. */
+  /* matchdays: the league's official rounds, numbered as the matchday review pages number them (75's md from 141; owner,
+     2026-10-24). Until then the page grouped matches by its own rule (a new round after a day without matches, numbered
+     only from six matches), which fell a round behind the league after the five-match Matchday 16. A rescheduled game sits
+     in the round being played when it is played; a round played only Tuesday to Thursday is midweek. Days are US Eastern.
+     A match without a round (none expected; 87 checks) is shown on its own as an extra. */
   const ymd = m => kickDate(m).toLocaleDateString("en-CA", {timeZone: "America/New_York"});
   const dShort = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", {day: "numeric", month: "short", timeZone: "UTC"});
   const dRange = (a, b) => { if(a === b) return dShort(a); const [da, ma] = dShort(a).split(" "), [db, mb] = dShort(b).split(" "); return ma === mb ? `${da} to ${db} ${mb}` : `${dShort(a)} to ${dShort(b)}`; };
   const slates = (() => {
-    const out = []; let cur = null;
-    const gap = (a, b) => (new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 864e5;
-    all.forEach(m => { const d = ymd(m);
-      if(!cur || gap(cur.last, d) >= 2 || cur.teams.has(m.home) || cur.teams.has(m.away)){ cur = {matches: [], teams: new Set(), first: d, last: d}; out.push(cur); }
-      cur.matches.push(m); cur.teams.add(m.home); cur.teams.add(m.away); cur.last = d; });
-    let n = 0;
-    return out.map((x, i) => { const full = x.matches.length >= 6, days = [...new Set(x.matches.map(m => new Date(ymd(m) + "T12:00:00Z").getUTCDay()))];
-      return {key: "s" + i, n: full ? ++n : null, kind: full ? (days.every(d => d >= 2 && d <= 4) ? "Midweek" : "Weekend") : "Extra", first: x.first, last: x.last, matches: x.matches}; });
+    const by = new Map();
+    all.forEach(m => { const k = m.md != null ? "s" + m.md : "x" + m.id; if(!by.has(k)) by.set(k, []); by.get(k).push(m); });
+    return [...by.entries()].map(([key, ms]) => {
+      // a round's dates are its main dates (within two days of its median date); a game played away from them, a
+      // rescheduled one, is named separately
+      const ds = ms.map(ymd).sort(), med = ds[Math.floor(ds.length / 2)], away = (a, b) => Math.abs(new Date(a + "T12:00:00Z") - new Date(b + "T12:00:00Z")) / 864e5;
+      const core = ds.filter(d => away(d, med) <= 2), days = [...new Set(core.map(d => new Date(d + "T12:00:00Z").getUTCDay()))], n = ms[0].md != null ? ms[0].md : null;
+      return {key, n, kind: n == null ? "Extra" : days.every(d => d >= 2 && d <= 4) ? "Midweek" : "Weekend", first: core[0], last: core[core.length - 1],
+              resched: [...new Set(ds.filter(d => away(d, med) > 2))], matches: ms};
+    }).sort((a, b) => (a.n ?? 1e9) - (b.n ?? 1e9) || a.first.localeCompare(b.first));
   })();
   if(!WK || !slates.some(x => x.key === WK)){
     const nx = slates.find(x => x.n && x.matches.some(m => m.status !== "played" && kickDate(m) > now - 2*3600e3));
@@ -111,7 +115,7 @@ PP.pages.matches = async main => {
     const strip = `<div class="wkstrip" role="group" aria-label="Matchdays">${slates.map(x => `<button type="button" class="wkb ${st(x)}${x.key === WK ? " on" : ""}" aria-pressed="${x.key === WK}" data-wk="${x.key}" title="${x.n ? `${x.kind} matchday ${x.n}` : "Extra match"}"><b>${x.n ? "MD" + x.n : "Extra"}</b><span>${dShort(x.first)}</span></button>`).join("")}</div>`;
     const head = `<div class="wkhead"><button type="button" class="wknav" data-step="-1"${i === 0 ? " disabled" : ""} aria-label="Previous matchday">‹</button>
       <div><h2 class="r-title">${w.n ? `Matchday ${w.n}` : "Extra match" + (w.matches.length > 1 ? "es" : "")} <span class="mdk">${w.kind}</span></h2>
-        <p class="r-small">${dRange(w.first, w.last)}, ${w.matches.length} match${w.matches.length === 1 ? "" : "es"}. Kickoff times are Eastern.</p></div>
+        <p class="r-small">${dRange(w.first, w.last)}, ${w.matches.length} match${w.matches.length === 1 ? "" : "es"}${w.resched.length ? `, including ${w.resched.length === 1 ? "a rescheduled game" : "rescheduled games"} on ${w.resched.map(dShort).join(", ").replace(/, ([^,]*)$/, " and $1")}` : ""}. Kickoff times are Eastern.</p></div>
       <button type="button" class="wknav" data-step="1"${i === slates.length - 1 ? " disabled" : ""} aria-label="Next matchday">›</button></div>`;
     const row = m => m.status === "played" ? pastRow(m) : upRow(m, motw && m.id === motw.id);
     const groups = SORT === "watch" && ups.length ? [["Most watchable first", w.matches.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1))]] : group(w.matches);
