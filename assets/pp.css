@@ -934,7 +934,7 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 @keyframes lpulse{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion: reduce){.lpill i{animation:none}}
 .fx .time .lsc{display:block;font-size:var(--t-17);font-weight:650;color:var(--ink);margin-top:2px}
-.fx.is-live{box-shadow:inset 3px 0 0 var(--flare)}
+.fx.is-live{border-left:4px solid var(--flare);padding-left:12px}
 .lpre{display:block}
 .lstats{display:grid;gap:var(--s-3);margin:var(--s-2) 0 var(--s-4)}
 .lsr{display:grid;grid-template-columns:3.2em 1fr 3.2em;align-items:center;row-gap:4px;font-size:var(--t-13)}
@@ -956,4 +956,5 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .lev-i.card.r{background:var(--flare)}
 .lev-i.card.yr{background:linear-gradient(135deg,#F2C200 50%,var(--flare) 50%)}
 .lev-i.sub{font-size:13px;line-height:1;color:var(--ink-2)}
-.fx.is-live .time{padding-left:10px}
+.fx.is-live.is-motw{border-left-color:var(--flare)}
+.fx .prematch[hidden],.stk-watch[hidden]{display:none}

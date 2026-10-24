@@ -10,7 +10,9 @@ const dayKey = d => d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",m
 const timeOf = d => d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).replace(" AM"," am").replace(" PM"," pm") + " ET";
 const src = s => s === "lineups" ? `<span class="src"><i class="st confirmed"></i>Confirmed lineups</span>` : s === "availability" ? `<span class="src"><i class="st likely"></i>Likely lineups from the availability report</span>` : `<span class="src"><i class="st model"></i>Team strength only; no lineup news yet</span>`;
 const pbar = (m, big) => { const [h, a] = PP.pairKit(m.home, m.away); return `<div class="pbar${big?" big":""}" role="img" aria-label="${esc(short(m.home))} ${pct(m.pH)}, draw ${pct(m.pD)}, ${esc(short(m.away))} ${pct(m.pA)}"><i style="width:${m.pH*100}%;background:${h}"></i><i style="width:${m.pD*100}%;background:var(--mid)"></i><i style="width:${m.pA*100}%;background:${a}"></i></div>`; };
-/* watchability, quality and importance (FiveThirtyEight's old match ratings; 29): restored on v3, owner 2026-10-09 */
+/* watchability, quality and importance (FiveThirtyEight's old match ratings; 29): restored on v3, owner 2026-10-09; pre-match
+   only: live.js hides them (.prematch, .stk-watch) once a match has kicked off (owner, 2026-10-24). The forecast's expected
+   goals are not shown (owner, 2026-10-24: they read as the match's own xG once it starts); live.js still uses them. */
 const r0 = v => Math.round(v);
 const watchChip = m => m.watchability == null ? "" : `<span class="wbadge" data-tip="${esc(`Watchability ${r0(m.watchability)}: the average of quality ${r0(m.quality)} (how strong both teams are) and importance ${r0(m.importance)} (how much the result moves their season goals)`)}"><b class="num">${r0(m.watchability)}</b> watchability</span>`;
 const WATCH_NOTE = "Watchability follows FiveThirtyEight's old match ratings: the average of quality (how strong both teams are, from the strength rating) and importance (how much the result moves each side's chances of its season goals in the playoff simulation). Both run from 0 to 100.";
@@ -66,7 +68,7 @@ PP.pages.matches = async main => {
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="probs">${pbar(m)}
         <div class="plab"><span><b>${pctShort(m.pH)}</b> win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> win</span></div></div>
-      <div class="stake">${hot ? `<span class="motw-tag">Match of the week</span>` : ""}${watchChip(m)}${src(m.source)}<span class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}${m.watchability!=null?`; quality ${r0(m.quality)}, importance ${r0(m.importance)}`:""}</span></div></a>`;
+      <div class="stake"><span class="prematch">${hot ? `<span class="motw-tag">Match of the week</span>` : ""}${watchChip(m)}${src(m.source)}${m.watchability!=null?`<span class="r-small">Quality ${r0(m.quality)}, importance ${r0(m.importance)}</span>`:""}</span></div></a>`;
     const pastRow = m => { const d = M.detail[String(m.id)] || {}, th = (d.top_home||[])[0], ta = (d.top_away||[])[0];
       return `<div class="fx fxl fxp" data-href="#match-${m.id}" role="link" tabindex="0"><span class="score num">${m.g_home}–${m.g_away}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
@@ -218,13 +220,13 @@ PP.pages.match = async (main, h) => {
         <div class="stk-tr" role="img" aria-label="${esc(short(m[s]))}: ${pct(w)} chance with a win, ${pct(l)} with a defeat"><i style="left:${lo*100}%;width:${Math.max(0.5, (hi - lo)*100)}%"></i><u class="l" style="left:${l*100}%"></u><u class="w" style="left:${w*100}%"></u></div>
         <div class="stk-lab"><span><u class="l"></u>With a defeat <b class="num">${pctShort(l)}</b></span><span><u class="w"></u>With a win <b class="num">${pctShort(w)}</b></span></div></div>`; };
     const watchFigs = m.watchability != null ? `<div class="motw-figs stk-watch"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
-      <p class="r-small">Watchability averages quality (how strong both teams are) and importance (how much the result moves their season goals), after FiveThirtyEight's old match ratings.</p>` : "";
+      <p class="r-small stk-watch">Watchability averages quality (how strong both teams are) and importance (how much the result moves their season goals), after FiveThirtyEight's old match ratings.</p>` : "";
     const outs = s => { const o = d["out_"+s], q = d["questionable_"+s]; return o || q ? `<p class="r-small"><b>${esc(short(m[s]))}</b>${o ? `: out, ${esc(o.split("; ").join(", "))}` : ""}${q ? `${o?"; ":": "}doubtful, ${esc(q.split("; ").join(", "))}` : ""}.</p>` : ""; };
     body = `<div class="wrap"><section class="plate pplate mplate">
         <div class="pp-left"><span class="r-label">The forecast</span>
           ${pbar(m, true)}
           <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pH)}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pD)}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pA)}</b><br>${esc(short(m.away))} win</span></div>
-          <p class="r-small">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}. ${src(m.source)}${d.elo_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.elo_pH)}, ${pctShort(d.elo_pD)}, ${pctShort(d.elo_pA)}.` : ""}</p>
+          <p class="r-small">${src(m.source)}${d.elo_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.elo_pH)}, ${pctShort(d.elo_pD)}, ${pctShort(d.elo_pA)}.` : ""}</p>
           ${recordNote(m, false)}
         </div>
         <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>

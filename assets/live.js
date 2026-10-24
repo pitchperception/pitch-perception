@@ -59,6 +59,7 @@ function probs(L, lamH, lamA, p, m, gh, ga, rh, ra, rho){
   return out;
 }
 const final = (gh, ga) => gh > ga ? [1, 0, 0] : gh === ga ? [0, 1, 0] : [0, 0, 1];
+const pc = v => v === 0 ? "0%" : v === 1 ? "100%" : pctShort(v);      // exact at full time; the site's format otherwise
 
 /* ---------------- the feed ---------------- */
 const get = path => fetch(API + path, {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -147,7 +148,7 @@ function drawCurve(el, m, C, ev){
     S(goal ? "circle" : "rect", goal ? {cx: x, cy: mg.t - 12, r: 6, fill: e.side ? ca : ch, stroke: "var(--paper)", "stroke-width": 1.5, "data-tip": `<b>${e.own ? "Own goal" : "Goal"}</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}<br>${e.score[0]}–${e.score[1]}`}
       : {x: x - 4, y: mg.t - 18, width: 8, height: 11, rx: 1.5, fill: "var(--flare)", "data-tip": `<b>Red card</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}`}, svg);
   });
-  const xr = W - mg.r + 8, lab = [[last[0] / 2, `${short(m.home)} ${pctShort(last[0])}`], [last[0] + last[1] / 2, `Draw ${pctShort(last[1])}`], [last[0] + last[1] + last[2] / 2, `${short(m.away)} ${pctShort(last[2])}`]];
+  const xr = W - mg.r + 8, lab = [[last[0] / 2, `${short(m.home)} ${pc(last[0])}`], [last[0] + last[1] / 2, `Draw ${pc(last[1])}`], [last[0] + last[1] + last[2] / 2, `${short(m.away)} ${pc(last[2])}`]];
   if(W >= 520){ let prev = Infinity; lab.map(([v, s]) => [sy(v) + 4, s]).sort((a, b) => b[0] - a[0]).forEach(([y, s]) => { const yy = Math.min(y, prev - 14); prev = yy; text(svg, xr, Math.max(yy, mg.t + 4), s, "t-lab", {}); }); }
 }
 const statRows = [["shots", "Shots"], ["on", "On target"], ["poss", "Possession"], ["corners", "Corners"], ["fouls", "Fouls"], ["yellow", "Yellow cards"], ["red", "Red cards"]];
@@ -211,11 +212,12 @@ async function page(m, el){
     EV = ev || EV;
     const now = s.clock, v = now.done ? final(s.gh, s.ga) : probs(L, m.xg_home, m.xg_away, now.p, now.m, s.gh, s.ga, s.rh, s.ra);
     const sc = $(".mscore"); if(sc){ sc.textContent = `${s.gh}–${s.ga}`; sc.classList.add("is-live"); }
+    $$(".stk-watch").forEach(e => { e.hidden = true; });             // watchability is a pre-match figure
     const pill = $(".lpill-head"); if(pill) pill.outerHTML = livePill(now);
     else { const lab = $(".mhead .r-label"); if(lab) lab.insertAdjacentHTML("afterend", livePill(now)); }
     $(".lplate .pp-left", el).innerHTML = `<span class="r-label">${now.done ? "Full time" : "Live chances"}</span>
       ${PP.pbarFor(m, v, true)}
-      <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[0])}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[1])}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(v[2])}</b><br>${esc(short(m.away))} win</span></div>
+      <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[0])}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[1])}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pc(v[2])}</b><br>${esc(short(m.away))} win</span></div>
       <p class="r-small">Before kickoff: ${pctShort(m.pH)} ${esc(short(m.home))} win, ${pctShort(m.pD)} draw, ${pctShort(m.pA)} ${esc(short(m.away))} win.</p>
       <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
     $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
@@ -249,8 +251,9 @@ async function list(root, matches){
     const v = s.clock.done ? final(s.gh, s.ga) : probs(L, m.xg_home, m.xg_away, s.clock.p, s.clock.m, s.gh, s.ga, s.rh, s.ra);
     $$(`[data-live="${w}"]`, me.root).forEach(r => {
       const t = $(".time", r); if(t) t.innerHTML = `${s.clock.done ? `<span class="lpill done">FT</span>` : `<span class="lpill"><i aria-hidden="true"></i>${esc(s.clock.short)}</span>`}<b class="lsc num">${s.gh}–${s.ga}</b>`;
-      const pb = $(".probs", r); if(pb) pb.innerHTML = `${PP.pbarFor(m, v)}<div class="plab"><span><b>${pctShort(v[0])}</b> win</span><span>${pctShort(v[1])} draw</span><span><b>${pctShort(v[2])}</b> win</span></div>`;
+      const pb = $(".probs", r); if(pb) pb.innerHTML = `${PP.pbarFor(m, v)}<div class="plab"><span><b>${pc(v[0])}</b> win</span><span>${pc(v[1])} draw</span><span><b>${pc(v[2])}</b> win</span></div>`;
       const st = $(".stake", r); if(st && !$(".lpre", st)) st.insertAdjacentHTML("afterbegin", `<span class="r-small lpre">${s.clock.done ? "Full time." : "Live chances."} Before kickoff ${pctShort(m.pH)}, ${pctShort(m.pD)}, ${pctShort(m.pA)}.</span>`);
+      $$(".prematch", r).forEach(e => { e.hidden = true; });          // watchability, lineup source: pre-match only
       r.classList.add("is-live");
     });
   });
