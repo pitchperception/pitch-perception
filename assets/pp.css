@@ -925,3 +925,35 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .ibar span{display:block;height:100%;background:var(--flare);opacity:.8}
 .injtable td{vertical-align:top}
 .injfoot{margin-top:var(--s-3);max-width:900px}
+
+/* live matches (live.js, 2026-10-24) */
+.lpill{display:inline-flex;align-items:center;gap:5px;font-size:var(--t-12);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--flare);white-space:nowrap}
+.lpill i{width:7px;height:7px;border-radius:50%;background:var(--flare);animation:lpulse 1.6s ease-in-out infinite}
+.lpill.done{color:var(--ink-2)}
+.mhead .lpill{margin-top:2px}
+@keyframes lpulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.lpill i{animation:none}}
+.fx .time .lsc{display:block;font-size:var(--t-17);font-weight:650;color:var(--ink);margin-top:2px}
+.fx.is-live{box-shadow:inset 3px 0 0 var(--flare)}
+.lpre{display:block}
+.lstats{display:grid;gap:var(--s-3);margin:var(--s-2) 0 var(--s-4)}
+.lsr{display:grid;grid-template-columns:3.2em 1fr 3.2em;align-items:center;row-gap:4px;font-size:var(--t-13)}
+.lsr .num:first-child{text-align:left;font-weight:650}
+.lsr .num:nth-child(3){text-align:right;font-weight:650}
+.lsl{text-align:center;color:var(--ink-2)}
+.lsb{grid-column:1 / -1;display:flex;gap:2px;height:6px}
+.lsb i{display:block;height:100%;min-width:2px}
+.lsb i:first-child{border-radius:3px 0 0 3px}.lsb i:last-child{border-radius:0 3px 3px 0}
+.levents{list-style:none;margin:var(--s-2) 0 0;padding:0;display:grid;gap:6px;max-height:340px;overflow:auto}
+.lev{display:grid;grid-template-columns:3.4em 16px 1fr;gap:var(--s-2);align-items:center;font-size:var(--t-13)}
+.lev.is-goal{font-weight:650}
+.lmin{color:var(--ink-2);text-align:right}
+.lwho{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.lev-i{display:inline-block;justify-self:center;font-style:normal}
+.lev-i.goal{width:11px;height:11px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--ink)}
+.lev-i.card{width:9px;height:12px;border-radius:1.5px}
+.lev-i.card.y{background:#F2C200}
+.lev-i.card.r{background:var(--flare)}
+.lev-i.card.yr{background:linear-gradient(135deg,#F2C200 50%,var(--flare) 50%)}
+.lev-i.sub{font-size:13px;line-height:1;color:var(--ink-2)}
+.fx.is-live .time{padding-left:10px}

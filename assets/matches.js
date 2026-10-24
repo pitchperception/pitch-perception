@@ -62,7 +62,7 @@ PP.pages.matches = async main => {
     const up = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m)).slice(0, FILTER === "all" ? 24 : 12);
     const past = all.filter(m => m.status === "played" && f(m)).reverse().slice(0, FILTER === "all" ? 24 : 34);
     const group = arr => { const g = []; arr.forEach(m => { const k = dayKey(kickDate(m)); if(!g.length || g[g.length-1][0] !== k) g.push([k, []]); g[g.length-1][1].push(m); }); return g; };
-    const upRow = (m, hot) => `<a class="fx fxl${hot ? " is-motw" : ""}" href="#match-${m.id}"><span class="time">${timeOf(kickDate(m))}</span>
+    const upRow = (m, hot) => `<a class="fx fxl${hot ? " is-motw" : ""}" href="#match-${m.id}"${PP.live && PP.live.inWindow(m) ? ` data-live="${m.id}"` : ""}><span class="time">${timeOf(kickDate(m))}</span>
       <div class="teams"><span>${clubTag(m.home, true)}</span><span>${clubTag(m.away, true)}</span></div>
       <div class="probs">${pbar(m)}
         <div class="plab"><span><b>${pctShort(m.pH)}</b> win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> win</span></div></div>
@@ -81,6 +81,7 @@ PP.pages.matches = async main => {
       <div class="fixtures">${upGroups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(upRow).join("")}`).join("") || `<p class="r-small">No matches scheduled.</p>`}</div></section>
       <section class="band"><div class="band-head"><h2 class="r-title">Results</h2><p>Scores, expected goals, and the player who added the most value on each side. Open a result for its match report.</p></div>
       <div class="fixtures">${group(past).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(pastRow).join("")}`).join("")}</div></section>`;
+    if(PP.live) PP.live.list($("#mlist"), M.matches);
   };
   /* matchdays, as on the previous site (owner, 2026-10-09): walk the season in kickoff order; a new matchday starts after
      a day without matches or when a club would play twice; rounds of six or more matches are numbered, and a round played
@@ -119,6 +120,7 @@ PP.pages.matches = async main => {
       <section class="band" style="padding-top:0"><div class="band-head"><p>${WATCH_NOTE}</p>${ups.length ? `<div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div>` : ""}</div>
       <div class="fixtures">${groups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(row).join("")}`).join("")}</div></section>`;
     const sw = $(".wkstrip"), on = $(".wkb.on"); if(sw && on) sw.scrollLeft = on.offsetLeft - sw.clientWidth / 2 + on.clientWidth / 2;
+    if(PP.live) PP.live.list($("#mlist"), M.matches);       // live scores and chances on rows being played (live.js)
   };
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Matches</h1><p class="r-note standfirst">Every 2026 match: the forecast before it, and what happened after. Open a match for lineups, stakes and who made the difference.</p>${recordLine()}
     <label class="fsel" style="justify-self:start"><span class="r-small">Club</span><select id="mteam"><option value="all">All clubs</option>${teams.map(t => `<option value="${esc(t)}"${t===FILTER?" selected":""}>${esc(full(t))}</option>`).join("")}</select></label></section>
@@ -196,6 +198,7 @@ PP.pages.match = async (main, h) => {
     ${played ? `<p class="dateline">Expected goals ${num(m.xg_home,2)} to ${num(m.xg_away,2)}.</p>${recordNote(m, true)}` : ""}
   </section></div>`;
   let body = "";
+  const liveOn = !played && PP.live && PP.live.inWindow(m);       // live score, events and chances while it is on (live.js)
   if(!played){
     const side = s => d["stake_"+s] && d["if_win_"+s] != null ? `<div class="ind"><span class="r-label">${esc(short(m[s]))}</span><span class="v">${STAKE(d["stake_"+s], conf(m[s])+"ern Conference")}</span><span class="r-small">${pct(d["if_win_"+s])} with a win, ${pct(d["if_loss_"+s])} with a defeat.</span></div>` : "";
     // what is at stake (owner, 2026-10-09: restyled to match the rest of the site): each side's most affected season goal,
@@ -239,7 +242,8 @@ PP.pages.match = async (main, h) => {
   body += `<section class="band" id="mform"><div class="wrap"><div class="band-head"><h2 class="r-title">The two clubs</h2><p>Team strength (half results, half chances) through 2026, and their recent meetings.</p></div>
     <div class="trajwrap"><figure class="tfig"><div class="chart" id="melo"></div><div class="legend"><span><i class="lg-line" style="--c:${PP.kit(m.home)}"></i>${esc(short(m.home))}</span><span><i class="lg-line${PP.pairKit(m.home, m.away)[2] ? " dash" : ""}" style="--c:${PP.pairKit(m.home, m.away)[1]}"></i>${esc(short(m.away))}</span></div></figure>
     <div><h3 class="r-heading">Recent meetings</h3>${h2h.length ? `<div class="h2h">${h2h.map(x => `<div class="h2r"><span class="r-small">${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})}</span><span>${esc(short(x[1]))} <b class="num">${x[3]}–${x[4]}</b> ${esc(short(x[2]))}</span></div>`).join("")}</div>` : `<p class="r-small">No meetings in our data.</p>`}</div></div></div></section>`;
-  main.innerHTML = head + body;
+  main.innerHTML = head + (liveOn ? `<div id="mlivebox"></div>` : "") + body;
+  if(liveOn) PP.live.page(m, $("#mlivebox"));
   if(!played) PP.chart($("#duel"), el => drawDuel(el, m, d));
   PP.chart($("#melo"), el => drawElo2(el, m));
   if($("#mrace")) PP.chart($("#mrace"), el => drawRace(el, RP.m, RP.R));
