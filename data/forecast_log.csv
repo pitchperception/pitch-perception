@@ -770,3 +770,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-24T23:35:08Z,1953076,2026-10-28T23:30:00Z,New England Revolution,Red Bull New York,0.5327,0.2441,0.2232,availability
 2026-10-24T23:35:08Z,1953077,2026-10-28T23:30:00Z,New York City FC,Atlanta United,0.5027,0.2512,0.2462,availability
 2026-10-24T23:35:08Z,1953078,2026-10-28T23:30:00Z,Toronto FC,DC United,0.4719,0.2571,0.271,availability
+2026-10-25T00:33:11Z,1953066,2026-10-25T01:30:00Z,Colorado Rapids,Vancouver Whitecaps,0.2667,0.2562,0.4771,lineups
+2026-10-25T00:33:11Z,1953071,2026-10-25T01:30:00Z,Real Salt Lake,St. Louis City,0.4208,0.2639,0.3154,lineups
