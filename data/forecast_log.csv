@@ -844,3 +844,4 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-25T09:39:36Z,1953086,2026-10-29T00:30:00Z,St. Louis City,Portland Timbers,0.5063,0.2494,0.2443,availability
 2026-10-25T09:39:36Z,1953078,2026-10-28T23:30:00Z,Toronto FC,DC United,0.4815,0.2543,0.2642,availability
 2026-10-25T09:39:36Z,1953087,2026-10-29T02:30:00Z,Vancouver Whitecaps,San Diego FC,0.5933,0.2256,0.1811,availability
+2026-10-26T00:02:00Z,1953073,2026-10-26T01:00:00Z,Los Angeles FC,LA Galaxy,0.628,0.2136,0.1585,lineups
