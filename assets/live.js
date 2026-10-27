@@ -3,7 +3,9 @@
    win / draw / defeat chances from the pre-match forecast and what has happened so far.
    The chances: each side's scoring rate through the match (Dixon and Robinson, 1998) on top of the pre-match Dixon-Coles
    forecast, with typical stoppage time; parameters in data/live.json (162, 163). The recursion below is the same as
-   162's live_probs, checked against its test cases (163 --check). */
+   162's live_probs, checked against its test cases (163 --check).
+   At full time (owner, 2026-10-27) the page shows the result and the forecast before kickoff, with our live xG and
+   ratings marked provisional, until the overnight update adds the match report (fullTime, after). */
 (function(){
 "use strict";
 const {$, $$, S, text, esc, pct, pctShort, short} = PP;
@@ -58,16 +60,20 @@ function probs(L, lamH, lamA, p, m, gh, ga, rh, ra, rho){
   for(let x = 0; x < N; x++) for(let y = 0; y < N; y++){ const d = gh + x - ga - y; out[d > 0 ? 0 : d === 0 ? 1 : 2] += G[x * N + y] / s; }
   return out;
 }
-const final = (gh, ga) => gh > ga ? [1, 0, 0] : gh === ga ? [0, 1, 0] : [0, 0, 1];
-const pc = v => v === 0 ? "0%" : v === 1 ? "100%" : pctShort(v);      // exact at full time; the site's format otherwise
+const pc = v => v === 0 ? "0%" : v === 1 ? "100%" : pctShort(v);      // exact where the in-play chances reach 0 or 1
+/* the forecast shown before kickoff: the live record's last row before kickoff (96, through matches.js), as a result's
+   match page shows it; else the match's own published figures */
+const preOf = m => { const r = PP.recordedBefore ? PP.recordedBefore(m.id) : null; return r ? [r[1], r[2], r[3]] : [m.pH, m.pD, m.pA]; };
 
 /* ---------------- the feed ---------------- */
 const get = path => fetch(API + path, {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
-const DONE = /final|full|end/i, BREAK = s => s === "half" || /^half|break|pause/i.test(s);
+/* full time is the feed's "finalWhistle", the only finished status in the stored feed (schedules 2024-26, key events).
+   Until 2026-10-27 any status containing "final", "full" or "end" counted, which would also catch e.g. "suspended" */
+const DONE = s => s === "finalWhistle", BREAK = s => s === "half" || /^half|break|pause/i.test(s);
 /* the feed's minute is the one being played, 1-based ("39", "45+2"); the model's is 0-based within its period */
 function clock(minute, status){
   status = status || "";
-  if(DONE.test(status)) return {p: 2, m: 999, label: "Full time", short: "FT", done: true, on: false};
+  if(DONE(status)) return {p: 2, m: 999, label: "Full time", short: "FT", done: true, on: false};
   if(BREAK(status)) return {p: 2, m: 45, label: "Half-time", short: "HT", on: true};
   if(!/firstHalf|secondHalf/.test(status)) return {p: 1, m: 0, label: "", short: "", on: false, pre: /schedul|pre/i.test(status)};
   const mm = String(minute || "").match(/^(\d+)(?:\+(\d+))?$/), p = status === "secondHalf" ? 2 : 1;
@@ -124,7 +130,7 @@ function curve(L, m, ev, now){
   const pts = [], push = (p, k, x) => pts.push({x, p, k, v: probs(L, m.xg_home, m.xg_away, p, k, ...state(p, k))});
   for(let k = 0; k <= (now.p === 1 && !now.done ? now.m : end1); k++) push(1, k, k);
   if(now.p === 2 || now.done) for(let k = 45; k <= Math.min(end2, 130); k++) push(2, k, end1 + 1 + (k - 45));
-  if(now.done){ const s = state(3, 0); pts.push({x: pts[pts.length - 1].x + 1, p: 2, k: 999, v: final(s[0], s[1])}); }
+  // at full time the curve ends with the last minute played; until 2026-10-27 it then stepped to 0% / 100% for the result
   return {pts, end1};
 }
 
@@ -134,7 +140,8 @@ function drawCurve(el, m, C, ev){
   const H = 230, mg = {l: 36, r: W < 520 ? 52 : 120, t: 26, b: 28}, [ch, ca] = PP.pairKit(m.home, m.away);
   const xmax = Math.max(C.end1 + 1 + 50, C.pts[C.pts.length - 1].x), sx = v => mg.l + v / xmax * (W - mg.l - mg.r), sy = v => mg.t + (1 - v) * (H - mg.t - mg.b);
   const last = C.pts[C.pts.length - 1].v;
-  const svg = S("svg", {width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Live chances through the match: ${short(m.home)} ${pct(last[0])}, draw ${pct(last[1])}, ${short(m.away)} ${pct(last[2])}`}, el);
+  const svg = S("svg", {width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": C.fin ? `The chances through the match, which ended ${short(m.home)} ${C.fin[0]}, ${short(m.away)} ${C.fin[1]}`
+    : `Live chances through the match: ${short(m.home)} ${pct(last[0])}, draw ${pct(last[1])}, ${short(m.away)} ${pct(last[2])}`}, el);
   const band = (lo, hi, fill) => { const top = C.pts.map((q, i) => `${i ? "L" : "M"}${sx(q.x)},${sy(hi(q.v))}`).join(""), bot = C.pts.slice().reverse().map(q => `L${sx(q.x)},${sy(lo(q.v))}`).join("");
     S("path", {d: top + bot + "Z", fill, opacity: 0.88}, svg); };
   band(v => 0, v => v[0], ch); band(v => v[0], v => v[0] + v[1], "var(--mid)"); band(v => v[0] + v[1], v => 1, ca);
@@ -148,7 +155,8 @@ function drawCurve(el, m, C, ev){
     S(goal ? "circle" : "rect", goal ? {cx: x, cy: mg.t - 12, r: 6, fill: e.side ? ca : ch, stroke: "var(--paper)", "stroke-width": 1.5, "data-tip": `<b>${e.own ? "Own goal" : "Goal"}</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}<br>${e.score[0]}–${e.score[1]}`}
       : {x: x - 4, y: mg.t - 18, width: 8, height: 11, rx: 1.5, fill: "var(--flare)", "data-tip": `<b>Red card</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}`}, svg);
   });
-  const xr = W - mg.r + 8, lab = [[last[0] / 2, `${short(m.home)} ${pc(last[0])}`], [last[0] + last[1] / 2, `Draw ${pc(last[1])}`], [last[0] + last[1] + last[2] / 2, `${short(m.away)} ${pc(last[2])}`]];
+  const xr = W - mg.r + 8, lab = C.fin ? [[0.5, `${C.fin[0]}–${C.fin[1]}`], [0.5, "Full time"]]      // the result, not 0% / 100%
+    : [[last[0] / 2, `${short(m.home)} ${pc(last[0])}`], [last[0] + last[1] / 2, `Draw ${pc(last[1])}`], [last[0] + last[1] + last[2] / 2, `${short(m.away)} ${pc(last[2])}`]];
   if(W >= 520){ let prev = Infinity; lab.map(([v, s]) => [sy(v) + 4, s]).sort((a, b) => b[0] - a[0]).forEach(([y, s]) => { const yy = Math.min(y, prev - 14); prev = yy; text(svg, xr, Math.max(yy, mg.t + 4), s, "t-lab", {}); }); }
 }
 const statRows = [["shots", "Shots"], ["on", "On target"], ["poss", "Possession"], ["corners", "Corners"], ["fouls", "Fouls"], ["yellow", "Yellow cards"], ["red", "Red cards"]];
@@ -191,9 +199,52 @@ function every(ms, hash, fn){
 }
 addEventListener("hashchange", () => { timers.forEach(clearTimeout); timers.clear(); });
 
-/* a match is in the live window from 10 minutes before kickoff until 12 hours after, until its result is in the site's data */
+/* a match is in the live window from 10 minutes before kickoff until its result is in the site's data (status "played",
+   from the overnight update), for at most 48 hours after kickoff, so one missed overnight update is covered. Until
+   2026-10-27 the window closed 12 hours after kickoff, and an afternoon match went back to its pre-match page (forecast,
+   stakes, likely lineups) from that evening until the overnight update */
+const WINDOW_H = 48;
 const kick = m => m.kickoff_utc ? new Date(m.kickoff_utc.replace("Z", ":00Z")) : null;
-const inWindow = (m, now = Date.now()) => { const k = kick(m); return m.status !== "played" && k && now >= k - 10 * 60e3 && now <= +k + 12 * 3600e3; };
+const inWindow = (m, now = Date.now()) => { const k = kick(m); return m.status !== "played" && k && now >= k - 10 * 60e3 && now <= +k + WINDOW_H * 3600e3; };
+
+/* full time (owner, 2026-10-27: "adopt the post-match view once the match is complete"): the result and the forecast
+   before kickoff, worded as the match report (matches.js report()), in place of the 0% / 100% chances shown at full time
+   from 2026-10-24 (deploy 4be4565) */
+function fullTime(m, s){
+  const p = preOf(m), w = s.gh > s.ga ? 0 : s.gh < s.ga ? 2 : 1, W = w === 2 ? m.away : m.home, Lo = w === 2 ? m.home : m.away;
+  const lede = w === 1 ? `${esc(short(m.home))} and ${esc(short(m.away))} drew ${s.gh}–${s.ga}.`
+    : `${esc(short(W))} ${w === 0 ? "beat" : "won at"} ${esc(short(Lo))} ${Math.max(s.gh, s.ga)}–${Math.min(s.gh, s.ga)}.`;
+  const said = p[w] != null ? ` Before kickoff the forecast gave ${w === 1 ? "a draw" : "them"} ${pct(p[w])}.` : "";
+  return `<span class="r-label">Full time</span><p class="r-note mlede">${lede}${said}</p>
+    <div class="mrbar"><span class="r-label">Before kickoff</span>${PP.pbarFor(m, p, true)}
+      <div class="plab"><span><b>${pct(p[0])}</b> ${esc(short(m.home))}</span><span>${pct(p[1])} draw</span><span><b>${pct(p[2])}</b> ${esc(short(m.away))}</span></div></div>
+    <p class="r-small">The match report, with the final player ratings, replaces this view after the overnight update, usually by 6 am ET.</p>`;
+}
+const FT_NOTE = "Score, events and statistics from the league's match feed. Expected goals and player ratings are from the live data after the final whistle and are provisional: the overnight update recalculates them from the final, corrected match data.";
+/* after the final whistle the page stops reading the league feed. It re-reads our live file until it is final (165
+   publishes it a minute or two after the whistle; for 30 minutes at most), and looks every 10 minutes for the match
+   report, which the overnight update adds (82: data/matchdays/index.json lists every played match); then it offers it */
+function after(m, L, el, hash, O0, drawOurs){
+  let n = 0, fin = !!(O0 && O0.final);
+  const t0 = Date.now();
+  every(120e3, hash, async () => {
+    n++;
+    if(n > 1 && !fin && Date.now() - t0 < 30 * 60e3){ const O = await ours(L, m.id); if(O){ drawOurs(O, true); fin = !!O.final; } }
+    if(n % 5 !== 1) return true;
+    const I = await fetch("data/matchdays/index.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+    const w = I && (I.matchdays || []).find(x => (x.matches || []).includes(+m.id));
+    if(!w || location.hash.slice(1) !== hash) return true;
+    const box = $(".lplate .pp-left", el);
+    if(box && !$(".lready", box)) box.insertAdjacentHTML("afterbegin", `<p class="r-small lready"><b>The match report is ready.</b> <a href="#${esc(hash)}" data-ready>Show it</a></p>`);
+    const a = $("[data-ready]", el);
+    if(a) a.addEventListener("click", async e => { e.preventDefault();
+      // fresh copies first: GitHub Pages lets browsers keep data files for up to 10 minutes
+      await Promise.all(["data/matches.json", "data/matchdays/index.json", `data/matchdays/md${String(w.md).padStart(2, "0")}.json`]
+        .map(u => fetch(u, {cache: "reload"}).catch(() => null)));
+      location.reload(); }, {once: true});
+    return false;
+  });
+}
 
 /* ---------------- match page ---------------- */
 async function page(m, el){
@@ -203,34 +254,52 @@ async function page(m, el){
   el.innerHTML = `<div class="wrap"><section class="plate pplate mplate lplate" aria-live="polite"><div class="pp-left"><span class="r-label">Live</span><p class="r-small">Checking the match feed.</p></div><div class="pp-right"></div></section></div>
     <section class="band" id="lcurvesec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>${esc(short(m.home))} win (bottom), draw, ${esc(short(m.away))} win (top), as the match has gone. Circles are goals, rectangles red cards; hover them.</p></div><div class="chart" id="lcurve"></div></div></section>
     <section class="band" id="lxgsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, shot by shot</h2><p>Expected goals added up through the match, from the same model as the match reports; filled circles are goals. Hover a shot.</p></div><div class="chart" id="lxg"></div></div></section>
-    <section class="band" id="lplsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">Player ratings, live</h2><p>Each player's value added so far above a replacement player in the same minutes: the same model as the season ratings. Provisional: about two minutes behind play, updated every two minutes, and recalculated overnight with the final data. Hover a player for attack and ball-winning; keepers are rated after the match.</p></div><div id="lpl"></div><p class="r-small" id="lplup"></p></div></section>`;
+    <section class="band" id="lplsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title" id="lplh">Player ratings, live</h2><p id="lplp">Each player's value added so far above a replacement player in the same minutes: the same model as the season ratings. Provisional: about two minutes behind play, updated every two minutes, and recalculated overnight with the final data. Hover a player for attack and ball-winning; keepers are rated after the match.</p></div><div id="lpl"></div><p class="r-small" id="lplup"></p></div></section>`;
+  /* our xG and player ratings (165's file). At full time they are labelled provisional, and a file that stopped before
+     the whistle says so (on 24 Oct three of fifteen stopped at 56-59 minutes) */
+  const drawOurs = (O, done) => {
+    if(!(O && O.players && O.players.length)) return;
+    $("#lxgsec").hidden = false; $("#lplsec").hidden = false;
+    if(PP.drawRace) { PP.chart($("#lxg"), e2 => PP.drawRace(e2, m, {xg: O.xg, shots: O.shots})); PP.bindTips($("#lxg")); }
+    $("#lpl").innerHTML = playersHtml(m, O); PP.bindTips($("#lpl"));
+    const at = new Date(O.updated).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", timeZone: "America/New_York"}), el_ = O.elapsed || "kickoff";
+    if(!done){ $("#lplup").textContent = `Last updated ${at} ET, at ${el_}.`; return; }
+    $("#lplh").textContent = "Player ratings at full time";
+    $("#lplp").textContent = "Each player's value added in the match above a replacement player in the same minutes, from the live data. Provisional: the overnight update recalculates them from the final, corrected data, and the match report then shows the final figures. Hover a player for attack and ball-winning; keepers are rated in the match report.";
+    $("#lplup").textContent = O.final ? `From the live data after the final whistle (${at} ET).`
+      : Date.now() - Date.parse(O.updated) < 10 * 60e3 ? `The full-time figures follow in a few minutes; these are from ${el_} (${at} ET).`
+      : `The live ratings stopped at ${el_} (${at} ET), before the final whistle; the overnight update completes them.`;
+  };
   every(POLL_PAGE, hash, async () => {
     const [s, ev, O] = await Promise.all([stats(id), events(id), ours(L, m.id)]);
     if(location.hash.slice(1) !== hash) return false;
     if(!s){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">The match feed is not answering; trying again shortly.</p>`; return true; }
     if(!s.clock.on && !s.clock.done){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">${s.clock.pre ? "Not kicked off yet. The live score and chances appear here from kickoff." : "No live data for this match."}</p>`; return true; }
     EV = ev || EV;
-    const now = s.clock, v = now.done ? final(s.gh, s.ga) : probs(L, m.xg_home, m.xg_away, now.p, now.m, s.gh, s.ga, s.rh, s.ra);
+    const now = s.clock;
     const sc = $(".mscore"); if(sc){ sc.textContent = `${s.gh}–${s.ga}`; sc.classList.add("is-live"); }
     $$(".stk-watch").forEach(e => { e.hidden = true; });             // watchability is a pre-match figure
     const pill = $(".lpill-head"); if(pill) pill.outerHTML = livePill(now);
     else { const lab = $(".mhead .r-label"); if(lab) lab.insertAdjacentHTML("afterend", livePill(now)); }
-    $(".lplate .pp-left", el).innerHTML = `<span class="r-label">${now.done ? "Full time" : "Live chances"}</span>
-      ${PP.pbarFor(m, v, true)}
-      <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[0])}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[1])}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pc(v[2])}</b><br>${esc(short(m.away))} win</span></div>
-      <p class="r-small">Before kickoff: ${pctShort(m.pH)} ${esc(short(m.home))} win, ${pctShort(m.pD)} draw, ${pctShort(m.pA)} ${esc(short(m.away))} win.</p>
-      <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
-    $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
-    C = curve(L, m, EV, now);
-    if(O && O.players && O.players.length){
-      $("#lxgsec").hidden = false; $("#lplsec").hidden = false;
-      if(PP.drawRace) { PP.chart($("#lxg"), e2 => PP.drawRace(e2, m, {xg: O.xg, shots: O.shots})); PP.bindTips($("#lxg")); }
-      $("#lpl").innerHTML = playersHtml(m, O); PP.bindTips($("#lpl"));
-      $("#lplup").textContent = `Last updated ${new Date(O.updated).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit", timeZone: "America/New_York"})} ET, at ${O.elapsed || "kickoff"}.`;
+    if(now.done){
+      $$(".prematch-sec").forEach(e => { e.hidden = true; });        // the forecast, the stakes and the likely lineups: pre-match only
+      $(".lplate .pp-left", el).innerHTML = `${fullTime(m, s)}<h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
+      $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${FT_NOTE}</p>`;
+    } else {
+      const v = probs(L, m.xg_home, m.xg_away, now.p, now.m, s.gh, s.ga, s.rh, s.ra);
+      $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live chances</span>
+        ${PP.pbarFor(m, v, true)}
+        <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[0])}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pc(v[1])}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pc(v[2])}</b><br>${esc(short(m.away))} win</span></div>
+        <p class="r-small">${(b => `Before kickoff: ${pctShort(b[0])} ${esc(short(m.home))} win, ${pctShort(b[1])} draw, ${pctShort(b[2])} ${esc(short(m.away))} win.`)(preOf(m))}</p>
+        <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
+      $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
     }
+    C = curve(L, m, EV, now); if(now.done) C.fin = [s.gh, s.ga];
+    drawOurs(O, now.done);
     $("#lcurvesec").hidden = false;
     PP.chart($("#lcurve"), e2 => drawCurve(e2, m, C, EV)); PP.bindTips($("#lcurve"));
-    return !now.done;
+    if(now.done){ after(m, L, el, hash, O, drawOurs); return false; }
+    return true;
   });
   return true;
 }
@@ -248,11 +317,14 @@ async function list(root, matches){
   if(!ids().length){ LIST = null; return; }
   const me = LIST;
   me.apply = () => Object.entries(me.cache).forEach(([w, s]) => { const m = matches.find(x => String(x.id) === w); if(!s || !m || !(s.clock.on || s.clock.done)) return;
-    const v = s.clock.done ? final(s.gh, s.ga) : probs(L, m.xg_home, m.xg_away, s.clock.p, s.clock.m, s.gh, s.ga, s.rh, s.ra);
+    // at full time the bar is the forecast before kickoff, as a result's match page has it, not the 0% / 100% of the result
+    const done = s.clock.done, v = done ? preOf(m) : probs(L, m.xg_home, m.xg_away, s.clock.p, s.clock.m, s.gh, s.ga, s.rh, s.ra), f = done ? pctShort : pc;
     $$(`[data-live="${w}"]`, me.root).forEach(r => {
-      const t = $(".time", r); if(t) t.innerHTML = `${s.clock.done ? `<span class="lpill done">FT</span>` : `<span class="lpill"><i aria-hidden="true"></i>${esc(s.clock.short)}</span>`}<b class="lsc num">${s.gh}–${s.ga}</b>`;
-      const pb = $(".probs", r); if(pb) pb.innerHTML = `${PP.pbarFor(m, v)}<div class="plab"><span><b>${pc(v[0])}</b> win</span><span>${pc(v[1])} draw</span><span><b>${pc(v[2])}</b> win</span></div>`;
-      const st = $(".stake", r); if(st && !$(".lpre", st)) st.insertAdjacentHTML("afterbegin", `<span class="r-small lpre">${s.clock.done ? "Full time." : "Live chances."} Before kickoff ${pctShort(m.pH)}, ${pctShort(m.pD)}, ${pctShort(m.pA)}.</span>`);
+      const t = $(".time", r); if(t) t.innerHTML = `${done ? `<span class="lpill done">FT</span>` : `<span class="lpill"><i aria-hidden="true"></i>${esc(s.clock.short)}</span>`}<b class="lsc num">${s.gh}–${s.ga}</b>`;
+      const pb = $(".probs", r); if(pb) pb.innerHTML = `${done ? `<span class="r-label">Before kickoff</span>` : ""}${PP.pbarFor(m, v)}<div class="plab"><span><b>${f(v[0])}</b> win</span><span>${f(v[1])} draw</span><span><b>${f(v[2])}</b> win</span></div>`;
+      const st = $(".stake", r);
+      if(st){ if(!$(".lpre", st)) st.insertAdjacentHTML("afterbegin", `<span class="r-small lpre"></span>`);      // rewritten each time: a row can go from live to full time
+        $(".lpre", st).textContent = done ? "Full time. The match report follows after the overnight update." : (b => `Live chances. Before kickoff ${pctShort(b[0])}, ${pctShort(b[1])}, ${pctShort(b[2])}.`)(preOf(m)); }
       $$(".prematch", r).forEach(e => { e.hidden = true; });          // watchability, lineup source: pre-match only
       r.classList.add("is-live");
     });

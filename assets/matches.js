@@ -11,7 +11,8 @@ const timeOf = d => d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit
 const src = s => s === "lineups" ? `<span class="src"><i class="st confirmed"></i>Confirmed lineups</span>` : s === "availability" ? `<span class="src"><i class="st likely"></i>Likely lineups from the availability report</span>` : `<span class="src"><i class="st model"></i>Team strength only; no lineup news yet</span>`;
 const pbar = (m, big) => { const [h, a] = PP.pairKit(m.home, m.away); return `<div class="pbar${big?" big":""}" role="img" aria-label="${esc(short(m.home))} ${pct(m.pH)}, draw ${pct(m.pD)}, ${esc(short(m.away))} ${pct(m.pA)}"><i style="width:${m.pH*100}%;background:${h}"></i><i style="width:${m.pD*100}%;background:var(--mid)"></i><i style="width:${m.pA*100}%;background:${a}"></i></div>`; };
 /* watchability, quality and importance (FiveThirtyEight's old match ratings; 29): restored on v3, owner 2026-10-09; pre-match
-   only: live.js hides them (.prematch, .stk-watch) once a match has kicked off (owner, 2026-10-24). The forecast's expected
+   only: live.js hides them (.prematch, .stk-watch) once a match has kicked off (owner, 2026-10-24), and the forecast,
+   stakes and likely lineups (.prematch-sec) at full time (owner, 2026-10-27). The forecast's expected
    goals are not shown (owner, 2026-10-24: they read as the match's own xG once it starts); live.js still uses them. */
 const r0 = v => Math.round(v);
 const watchChip = m => m.watchability == null ? "" : `<span class="wbadge" data-tip="${esc(`Watchability ${r0(m.watchability)}: the average of quality ${r0(m.quality)} (how strong both teams are) and importance ${r0(m.importance)} (how much the result moves their season goals)`)}"><b class="num">${r0(m.watchability)}</b> watchability</span>`;
@@ -31,13 +32,20 @@ const motwCard = m => {
 };
 /* live forecast record (96, owner 2026-10-09): what the site said before kickoff, written down at the time */
 const logged = id => ((LOGD && LOGD.rows) || {})[String(id)] || null;
+PP.recordedBefore = id => { const L = logged(id); return L ? L[L.length - 1] : null; };    // the last row before kickoff (live.js, at full time)
 const whenET = iso => { const d = new Date(iso); return `${dayKey(d)}, ${timeOf(d)}`; };
+/* plain words on the fan pages (2026-10-27): counts and chances here; the scoring rules (log loss, Brier) and the interval
+   are on the Method page (#method-record). The verdict follows the 95% interval of the log-loss gap that 96 writes. */
 const recordLine = () => {
   if(!LOGD || !LOGD.started) return "";
   const sc = LOGD.score || {}, since = dayKey(new Date(LOGD.started));
-  const tail = ` Every forecast is written down before kickoff and never changed: <a href="data/forecast_log.csv">the full record</a>.`;
-  return sc.n ? `<p class="r-small">Live record since ${since}: ${sc.n} match${sc.n === 1 ? "" : "es"} forecast before kickoff, average log loss ${num(sc.log_loss,3)} against ${num(sc.baseline_log_loss,3)} for simply predicting the league's usual home, draw and away rates (lower is better).${tail}</p>`
-                : `<p class="r-small">From ${since}, the forecasts here are a live record.${tail} Earlier forecasts on this site are reconstructed with today's model.</p>`;
+  const tail = ` <a href="data/forecast_log.csv">Download the full record</a> or read <a href="#method-record">how we check it</a>.`;
+  if(!sc.n) return `<p class="r-small">Since ${since}, every forecast on this site is written down before kickoff and never changed.${tail} Forecasts for earlier matches were worked out afterwards.</p>`;
+  const ci = sc.log_loss_gap_ci95, mix = "simply going by the league's usual mix of home wins, draws and away wins";
+  const fav = sc.favourite_won != null ? ` The favourite won ${sc.favourite_won} of them; the forecasts' own chances said about ${Math.round(sc.favourite_expected)}.` : "";
+  const verdict = !ci ? "" : ci[1] < 0 ? ` So far the forecasts have done better than ${mix}; it is too early to say by how much.`
+                : ci[0] > 0 ? ` So far the forecasts have done worse than ${mix}.` : ` It is too early to tell whether the forecasts do better than ${mix}.`;
+  return `<p class="r-small">Since ${since}, every forecast on this site has been written down before kickoff and never changed. ${sc.n} of those match${sc.n === 1 ? " has" : "es have"} been played.${fav}${verdict}${tail}</p>`;
 };
 const recordNote = (m, played) => {
   const L = logged(m.id); if(!L) return played ? `<p class="r-small">Reconstructed: this match came before the live record began.</p>` : "";
@@ -145,10 +153,11 @@ PP.pages.matches = async main => {
 const POSW = {CB:"centre back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
 function report(m, R, wk){
   const [gh, ga] = R.g, hw = gh > ga, aw = ga > gh, win = hw ? 0 : aw ? 2 : 1, W = hw ? m.home : aw ? m.away : null, L = hw ? m.away : m.home;
-  const pc = R.xg_probs[win], pre = R.pre && R.pre[win] != null ? R.pre[win] : null, recon = R.pre && R.pre[3] === "reconstructed";
+  // "before kickoff" (owner, 2026-10-27): the recorded forecast wherever the live record has one (82), else reconstructed
+  const pc = R.xg_probs[win], pre = R.pre && R.pre[win] != null ? R.pre[win] : null, recon = R.pre && R.pre[3] === "reconstructed", recd = R.pre && R.pre[3] === "recorded";
   const chances = `${num(R.xg[0],2)} expected goals to ${num(R.xg[1],2)}`;
-  const lede = W ? `${esc(short(W))} ${hw ? "beat" : "won at"} ${esc(short(L))} ${Math.max(gh,ga)}–${Math.min(gh,ga)}${pc >= 0.5 ? `, and the chances agreed: ${chances}. On those chances they win ${pct(pc)} of the time.` : pc >= 0.35 ? `, from chances that were close: ${chances}. On those chances they win ${pct(pc)} of the time.` : `, despite the chances: ${chances}. On those chances they win only ${pct(pc)} of the time.`}${pre != null ? ` Before kickoff the forecast gave them ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`
-    : `${esc(short(m.home))} and ${esc(short(m.away))} drew ${gh}–${ga}. The chances: ${chances}; on those a draw happens ${pct(pc)} of the time.${pre != null ? ` Before kickoff the forecast gave a draw ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`;
+  const lede = W ? `${esc(short(W))} ${hw ? "beat" : "won at"} ${esc(short(L))} ${Math.max(gh,ga)}–${Math.min(gh,ga)}${pc >= 0.5 ? `, and the chances agreed: ${chances}. On those chances they win ${pct(pc)} of the time.` : pc >= 0.35 ? `, from chances that were close: ${chances}. On those chances they win ${pct(pc)} of the time.` : `, despite the chances: ${chances}. On those chances they win only ${pct(pc)} of the time.`}${pre != null ? ` Before kickoff the ${recd ? "recorded " : ""}forecast gave them ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`
+    : `${esc(short(m.home))} and ${esc(short(m.away))} drew ${gh}–${ga}. The chances: ${chances}; on those a draw happens ${pct(pc)} of the time.${pre != null ? ` Before kickoff the ${recd ? "recorded " : ""}forecast gave a draw ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`;
   const bar3 = (p, label) => `<div class="mrbar"><span class="r-label">${label}</span>${pbar({home:m.home, away:m.away, pH:p[0], pD:p[1], pA:p[2]}, true)}
     <div class="plab"><span><b>${pct(p[0])}</b> ${esc(short(m.home))}</span><span>${pct(p[1])} draw</span><span><b>${pct(p[2])}</b> ${esc(short(m.away))}</span></div></div>`;
   const tops = side => { const arr = R.top[side] || [], team = side === "home" ? m.home : m.away, mx = Math.max(0.05, ...arr.map(x => Math.abs(x[4]||0))), kp = (R.keepers||[]).find(k => k[2] === (side === "home" ? 0 : 1));
@@ -159,7 +168,7 @@ function report(m, R, wk){
   const ch = R.chain;
   return `<div class="wrap"><section class="plate pplate mplate" aria-label="The result against the chances">
       <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#matchday-${wk.md}">The matchday in review: Matchday ${wk.md}</a>` : ""}</div>
-      <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, `Before kickoff${recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, "On the chances: every shot scored with its expected-goal probability")}</div>
+      <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, `Before kickoff${recd ? ", as recorded" : recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, "On the chances: every shot scored with its expected-goal probability")}</div>
     </section></div>
     <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match; filled circles are goals. Hover a shot.</p></div><div class="chart" id="mrace"></div></div></section>
     <section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>Each player's contribution to the match above what a replacement player would have added in the same minutes; these add up to the season rating.</p></div>
@@ -222,16 +231,16 @@ PP.pages.match = async (main, h) => {
     const watchFigs = m.watchability != null ? `<div class="motw-figs stk-watch"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
       <p class="r-small stk-watch">Watchability averages quality (how strong both teams are) and importance (how much the result moves their season goals), after FiveThirtyEight's old match ratings.</p>` : "";
     const outs = s => { const o = d["out_"+s], q = d["questionable_"+s]; return o || q ? `<p class="r-small"><b>${esc(short(m[s]))}</b>${o ? `: out, ${esc(o.split("; ").join(", "))}` : ""}${q ? `${o?"; ":": "}doubtful, ${esc(q.split("; ").join(", "))}` : ""}.</p>` : ""; };
-    body = `<div class="wrap"><section class="plate pplate mplate">
+    body = `<div class="wrap prematch-sec"><section class="plate pplate mplate">
         <div class="pp-left"><span class="r-label">The forecast</span>
           ${pbar(m, true)}
           <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pH)}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pD)}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(m.pA)}</b><br>${esc(short(m.away))} win</span></div>
-          <p class="r-small">${src(m.source)}${d.elo_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.elo_pH)}, ${pctShort(d.elo_pD)}, ${pctShort(d.elo_pA)}.` : ""}</p>
+          <p class="r-small">${src(m.source)}${d.strength_pH != null && m.source !== "elo" ? ` Without the lineup news: ${pctShort(d.strength_pH)} home win, ${pctShort(d.strength_pD)} draw, ${pctShort(d.strength_pA)} away win.` : ""}</p>
           ${recordNote(m, false)}
         </div>
         <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>
       </section></div>
-      <section class="band" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by their value above replacement this season. Click a player for their page.</p></div>
+      <section class="band prematch-sec" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by their value above replacement this season. Click a player for their page.</p></div>
         <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
   } else {
     const I = await PP.loadRounds(), wn = I ? PP.roundOfMatch(I, id) : null;

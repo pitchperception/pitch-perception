@@ -49,7 +49,7 @@ function render(main){
   const sel = (id, opts, cur, label) => `<label class="fsel"><span class="r-small">${label}</span><select id="${id}">${opts.map(([v,t]) => `<option value="${v}"${String(v)===String(cur)?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`;
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Players</h1>
       <p class="r-note standfirst">Every MLS player since 2020, valued by the possession model: goals added above a replacement-level player at the same position. Pick a view, filter, and follow any name to the player's page.</p></section>
-    <section class="exswarm"><div class="fig-cap"><span class="r-label" id="swcap">${swcap()}</span><span class="r-small">Goals above replacement. Keepers are rated by goals prevented: choose Goalkeeper below. Hover a dot.</span></div><div class="chart" id="swarm"></div></section>
+    <section class="exswarm"><div class="fig-cap"><span class="r-label" id="swcap">${swcap()}</span><span class="r-small">Goals above replacement. Keepers are rated by shot-stopping (goals prevented, allowing for luck): choose Goalkeeper below. Hover a dot.</span></div><div class="chart" id="swarm"></div></section>
     <section class="exctl">
       <div class="seg exviews" role="group" aria-label="View">${VIEWS.map(([k,l]) => `<button type="button" data-v="${k}" aria-pressed="${k===ST.view}">${l}</button>`).join("")}</div>
       <div class="exfilters">

@@ -628,6 +628,8 @@ span.dl{cursor:default}
 @media (max-width:639px){.board-table{display:none}.board-list.exlist2{display:grid}}
 .fxl{text-decoration:none;color:inherit;cursor:pointer}
 .fxl .stake{display:grid;gap:3px}
+.fx .prematch{display:contents}
+.tipline{border-bottom:1px dotted currentColor;cursor:help}
 .extable th{text-align:left}
 .extable th.n{text-align:right}
 .lg-line.dash{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
