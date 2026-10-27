@@ -17,14 +17,28 @@ const LG = {"england-premier-league":"Premier League","germany-bundesliga":"Bund
   "china-super-league":"Chinese Super League","denmark-superliga":"Danish Superliga"};
 const lgName = s => LG[s] || String(s || "–").replace(/^[a-z]+-/, "").replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 const surname = n => { const p = String(n).split(" "); return p.length > 1 ? p.slice(1).join(" ") : n; };
-/* likely MLS contract type if he signed (event_model/recruiting/63, owner 2026-10-08) */
+/* likely MLS contract type if they signed (event_model/recruiting/63, owner 2026-10-08). 63's test fixed in advance decides
+   what is shown: its model, or, when the model fails the test (every night since 2026-10-17), the shares among past
+   foreign signings of the player's age group, which the card then says (owner's OK, 2026-10-27) */
 const CT = [["DP","Designated Player","var(--pct-5)"],["U22","U22 Initiative","var(--pct-4)"],["TAM/GAM","TAM / GAM","var(--pct-3)"],["Other","Senior or other","var(--pct-1)"]];
-const ctInd = (c, age) => { if(!c) return "";
+const ctInd = (c, age, meta) => { if(!c) return "";
+  const M = (meta && meta.contract) || {}, shares = M.source === "age-group shares", young = age != null && age <= 22;
+  const yrs = M.first && M.last ? `${M.first}&ndash;${String(M.last).slice(-2)}` : "past seasons";
+  const n = shares ? (M.age_groups || {})[young ? "22_or_under" : "23_or_over"] : M.n;
   const i = c.indexOf(Math.max(...c)), top = CT[i];
   const bar = `<span class="ctbar" role="img" aria-label="${CT.map((k,j) => `${k[1]} ${Math.round(c[j]*100)}%`).join(", ")}">${CT.map((k,j) => c[j] >= 0.005 ? `<i style="width:${c[j]*100}%;background:${k[2]}" data-tip="${esc(`<b>${k[1]}</b><br>${Math.round(c[j]*100)}%`)}"></i>` : "").join("")}</span>`;
-  return `<div class="ind ctind"><span class="r-label">Likely contract type</span><span class="v">${top[1]}, ${Math.round(c[i]*100)}%</span>${bar}
+  const how = shares
+    ? `How the ${n != null ? PP.int(n) + " " : ""}foreign signings of ${yrs} aged ${young ? "22 or under" : "23 or over"} signed in MLS. Every player in the age group shows the same shares: a model that also used league, ratings and output did not beat them in a test fixed in advance, so they are not an estimate for this player. Transfer fees are not known.`
+    : M.source === "model" ? `If they signed in MLS: estimated by a model learned from ${n != null ? PP.int(n) + " " : ""}foreign signings of ${yrs} by age, league, ratings and output; it cannot see the transfer fee.`
+    : `From the contract types past foreign signings were given in MLS; transfer fees are not known.`;
+  return `<div class="ind ctind"><span class="r-label">${shares ? "How players this age signed" : "Likely contract type"}</span><span class="v">${top[1]}, ${Math.round(c[i]*100)}%</span>${bar}
     <span class="r-small">${(() => { const t = [CT.filter((k,j) => j !== i && c[j] >= 0.05).map(k => `${k[1]} ${Math.round(c[CT.indexOf(k)]*100)}%`).join(", "), age != null && age > 22 ? "too old for U22" : ""].filter(Boolean).join("; ");
-      return t ? t.charAt(0).toUpperCase() + t.slice(1) + ". " : ""; })()}If they signed in MLS: learned from 315 foreign signings of 2024&ndash;26 by age, league, ratings and output; it cannot see the transfer fee.</span></div>`; };
+      return t ? t.charAt(0).toUpperCase() + t.slice(1) + ". " : ""; })()}${how}</span></div>`; };
+/* when the scouting data were updated, the latest match counted in the player's league, and the next weekly update
+   (owner, 2026-10-27: "make it clear when recruiting data is updated or valid until"); data/scouts/*.json "meta" (78) */
+const dataLine = (meta, league) => { if(!meta || !meta.built) return "";
+  const last = (meta.latest || {})[league], due = meta.next_update, late = due && new Date().toISOString().slice(0,10) > due;
+  return `<p class="r-small pdata">Scouting data updated ${PP.dayShort(meta.built)}${last ? `, with ${esc(league)} matches to ${PP.dateLong(last)}` : ""}. ${due ? (late ? `The weekly update due ${PP.dayShort(due)} has not run yet, so later matches are not counted.` : `Next update due ${PP.dayShort(due)}.`) : ""}</p>`; };
 let ST = null;
 const rangeText = (lo, hi) => hi >= 0.995 ? `${pctile(lo)} percentile to the very top` : lo <= 0.005 ? `the very bottom to the ${pctile(hi)} percentile` : `${pctile(lo)} to ${pctile(hi)} percentile`;
 
@@ -39,7 +53,7 @@ PP.pages.scout = async (main, h) => {
   if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-name">Not in the scouting database</h1><p class="r-note">This player is not among the outfield players with 900+ minutes in the leagues we scout. <a href="#recruiting-scouting">Back to Scouting abroad</a>.</p></section></div>`; return; }
   const scout = rec.seasons.filter(s => s.scout && s.mins >= 450).sort((a,b) => b.mins - a.mins);
   const sorted = rec.seasons.filter(s => s.scout).sort((a,b) => String(b.season).localeCompare(String(a.season)));
-  ST = {rec, list: sorted, s: (sorted.find(s => s.zones && s.mins >= 900) || scout[0] || sorted[0] || null), zoneMode:"t"};
+  ST = {rec, meta: D.meta || null, list: sorted, s: (sorted.find(s => s.zones && s.mins >= 900) || scout[0] || sorted[0] || null), zoneMode:"t"};
   document.title = `${rec.name} | Recruiting | Pitch Perception`;
   render(main);
 };
@@ -64,6 +78,7 @@ function render(main){
       <h1 class="r-name" id="pname">${esc(rec.name)}</h1>
       ${s && s.badges && PP.data.arch ? PP.badgeChips(s.badges, s.pos, `the ${s.league} ${s.season}`) : ""}
       <dl class="pfacts">${facts.map(([k,v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+      ${dataLine(ST.meta, rec.league)}
       ${seasonSeg}
     </section></div>
     <div class="wrap"><section class="plate pplate" aria-label="Projection">
@@ -78,7 +93,7 @@ function render(main){
           ${(() => { const n = ST.list.find(x => x.season > (s ? s.season : "") && x.mins > 0); return n ? `<div class="ind"><span class="r-label">This season so far</span><span class="v num">${sgn(n.p90,3)} per 90</span><span class="r-small">${esc(n.league)} ${esc(n.season)}, ${PP.int(n.mins)} minutes at ${esc(n.team)}: too few for league percentiles (they need 900), but counted in the projection.</span></div>` : ""; })()}
           <div class="ind"><span class="r-label">Profile</span>${P.outside ? `<span class="v">Unusual</span><span class="r-small">Age or ratings outside what MLS clubs have signed before, so the projection rests on few comparable players.</span>` : `<span class="v">Typical</span><span class="r-small">Within the range of past foreign signings, so the projection has examples to learn from.</span>`}</div>
           <div class="ind"><span class="r-label">MLS move</span>${mv}</div>
-          ${ctInd(rec.contract, rec.age)}
+          ${ctInd(rec.contract, rec.age, ST.meta)}
           <div class="ind"><span class="r-label">How sure</span><span class="v">${P.pct_hi - P.pct_lo > 0.4 ? "Wide range" : "Moderate range"}</span><span class="r-small">Eight in ten past signings with a projection like this landed ${P.pct_hi >= 0.995 ? `at or above the ${pctile(P.pct_lo)} percentile` : `between the ${pctile(P.pct_lo)} and ${pctile(P.pct_hi)} percentile`}.</span></div>
         </div>
       </div>
