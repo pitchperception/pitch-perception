@@ -328,6 +328,8 @@ PP.boot = async () => {
   try{
     const r = await fetch("data/home.json"); if(!r.ok) throw new Error(r.status);
     PP.data.home = await r.json();
+    // the playoffs (owner, 2026-10-27): from the end of the regular season the race tab is the playoff page
+    if(PP.data.home.season_over){ $$('a[data-s="race"]').forEach(a => { a.textContent = "Playoffs"; }); SECTIONS[4][1] = "Playoffs"; }
     try{ const ri = await fetch("data/index.json"); PP.data.index = ri.ok ? await ri.json() : []; }catch(e){ PP.data.index = []; }
   }catch(e){
     $("#main").innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The data did not load</h1><p>Pitch Perception could not read <b>data/home.json</b> (${PP.esc(e.message)}). Reload the page; if it persists, the site needs republishing.</p></section></div>`;

@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 const {$, $$, S, text, esc, sgn, num, pct, pctShort, short, full, chip, clubTag} = PP;
-let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time", WK = null;
+let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time", WK = null, PO = null;
 const load = () => mP || (mP = fetch("data/matches.json").then(r => { if(!r.ok) throw new Error(`matches.json returned ${r.status}`); return r.json(); }));
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const kickDate = m => m.kickoff_utc ? new Date(m.kickoff_utc.replace("Z",":00Z")) : new Date(m.date+"T23:00:00Z");
@@ -57,7 +57,9 @@ const confOf = t => ((((PP.data.home||{}).race||{}).teams||[]).find(x => x.team 
 async function ready(main, title){
   if(M) return true;
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">${title}</h1><p class="r-small">Loading matches.</p></section></div>`;
-  try { M = await load(); try { const r = await fetch("data/forecast_log.json"); LOGD = r.ok ? await r.json() : null; } catch(e){ LOGD = null; } return true; }
+  try { M = await load(); try { const r = await fetch("data/forecast_log.json"); LOGD = r.ok ? await r.json() : null; } catch(e){ LOGD = null; }
+    if((PP.data.home || {}).season_over) PO = await PP.loadPlayoffs();      // playoff stages after the league's rounds (playoffs.js)
+    return true; }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The match data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return false; }
 }
 
@@ -83,10 +85,10 @@ PP.pages.matches = async main => {
       <div class="xgpair num"><span>xG ${num(m.xg_home,2)}</span><span>xG ${num(m.xg_away,2)}</span></div>
       <div class="stake r-small">${th && ta ? `Most value added: ${PP.plink(th[0], th[1])} (${sgn(th[2],2)}) and ${PP.plink(ta[0], ta[1])} (${sgn(ta[2],2)})` : ""}</div></div>`; };
     if(FILTER === "all"){ weekView(group, upRow, pastRow); return; }
-    const motw = null;
+    const motw = null, po = PP.poClubRows ? PP.poClubRows(PO, FILTER) : "";
     const upAll = all.filter(m => m.status === "upcoming" && kickDate(m) > now - 2*3600e3 && f(m));      // ranked across every remaining match
     const upGroups = SORT === "watch" ? [["Most watchable first", upAll.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1)).slice(0, FILTER === "all" ? 24 : 12)]] : group(up);
-    $("#mlist").innerHTML = `${motw ? motwCard(motw) : ""}<section class="band" style="padding-top:0"><div class="band-head"><h2 class="r-title">Coming up</h2><p>Win, draw and defeat chances from the forecast, with lineup news where it exists. Kickoff times are Eastern. ${WATCH_NOTE}</p>
+    $("#mlist").innerHTML = `${po}${motw ? motwCard(motw) : ""}<section class="band" style="padding-top:0"><div class="band-head"><h2 class="r-title">Coming up</h2><p>Win, draw and defeat chances from the forecast, with lineup news where it exists. Kickoff times are Eastern. ${WATCH_NOTE}</p>
       <div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div></div>
       <div class="fixtures">${upGroups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(upRow).join("")}`).join("") || `<p class="r-small">No matches scheduled.</p>`}</div></section>
       <section class="band"><div class="band-head"><h2 class="r-title">Results</h2><p>Scores, expected goals, and the player who added the most value on each side. Open a result for its match report.</p></div>
@@ -111,10 +113,10 @@ PP.pages.matches = async main => {
       const core = ds.filter(d => away(d, med) <= 2), days = [...new Set(core.map(d => new Date(d + "T12:00:00Z").getUTCDay()))], n = ms[0].md != null ? ms[0].md : null;
       return {key, n, kind: n == null ? "Extra" : days.every(d => d >= 2 && d <= 4) ? "Midweek" : "Weekend", first: core[0], last: core[core.length - 1],
               resched: [...new Set(ds.filter(d => away(d, med) > 2))], matches: ms};
-    }).sort((a, b) => (a.n ?? 1e9) - (b.n ?? 1e9) || a.first.localeCompare(b.first));
+    }).sort((a, b) => (a.n ?? 1e9) - (b.n ?? 1e9) || a.first.localeCompare(b.first)).concat(PP.poSlates ? PP.poSlates(PO) : []);
   })();
   if(!WK || !slates.some(x => x.key === WK)){
-    const nx = slates.find(x => x.n && x.matches.some(m => m.status !== "played" && kickDate(m) > now - 2*3600e3));
+    const nx = slates.find(x => (x.n || x.playoff) && x.matches.some(m => m.status !== "played" && kickDate(m) > now - 2*3600e3));
     WK = (nx || slates[slates.length - 1]).key;
   }
   const weekView = (group, upRow, pastRow) => {
@@ -122,13 +124,14 @@ PP.pages.matches = async main => {
     const ups = w.matches.filter(m => m.status !== "played");
     const motw = ups.filter(m => m.watchability != null && kickDate(m) > now - 2*3600e3).sort((a,b) => b.watchability - a.watchability)[0] || null;
     const st = x => x.matches.every(m => m.status === "played") ? "done" : x.matches.some(m => m.status === "played") ? "part" : "up";
-    const strip = `<div class="wkstrip" role="group" aria-label="Matchdays">${slates.map(x => `<button type="button" class="wkb ${st(x)}${x.key === WK ? " on" : ""}" aria-pressed="${x.key === WK}" data-wk="${x.key}" title="${x.n ? `${x.kind} matchday ${x.n}` : "Extra match"}"><b>${x.n ? "MD" + x.n : "Extra"}</b><span>${dShort(x.first)}</span></button>`).join("")}</div>`;
+    const strip = `<div class="wkstrip" role="group" aria-label="Matchdays">${slates.map(x => `<button type="button" class="wkb ${st(x)}${x.key === WK ? " on" : ""}${x.playoff ? " po" : ""}" aria-pressed="${x.key === WK}" data-wk="${x.key}" title="${x.playoff ? x.label : x.n ? `${x.kind} matchday ${x.n}` : "Extra match"}"><b>${x.playoff ? x.short : x.n ? "MD" + x.n : "Extra"}</b><span>${dShort(x.first)}</span></button>`).join("")}</div>`;
     const head = `<div class="wkhead"><button type="button" class="wknav" data-step="-1"${i === 0 ? " disabled" : ""} aria-label="Previous matchday">‹</button>
-      <div><h2 class="r-title">${w.n ? `Matchday ${w.n}` : "Extra match" + (w.matches.length > 1 ? "es" : "")} <span class="mdk">${w.kind}</span></h2>
+      <div><h2 class="r-title">${w.playoff ? w.label : w.n ? `Matchday ${w.n}` : "Extra match" + (w.matches.length > 1 ? "es" : "")} <span class="mdk">${w.kind}</span></h2>
         <p class="r-small">${dRange(w.first, w.last)}, ${w.matches.length} match${w.matches.length === 1 ? "" : "es"}${w.resched.length ? `, including ${w.resched.length === 1 ? "a rescheduled game" : "rescheduled games"} on ${w.resched.map(dShort).join(", ").replace(/, ([^,]*)$/, " and $1")}` : ""}. Kickoff times are Eastern.</p></div>
       <button type="button" class="wknav" data-step="1"${i === slates.length - 1 ? " disabled" : ""} aria-label="Next matchday">›</button></div>`;
     const row = m => m.status === "played" ? pastRow(m) : upRow(m, motw && m.id === motw.id);
     const groups = SORT === "watch" && ups.length ? [["Most watchable first", w.matches.slice().sort((a,b) => (b.watchability ?? -1) - (a.watchability ?? -1))]] : group(w.matches);
+    if(w.playoff){ $("#mlist").innerHTML = `${strip}${head}${PP.poSlateView(w, PO)}`; const sw = $(".wkstrip"), on = $(".wkb.on"); if(sw && on) sw.scrollLeft = on.offsetLeft - sw.clientWidth / 2 + on.clientWidth / 2; return; }
     $("#mlist").innerHTML = `${strip}${head}
       ${motw ? motwCard(motw) : ""}
       <section class="band" style="padding-top:0"><div class="band-head"><p>${WATCH_NOTE}</p>${ups.length ? `<div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div>` : ""}</div>

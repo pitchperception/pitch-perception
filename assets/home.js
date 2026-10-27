@@ -20,12 +20,12 @@ PP.pages.today = main => {
     </header>
     <div class="front">
       ${lead(H)}
-      <div class="rail">${[insRace(H), insContract(H)].join("")}</div>
+      <div class="rail">${[H.season_over ? `<div id="ins-po"></div>` : insRace(H), insContract(H)].join("")}</div>
     </div>
   </div>
   ${H.chain ? chainBand(H) : ""}
   <section class="band" id="wkteaser" aria-labelledby="wkt-h" hidden></section>
-  ${raceBand(H)}
+  ${H.season_over ? `<section class="band well" id="po-home" hidden></section>` : raceBand(H)}
   ${moversBand(H)}
   ${nextBand(H)}
   ${leadersBand(H)}`;
@@ -41,7 +41,20 @@ PP.pages.today = main => {
   if(H.chain) bindChain();
   bindRaceTools();
   weekTeaser();
+  if(H.season_over) playoffBits(H);
 };
+
+/* ---------------- the playoffs (owner, 2026-10-27; playoffs.js): once the regular season is over the playoff race band,
+   its rail card and the lead's MLS Cup line come from data/playoffs.json, which the matchday refresh keeps current ---------------- */
+async function playoffBits(H){
+  const P = await PP.loadPlayoffs(); if(!P || P.phase === "regular" || (location.hash.replace("#","") && location.hash !== "#today")) return;
+  const band = $("#po-home"); if(band){ band.outerHTML = PP.poHomeBand(P); PP.bindTips($("#po-home")); }
+  const rail = PP.poRail(P), slot = $("#ins-po");
+  if(rail && slot) slot.outerHTML = ins("ins-race", P.phase === "complete" ? "MLS Cup" : "Playoffs", rail.head, rail.body, "",
+    `<p class="r-small">${PP.poRecordLine(P)}</p>`);
+  PP.bindDisclosures($("#ins-race"));
+  const cl = $("#cupline"), line = PP.poCupLine(P, H.outperformer.team); if(cl && line) cl.innerHTML = line;
+}
 
 /* ---------------- the matchday in review, teaser (82 / weeks.js; per matchday since 2026-10-15) ---------------- */
 async function weekTeaser(){
@@ -61,6 +74,7 @@ async function weekTeaser(){
 /* ---------------- edition line ---------------- */
 function dateline(H){
   const d = new Date(H.as_of + "T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).replace(",", "");
+  if(H.season_over) return `${d}. The regular season is over: all ${H.played} matches played, results through ${PP.dateLong(H.data_through)}. The playoffs run from 18 November to MLS Cup on 18 December.`;
   const nxt = upcoming(H)[0], k = nxt && nxt.kickoff_utc ? PP.kick(nxt.kickoff_utc) : null;
   return `${d}. ${H.played} of ${H.played + H.remaining} regular-season matches played, results through ${PP.dateLong(H.data_through)}.` +
     (nxt && k ? ` Next: ${esc(short(nxt.home))} v ${esc(short(nxt.away))}, ${k.day}, ${k.time}.` : "");
@@ -88,7 +102,7 @@ function lead(H){
     : rc.p_break >= 0.02 && rc.p_break <= 0.98
       ? `The model gives them a ${pct(rc.p_break)} chance of breaking the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}): they need ${N(rc.need)} points from their last ${N(rc.left)} matches. `
       : "";
-  const note2 = `${recLine}${cupLine} Finishing and shot-stopping are the least repeatable parts of the game in our tests: year-to-year correlations of about 0.05 and 0.18.`;
+  const note2 = `${recLine}<span id="cupline">${cupLine}</span> Finishing and shot-stopping are the least repeatable parts of the game in our tests: year-to-year correlations of about 0.05 and 0.18.`;
   return `<article class="lead" aria-labelledby="lead-h">
     <span class="kicker">Results against chances</span>
     <h2 id="lead-h">${head}</h2>

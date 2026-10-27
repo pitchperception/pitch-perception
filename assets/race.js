@@ -2,13 +2,25 @@
 (function(){
 "use strict";
 const {$, $$, S, text, esc, sgn, num, pct, pctShort, short, full, chip, clubTag} = PP;
-let raceP = null, R = null;
+let raceP = null, R = null, finP = null;
 const load = () => raceP || (raceP = fetch("data/race.json").then(r => { if(!r.ok) throw new Error(`race.json returned ${r.status}`); return r.json(); }));
+// the final regular-season race (owner, 2026-10-27): #race-final, frozen by 74 when the last league match was in
+const loadFinal = () => finP || (finP = fetch("data/race_final.json").then(r => { if(!r.ok) throw new Error(`race_final.json returned ${r.status}`); return r.json(); }));
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const METRICS = [["p_playoffs","Playoffs"],["p_top7","Top seven"],["p_conf_1st","First in conference"],["p_champion","MLS Cup"],["elo","Strength"]];
 
-PP.pages.race = async main => {
-  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">The playoff race</h1><p class="r-small">Loading the forecast.</p></section></div>`;
+PP.pages.race = async (main, h) => {
+  const over = !!(PP.data.home || {}).season_over, fin = h === "race-final";
+  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">${over ? "The playoffs" : "The playoff race"}</h1><p class="r-small">Loading the forecast.</p></section></div>`;
+  // once the regular season is over the tab is the playoffs (owner, 2026-10-27): the clubs still in, their chance of each
+  // round, the bracket and the matches (playoffs.js, data/playoffs.json); the race below stays for the regular season
+  if(over && !fin){ const P = await PP.loadPlayoffs(); if(location.hash.slice(1) !== "race") return; if(P && P.phase && P.phase !== "regular"){ PP.poPage(main, P); return; } }
+  if(fin){
+    let F; try { F = await loadFinal(); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The final regular-season table is not saved yet</h1><p>It is saved the night the last league match is in. <a href="#race">The playoffs</a></p></section></div>`; return; }
+    if(location.hash.slice(1) !== "race-final") return;
+    R = {D: F, conf: "East", metric: "p_playoffs", sel: null, final: true};
+    render(main); return;
+  }
   let D; try { D = await load(); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The forecast did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   if(location.hash.slice(1) !== "race") return;
   R = {D, conf: "West", metric: "p_playoffs", sel: null};
@@ -32,6 +44,10 @@ function render(main){
 
 function header(){
   const D = R.D, d = new Date(D.as_of+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"});
+  if(R.final) return `<div class="wrap"><section class="pid"><h1 class="r-name">The final regular-season table</h1>
+    <p class="r-note standfirst">The table at the end of the regular season, and the playoff odds as they stood on ${d}, before the first playoff match. This page is frozen.</p>
+    <p class="dateline">Results through ${PP.dateLong(D.data_through)}. <a href="#race">The playoffs: today's chances, the bracket and the matches</a></p>
+  </section></div>`;
   const fav = D.teams.slice().sort((a,b) => b.p_champion - a.p_champion)[0];
   return `<div class="wrap"><section class="pid"><h1 class="r-name">The playoff race</h1>
     <p class="r-note standfirst">The rest of the season played out ${PP.int(D.sims)} times from today's team strengths, with lineup news where it exists. ${esc(short(fav.team))} are the most likely champions, at ${pct(fav.p_champion)}.</p>
@@ -142,6 +158,7 @@ function drawBubble(el){
 /* matches that matter */
 function matter(){
   const D = R.D, conf = t => (D.teams.find(x => x.team === t) || {}).conference || "";
+  if(!D.matter || !D.matter.length) return "";                         // no league match left
   const rows = D.matter.map(m => { const k = PP.kick(m.kickoff_utc);
     const side = s => m["stake_"+s] && m["if_win_"+s] != null ? `<div><b>${esc(short(m[s]))}</b>, ${STAKE(m["stake_"+s], conf(m[s])+"ern Conference")}: ${pct(m["if_win_"+s])} with a win, ${pct(m["if_loss_"+s])} with a defeat</div>` : "";
     const dshort = k ? k.date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}) : m.date;

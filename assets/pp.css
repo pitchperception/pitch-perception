@@ -960,3 +960,39 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .lev-i.sub{font-size:13px;line-height:1;color:var(--ink-2)}
 .fx.is-live.is-motw{border-left-color:var(--flare)}
 .fx .prematch[hidden],.stk-watch[hidden]{display:none}
+
+/* the playoffs (owner, 2026-10-27; playoffs.js): chances per round, bracket, playoff rows */
+.po-chances{display:grid;gap:var(--s-6)}
+@media (min-width:1080px){.po-chances{grid-template-columns:1fr 1fr;gap:var(--s-7)}}
+.po-grid{display:grid;min-width:0}
+.po-block{display:grid;gap:var(--s-2);min-width:0}
+.po-row{display:grid;grid-template-columns:28px minmax(96px,1.4fr) repeat(var(--po-n),minmax(44px,1fr));gap:4px;align-items:center;border-top:1px solid var(--rule);padding-block:3px;font-size:var(--t-13)}
+.po-head{border-top:0;font-size:var(--t-12);color:var(--ink-3);font-weight:600;padding-bottom:6px;align-items:end}
+.po-s{color:var(--ink-2);text-align:center;font-variant-numeric:tabular-nums}
+.po-t{display:inline-flex;gap:6px;align-items:center;font-weight:600;text-decoration:none;color:inherit;min-width:0;overflow:hidden;white-space:nowrap}
+.po-h{text-align:center;line-height:1.2}
+.po-c{display:grid;place-items:center;height:26px;background:var(--well);border-radius:2px;font-style:normal;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.po-c.po-in{background:transparent;box-shadow:inset 0 0 0 1px var(--rule);color:var(--ink-2);font-weight:500}
+.po-t .nmS{display:none}
+@media (max-width:767px){.po-row{grid-template-columns:20px minmax(58px,0.9fr) repeat(var(--po-n),minmax(38px,1fr));gap:3px}.po-s .nmL,.po-t .nmL,.po-h .nmL{display:none}.po-s .nmS,.po-t .nmS,.po-h .nmS{display:inline}.po-c{font-size:11px;height:24px}}
+.po-bracket{display:grid;gap:var(--s-7)}
+.po-conf .r-heading{margin-bottom:var(--s-3)}
+.po-rounds{display:grid;gap:var(--s-4)}
+@media (min-width:900px){.po-rounds{grid-template-columns:repeat(4,minmax(0,1fr));align-items:center}}
+.po-round{display:grid;gap:var(--s-2);align-content:center}
+.po-tie{background:var(--raised);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;display:grid;gap:2px}
+.po-side{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:6px;align-items:center;font-size:var(--t-13);color:var(--ink-2)}
+.po-side .club{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-side.po-w{color:var(--ink);font-weight:650}
+.po-side.po-tbd{color:var(--ink-3)}
+.po-seed{display:inline-block;min-width:16px;font-size:var(--t-12);color:var(--ink-3);text-align:center;font-weight:500}
+.po-r{font-weight:650}
+.po-note{color:var(--ink-3);border-top:1px solid var(--rule);padding-top:3px;margin-top:2px}
+.po-cup{max-width:360px;margin-top:var(--s-6);display:grid;gap:var(--s-2)}
+.po-fx .teams .po-seed{margin-right:4px}
+.po-fx .stake{display:grid;gap:3px;align-content:start}
+.po-fx .teams .po-w{font-weight:700}
+.po-through{font-size:var(--t-13);color:var(--ink-2)}
+.po-through b{color:var(--ink);font-weight:600}
+.po-format{display:grid;gap:4px;padding-left:1.2em;margin:0}
+.wkb.po b{color:var(--signal)}
