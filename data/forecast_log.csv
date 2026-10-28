@@ -971,3 +971,6 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-28T21:44:05Z,1953099,2026-11-01T21:30:00Z,Atlanta United,Toronto FC,0.479,0.2548,0.2662,availability
 2026-10-28T21:44:05Z,1953091,2026-11-01T21:30:00Z,Nashville SC,Red Bull New York,0.685,0.1908,0.1242,availability
 2026-10-28T21:44:05Z,1953098,2026-11-01T21:30:00Z,Vancouver Whitecaps,Seattle Sounders FC,0.5678,0.2335,0.1987,availability
+2026-10-28T22:32:09Z,1953074,2026-10-28T23:30:00Z,Charlotte FC,CF Montreal,0.5904,0.2265,0.1831,lineups
+2026-10-28T22:32:09Z,1953076,2026-10-28T23:30:00Z,New England Revolution,Red Bull New York,0.5228,0.2456,0.2316,lineups
+2026-10-28T22:32:09Z,1953077,2026-10-28T23:30:00Z,New York City FC,Atlanta United,0.5231,0.2455,0.2314,lineups
