@@ -968,3 +968,6 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-28T03:01:16Z,1953094,2026-10-31T19:00:00Z,Sporting Kansas City,FC Dallas,0.2103,0.2382,0.5515,availability
 2026-10-28T09:12:56Z,1953075,2026-10-28T23:30:00Z,Inter Miami CF,FC Cincinnati,0.5324,0.2432,0.2244,availability
 2026-10-28T09:12:56Z,1953089,2026-10-31T18:00:00Z,FC Cincinnati,Philadelphia Union,0.4071,0.2638,0.3291,availability
+2026-10-28T21:44:05Z,1953099,2026-11-01T21:30:00Z,Atlanta United,Toronto FC,0.479,0.2548,0.2662,availability
+2026-10-28T21:44:05Z,1953091,2026-11-01T21:30:00Z,Nashville SC,Red Bull New York,0.685,0.1908,0.1242,availability
+2026-10-28T21:44:05Z,1953098,2026-11-01T21:30:00Z,Vancouver Whitecaps,Seattle Sounders FC,0.5678,0.2335,0.1987,availability
