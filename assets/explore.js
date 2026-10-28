@@ -21,7 +21,7 @@ PP.pages.players = async (main, h) => {
   const ak = hh.slice(8); if(ak && PP.data.arch && PP.data.arch.byKey[ak]){ ST.arch = ak; ST.pos = "all"; ST.slot = "all"; if(ST.view === "tiers") ST.view = "value"; }
   const ix = Object.fromEntries(D.cols.map((c,i) => [c,i]));
   E = {rows: D.rows.map(r => ({id:r[ix.ws_player_id], name:r[ix.player], team:r[ix.team], year:r[ix.year], pos:r[ix.pos], mins:r[ix.mins], rating:r[ix.rating], lo:r[ix.rating_lo], hi:r[ix.rating_hi], p90:r[ix.rating_p90],
-    attack:r[ix.attack], defence:r[ix.defence], slot:r[ix.slot], comp:r[ix.comp], slot_value:r[ix.slot_value], p_slot:r[ix.p_above_slot], gp:r[ix.goals_prevented], sk:r[ix.gp_skill], mp:r[ix.model_pct], d90:r[ix.d90], clear:r[ix.clear], age:r[ix.age],
+    attack:r[ix.attack], defence:r[ix.defence], slot:r[ix.slot], comp:r[ix.comp], pay:ix.pay != null ? r[ix.pay] : r[ix.comp], moved:ix.moved_to != null ? r[ix.moved_to] : null, slot_value:r[ix.slot_value], p_slot:r[ix.p_above_slot], gp:r[ix.goals_prevented], sk:r[ix.gp_skill], mp:r[ix.model_pct], d90:r[ix.d90], clear:r[ix.clear], age:r[ix.age],
     p90_prev:r[ix.p90_prev], slot_prev:r[ix.slot_prev], team_prev:r[ix.team_prev]}))};
   E.years = [...new Set(E.rows.map(r => r.year))].sort();
   E.teams = [...new Set(E.rows.map(r => r.team))].sort((a,b) => short(a).localeCompare(short(b)));
@@ -37,9 +37,11 @@ function filtered(){
   const gkv = r => r.pos === "GK" ? r.sk : r.rating;          // keepers by shot-stopping skill (owner, 2026-10-17)
   const by = {value: r => gkv(r), tiers: r => r.pos === "GK" || r.lo == null ? null : r.rating, p90: r => r.pos === "GK" ? (r.sk == null ? null : r.sk/Math.max(1,r.mins)*90) : r.p90, contract: r => r.slot_value,
     rising: r => r.clear === 1 ? r.d90 : null, falling: r => r.clear === -1 ? -r.d90 : null}[ST.view];
-  rows = rows.filter(r => by(r) != null);
+  // the contract view also lists a mover's final club while no release gives them a contract type there (2026-10-27):
+  // their pay counts there, so a pay sort shows them once, at that club
+  rows = rows.filter(r => by(r) != null || (ST.view === "contract" && r.pay != null));
   if(ST.sort){ const [k, dir] = ST.sort; rows.sort((a,b) => ((a[k] ?? -1e9) - (b[k] ?? -1e9)) * dir); }
-  else rows.sort((a,b) => by(b) - by(a));
+  else rows.sort((a,b) => (by(b) ?? -1e9) - (by(a) ?? -1e9));
   return rows;
 }
 
@@ -92,7 +94,7 @@ function list(){
   const th = (k, l, n) => `<th class="${n?"n":""}${ST.sort && ST.sort[0]===k?" sorted":""}"><button type="button" data-k="${k}">${l}${ST.sort && ST.sort[0]===k ? (ST.sort[1] < 0 ? " ▾" : " ▴") : ""}</button></th>`;
   const head = {value:[["rating","Value",1],["p90","Per 90",1],["attack","Attack",1],["defence","Winning it",1],["mins","Minutes",1],["slot_value","Against type",1]],
     p90:[["p90","Per 90",1],["rating","Value",1],["mins","Minutes",1],["mp","Percentile",1]],
-    contract:[["slot_value","Against type",1],["p_slot","Chance beats typical",1],["comp","Pay",1],["rating","Value",1]],
+    contract:[["slot_value","Against type",1],["p_slot","Chance beats typical",1],["pay","Pay",1],["rating","Value",1]],
     rising:[["d90","Change per 90",1],["p90","Per 90 now",1],["mins","Minutes",1]], falling:[["d90","Change per 90",1],["p90","Per 90 now",1],["mins","Minutes",1]]}[v];
   const cell = (r, k) => { switch(k){
     case "rating": return r.pos === "GK" ? `<b>${sgn(r.sk,1)}</b>` : `<span class="valcell">${v==="value"?PP.ibar(r.rating, r.lo, r.hi, d0, d1):""}<b>${sgn(r.rating)}</b></span>`;
@@ -101,7 +103,8 @@ function list(){
     case "mins": return PP.int(r.mins||0);
     case "slot_value": return r.slot_value != null ? `<b>${sgn(r.slot_value)}</b>` : "–";
     case "p_slot": return r.p_slot != null ? pctShort(r.p_slot) : "–";
-    case "comp": return r.comp ? money(r.comp) : "–";
+    // a mid-season mover (owner, 2026-10-27): pay once, at the club they finished with; the former club's row names it
+    case "pay": return r.moved ? `<span class="r-small">Moved to ${esc(short(r.moved))}</span>` : r.pay ? money(r.pay) : "–";
     case "mp": return r.mp != null ? pctile(r.mp) : "–";
     case "d90": return `<span class="tri ${r.d90>=0?"up":"down"}" aria-hidden="true"></span> <b>${sgn(r.d90,3)}</b>`;
     default: return ""; } };

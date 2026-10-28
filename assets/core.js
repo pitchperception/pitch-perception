@@ -231,7 +231,7 @@ PP.route = () => {
   let section = h.split("-")[0];
   if(section === "player") section = "players";
   if(section === "team" || section === "manager" || section === "managers") section = "teams";
-  if(section === "match") section = "matches";
+  if(section === "match" || section === "playoff") section = "matches";
   if(section === "scout") section = "recruiting";
   if(section === "week") section = "matchday";            // links from before 2026-10-15 (weeks.js redirects them)
   if(!PP.pages[section] && !PP.pages[h.split("-")[0]]) section = "today";

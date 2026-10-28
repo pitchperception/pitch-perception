@@ -996,3 +996,20 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .po-through b{color:var(--ink);font-weight:600}
 .po-format{display:grid;gap:4px;padding-left:1.2em;margin:0}
 .wkb.po b{color:var(--signal)}
+/* playoff match pages and playoff values (P-B, 2026-10-27) */
+.po-fx[data-href]{cursor:pointer}
+.po-fx[data-href]:hover{background:var(--raised)}
+.pview{justify-self:start;margin-top:var(--s-2);flex-wrap:wrap}
+.po-plist{display:grid;margin-top:var(--s-2)}
+.po-prow{display:grid;grid-template-columns:86px minmax(0,1fr) auto 56px;gap:4px 10px;align-items:center;padding-block:8px;border-top:1px solid var(--rule);text-decoration:none;font-size:var(--t-13);color:inherit}
+.po-prow .v{text-align:right;font-weight:600}
+.po-shots,.po-kicks{list-style:none;margin:0;padding:0;display:grid;max-width:640px}
+.po-shots li,.po-kicks li{display:grid;grid-template-columns:44px 12px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding-block:7px;border-top:1px solid var(--rule);font-size:var(--t-13)}
+.po-kicks li.out b{color:var(--flare)}
+.po-kicks li.in b{color:var(--turf)}
+.po-dot{display:inline-block;width:10px;height:10px;border-radius:50%}
+.po-thr .pbar{margin-top:var(--s-2)}
+@media (max-width:520px){.po-prow{grid-template-columns:72px minmax(0,1fr) 52px}.po-prow > .r-small:nth-child(3){grid-column:2 / 4;order:4}}
+.po-report .mtop .prow{grid-template-columns:minmax(0,1fr) 110px 52px}
+.po-report .mtop .prow > .r-small{grid-column:1 / -1;margin-top:-4px}
+.po-partial{color:var(--ink);background:var(--well);padding:6px 10px;border-radius:4px}

@@ -53,7 +53,9 @@ const throughLine = (m, f) => {
 
 /* one upcoming playoff match, as a Matches-page row */
 PP.poUpRow = (m, P) => { const f = m.forecast;
-  return `<div class="fx po-fx"><span class="time">${m.time_confirmed ? PP.kick(m.kickoff_utc).time : "Time TBC"}</span>
+  // each row opens the match's page (P-B, 2026-10-27); a row being played gets the live score and chance to go through (live.js)
+  const live = PP.live && f && PP.live.inWindow({kickoff_utc: m.kickoff_utc, status: "upcoming"}) ? ` data-po-live="${m.id}"` : "";
+  return `<div class="fx po-fx" data-href="#playoff-${m.id}" role="link" tabindex="0"${live}><span class="time">${m.time_confirmed ? PP.kick(m.kickoff_utc).time : "Time TBC"}</span>
     <div class="teams"><span>${seedTag(P, m.home)}${clubTag(m.home, true)}</span><span>${seedTag(P, m.away)}${clubTag(m.away, true)}</span></div>
     ${f ? `<div class="probs">${pbar(m, f)}<div class="plab"><span><b>${pctShort(f.pH)}</b> win</span><span>${pctShort(f.pD)} draw</span><span><b>${pctShort(f.pA)}</b> win</span></div>
       <span class="src">After 90 minutes${m.round === "wild_card" || m.round === "round_one" ? "; a draw goes straight to penalties" : "; a draw goes to extra time"}</span></div>` : `<div class="probs"><span class="r-small">No forecast yet</span></div>`}
@@ -62,7 +64,7 @@ PP.poUpRow = (m, P) => { const f = m.forecast;
 /* one played playoff match */
 PP.poPastRow = (m, P) => { const f = m.forecast, hw = m.winner === m.home;
   const pre = f && f.p_win_home != null ? `Before kickoff: ${esc(short(m.home))} ${pctShort(f.p_win_home)} to win this match, ${esc(short(m.away))} ${pctShort(1 - f.p_win_home)}` : "No forecast recorded before kickoff";
-  return `<div class="fx fxp po-fx"><span class="score num">${m.g_home ?? ""}–${m.g_away ?? ""}</span>
+  return `<div class="fx fxp po-fx" data-href="#playoff-${m.id}" role="link" tabindex="0"><span class="score num">${m.g_home ?? ""}–${m.g_away ?? ""}</span>
     <div class="teams"><span${m.winner && hw ? ' class="po-w"' : ""}>${seedTag(P, m.home)}${clubTag(m.home, true)}</span><span${m.winner && !hw ? ' class="po-w"' : ""}>${seedTag(P, m.away)}${clubTag(m.away, true)}</span></div>
     <div class="xgpair r-small">${m.pen_home != null ? `<span>Penalties ${m.pen_home}–${m.pen_away}</span>` : m.et ? `<span>After extra time (${m.g90_home}–${m.g90_away} after 90)</span>` : ""}<span>${resultLine(m)}</span></div>
     <div class="stake r-small"><span class="r-label">${gameName(m)}</span><span>${pre}</span></div></div>`;

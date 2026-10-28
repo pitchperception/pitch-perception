@@ -63,7 +63,52 @@ function probs(L, lamH, lamA, p, m, gh, ga, rh, ra, rho){
 const pc = v => v === 0 ? "0%" : v === 1 ? "100%" : pctShort(v);      // exact where the in-play chances reach 0 or 1
 /* the forecast shown before kickoff: the live record's last row before kickoff (96, through matches.js), as a result's
    match page shows it; else the match's own published figures */
-const preOf = m => { const r = PP.recordedBefore ? PP.recordedBefore(m.id) : null; return r ? [r[1], r[2], r[3]] : [m.pH, m.pD, m.pA]; };
+const preOf = m => { if(m.ko) return [m.pH, m.pD, m.pA];          // a playoff match: the playoff forecast (172)
+  const r = PP.recordedBefore ? PP.recordedBefore(m.id) : null; return r ? [r[1], r[2], r[3]] : [m.pH, m.pD, m.pA]; };
+
+/* ---------------- knockouts (owner, 2026-10-27): the chance to go through ----------------
+   In normal time the page shows the live 90-minute chances combined with the bracket's rule for a level score (29, read
+   from playoffs.json "rules"): wild card and Round One go straight to penalties (the home side wins a shoot-out with
+   shootout_home); later rounds play extra time at et_share of each side's 90-minute scoring rate, then penalties. Round
+   One shows the series: s = h x sw + (1 - h) x sl, with the forecast's series chances after a win (sw) and a defeat (sl)
+   of this game. In extra time and the shoot-out, the score only. Checked against 29's numbers (P-B's README). */
+const KO_MAXG = 11;                                      // matchmodel.MAXG, as 29
+function poisPmf(l, n){ const out = new Array(n); let p = Math.exp(-l); for(let k = 0; k < n; k++){ out[k] = p; p *= l / (k + 1); } return out; }
+function levelQ(lamH, lamA, level, R){
+  const pen = R && R.shootout_home != null ? R.shootout_home : 0.5, sh = R && R.et_share != null ? R.et_share : 1 / 3;
+  if(level !== "extra_time_then_penalties") return pen;
+  const eh = poisPmf(lamH * sh, KO_MAXG), ea = poisPmf(lamA * sh, KO_MAXG);
+  let win = 0, tie = 0;
+  for(let i = 0; i < KO_MAXG; i++) for(let j = 0; j < KO_MAXG; j++){ const q = eh[i] * ea[j]; if(i > j) win += q; else if(i === j) tie += q; }
+  return win + tie * pen;
+}
+function throughOf(v, q, sw, sl){
+  const h = v[0] + v[1] * q;
+  if(sw != null && sl != null){ const s = h * sw + (1 - h) * sl; return [s, 1 - s]; }
+  return [h, 1 - h];
+}
+/* the shoot-out so far, from the feed's key events: each kick is a "penalties" event, a miss adds "penalties_not_successful" */
+function shootoutTally(raw){
+  const n = {home: [0, 0], guest: [0, 0]};
+  (raw || []).forEach(x => { const e = x.event || {}; if(e.game_section !== "penalty") return;
+    const side = e.team_role || (e.shot_at_goal || {}).team_role; if(!n[side]) return;
+    if(x.type === "penalties") n[side][0]++; else if(x.type === "penalties_not_successful") n[side][1]++; });
+  return n.home[0] + n.guest[0] ? [n.home[0] - n.home[1], n.guest[0] - n.guest[1]] : null;
+}
+/* the feed's knockout statuses (the game sections of the 2025 playoff key events): preExtra, firstHalfExtra,
+   secondHalfExtra, penalty. Checked before the regular-season tests, because /firstHalf/ also matches "firstHalfExtra" */
+function koClock(minute, status){
+  if(status === "firstHalfExtra" || status === "secondHalfExtra"){
+    const mm = String(minute || "").match(/^(\d+)(?:\+(\d+))?$/), lab = mm ? (mm[2] ? `${mm[1]}+${mm[2]}'` : `${mm[1]}'`) : "ET";
+    return {p: 3, m: 999, label: `Extra time, ${lab}`, short: lab, on: true, et: true};
+  }
+  if(status === "preExtra") return {p: 3, m: 999, label: "Extra time next", short: "ET", on: true, et: true, brk: true};
+  if(/extra/i.test(status) && /half|break|pause/i.test(status)) return {p: 3, m: 999, label: "Extra time, half-time", short: "ET HT", on: true, et: true, brk: true};
+  if(status === "penalty" || /shoot/i.test(status)) return {p: 5, m: 999, label: "Penalties", short: "Pens", on: true, pens: true};
+  return null;
+}
+const koThrough = (m, v) => throughOf(v, levelQ(m.xg_home, m.xg_away, m.ko.level, m.ko.rules), m.ko.sw, m.ko.sl);
+const koWhat = m => m.ko.round === "round_one" ? (m.ko.sw != null ? "To win the series" : "To win this game") : m.ko.round === "cup" ? "To win MLS Cup" : "To go through";
 
 /* ---------------- the feed ---------------- */
 const get = path => fetch(API + path, {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -74,6 +119,7 @@ const DONE = s => s === "finalWhistle", BREAK = s => s === "half" || /^half|brea
 function clock(minute, status){
   status = status || "";
   if(DONE(status)) return {p: 2, m: 999, label: "Full time", short: "FT", done: true, on: false};
+  const kc = koClock(minute, status); if(kc) return kc;
   if(BREAK(status)) return {p: 2, m: 45, label: "Half-time", short: "HT", on: true};
   if(!/firstHalf|secondHalf/.test(status)) return {p: 1, m: 0, label: "", short: "", on: false, pre: /schedul|pre/i.test(status)};
   const mm = String(minute || "").match(/^(\d+)(?:\+(\d+))?$/), p = status === "secondHalf" ? 2 : 1;
@@ -81,7 +127,7 @@ function clock(minute, status){
   const base = +mm[1], ex = +(mm[2] || 0), n = base + ex - 1;
   return {p, m: p === 2 ? Math.max(45, n) : Math.max(0, n), label: ex ? `${base}+${ex}'` : `${base}'`, short: ex ? `${base}+${ex}'` : `${base}'`, on: true};
 }
-const evClock = e => { const p = e.game_section === "secondHalf" ? 2 : 1, mm = String(e.minute_of_play || "").match(/^(\d+)(?:\+(\d+))?$/);
+const evClock = e => { const gs = e.game_section || "", p = gs === "secondHalf" ? 2 : /Extra$/.test(gs) || gs === "preExtra" ? 3 : gs === "penalty" ? 5 : 1, mm = String(e.minute_of_play || "").match(/^(\d+)(?:\+(\d+))?$/);
   const n = mm ? +mm[1] + +(mm[2] || 0) - 1 : (p === 1 ? 0 : 45); return {p, m: p === 2 ? Math.max(45, n) : n, label: e.minute_of_play ? e.minute_of_play + "'" : ""}; };
 async function stats(id){
   const d = await get(`/statistics/clubs/matches/${id}`), s = d && d.match_statistics_list && d.match_statistics_list[0] && d.match_statistics_list[0].match_statistics;
@@ -95,7 +141,7 @@ async function stats(id){
   return {status: s.match_status, clock: clock(s.minute_of_play, s.match_status), gh, ga, rh: red(h), ra: red(a), home: row(h), away: row(a)};
 }
 /* our own xG and player ratings for the match, from the live poller (165) via the site's R2 bucket; null when absent */
-const ours = (L, wsId) => !L.live_base ? Promise.resolve(null)
+const ours = (L, wsId) => !L.live_base || !wsId ? Promise.resolve(null)
   : fetch(`${L.live_base}/m/${wsId}.json?v=${Math.floor(Date.now() / 20e3)}`).then(r => r.ok ? r.json() : null).catch(() => null);
 async function events(id){
   const d = await get(`/matches/${id}/key_events?per_page=500`);
@@ -117,6 +163,7 @@ async function events(id){
       out.push({kind: "sub", side, ...c, who: [e.player_in_first_name, e.player_in_last_name].filter(Boolean).join(" "), off: [e.player_out_first_name, e.player_out_last_name].filter(Boolean).join(" ")});
     }
   });
+  out.pens = shootoutTally(ev);                    // knockouts: the shoot-out so far (null when none)
   return out;
 }
 /* the chances through the match so far, one point per minute played, from the goal and red-card times */
@@ -149,13 +196,13 @@ function drawCurve(el, m, C, ev){
   [[0, "0'"], [15, "15'"], [30, "30'"], [C.end1 + 1, "HT"], [C.end1 + 16, "60'"], [C.end1 + 31, "75'"], [C.end1 + 46, "90'"]].forEach(([x, l]) => text(svg, sx(x), H - 8, l, "t-axis", {"text-anchor": "middle"}));
   S("line", {x1: sx(C.end1 + 1), x2: sx(C.end1 + 1), y1: mg.t, y2: H - mg.b, class: "g-line", "stroke-dasharray": "3 3"}, svg);
   const xOf = e => e.p === 1 ? e.m + 1 : C.end1 + 1 + (e.m - 45) + 1;
-  ev.filter(e => e.kind === "goal" || e.kind === "red" || e.kind === "second").forEach(e => {
+  ev.filter(e => (e.kind === "goal" || e.kind === "red" || e.kind === "second") && e.p <= 2).forEach(e => {
     const x = sx(Math.min(xOf(e), xmax)), goal = e.kind === "goal";
     S("line", {x1: x, x2: x, y1: mg.t - 6, y2: H - mg.b, stroke: "var(--paper)", "stroke-width": 1.5}, svg);
     S(goal ? "circle" : "rect", goal ? {cx: x, cy: mg.t - 12, r: 6, fill: e.side ? ca : ch, stroke: "var(--paper)", "stroke-width": 1.5, "data-tip": `<b>${e.own ? "Own goal" : "Goal"}</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}<br>${e.score[0]}–${e.score[1]}`}
       : {x: x - 4, y: mg.t - 18, width: 8, height: 11, rx: 1.5, fill: "var(--flare)", "data-tip": `<b>Red card</b>, ${esc(e.label)}<br>${esc(e.who)}, ${esc(short(e.side ? m.away : m.home))}`}, svg);
   });
-  const xr = W - mg.r + 8, lab = C.fin ? [[0.5, `${C.fin[0]}–${C.fin[1]}`], [0.5, "Full time"]]      // the result, not 0% / 100%
+  const xr = W - mg.r + 8, lab = C.fin ? [[0.5, `${C.fin[0]}–${C.fin[1]}`], [0.5, C.at90 ? "After 90'" : "Full time"]]      // the result, not 0% / 100%
     : [[last[0] / 2, `${short(m.home)} ${pc(last[0])}`], [last[0] + last[1] / 2, `Draw ${pc(last[1])}`], [last[0] + last[1] + last[2] / 2, `${short(m.away)} ${pc(last[2])}`]];
   if(W >= 520){ let prev = Infinity; lab.map(([v, s]) => [sy(v) + 4, s]).sort((a, b) => b[0] - a[0]).forEach(([y, s]) => { const yy = Math.min(y, prev - 14); prev = yy; text(svg, xr, Math.max(yy, mg.t + 4), s, "t-lab", {}); }); }
 }
@@ -182,7 +229,7 @@ function playersHtml(m, O){
     const mx = Math.max(0.05, ...arr.map(p => Math.abs(p[7])));
     return `<div class="mtop"><h3 class="r-heading">${PP.clubTag(k ? m.away : m.home, true)}</h3>${arr.map(p => {
       const nm = esc(p[1] || ""), link = !pages.size || pages.has(p[0]);
-      return `<${link ? `a href="#player-${p[0]}"` : "div"} class="prow" data-tip="${esc(`<b>${p[1]}</b><br>Attack ${PP.sgn(p[5], 2)}, ball-winning ${PP.sgn(p[6], 2)}`)}"><span class="nm">${nm}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[7]) / mx * 100)}%;background:${p[7] >= 0 ? "var(--turf)" : "var(--flare)"}"></i></span><span class="v num">${PP.sgn(p[7], 2)}</span><span class="r-small">${POSN[p[3]] || ""}, ${Math.round(p[4])} min</span></${link ? "a" : "div"}>`; }).join("")}</div>`; };
+      return `<${link ? `a href="#player-${p[0]}"` : "div"} class="prow" data-tip="${esc(`<b>${p[1]}</b><br>Attack ${PP.sgn(p[5], 2)}, ball-winning ${PP.sgn(p[6], 2)}`)}"><span class="nm">${nm}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[7]) / mx * 100)}%;background:${p[7] >= 0 ? "var(--turf)" : "var(--flare)"}"></i></span><span class="v num">${PP.sgn(p[7], 2)}</span><span class="r-small">${POSN[p[3]] ? POSN[p[3]] + ", " : ""}${Math.round(p[4])} min${p[8] ? `, incl. ${Math.round(p[8])} extra time` : ""}</span></${link ? "a" : "div"}>`; }).join("")}</div>`; };
   return `<div class="mtops">${side(0)}${side(1)}</div>`;
 }
 const ingredients = L => L.variant === "L2" ? "the score, red cards, how teams play when ahead or behind, and the time left" : L.variant === "L1" ? "the score, red cards and the time left" : "the score and the time left";
@@ -210,7 +257,23 @@ const inWindow = (m, now = Date.now()) => { const k = kick(m); return m.status !
 /* full time (owner, 2026-10-27: "adopt the post-match view once the match is complete"): the result and the forecast
    before kickoff, worded as the match report (matches.js report()), in place of the 0% / 100% chances shown at full time
    from 2026-10-24 (deploy 4be4565) */
-function fullTime(m, s){
+function koFullTime(m, s, EV){
+  const pens = EV && EV.pens;
+  const W = s.gh > s.ga ? m.home : s.gh < s.ga ? m.away : pens && pens[0] !== pens[1] ? (pens[0] > pens[1] ? m.home : m.away) : null;
+  const et = (EV || []).some(e => e.p === 3);
+  let lede;
+  if(pens) lede = `${esc(short(m.home))} and ${esc(short(m.away))} drew ${s.gh}–${s.ga}${m.ko.level === "extra_time_then_penalties" ? " after extra time" : ""}; ${W ? `${esc(short(W))} won ${Math.max(...pens)}–${Math.min(...pens)} on penalties` : "penalties"}.`;
+  else if(W) lede = `${esc(short(W))} ${W === m.home ? "beat" : "won at"} ${esc(short(W === m.home ? m.away : m.home))} ${Math.max(s.gh, s.ga)}–${Math.min(s.gh, s.ga)}${et ? " after extra time" : ""}.`;
+  else lede = `${esc(short(m.home))} and ${esc(short(m.away))} drew ${s.gh}–${s.ga}; penalties to come.`;
+  const p = preOf(m), tw = p[0] != null ? throughOf(p, levelQ(m.xg_home, m.xg_away, m.ko.level, m.ko.rules), null, null) : null;
+  const said = W && tw ? ` Before kickoff the forecast gave ${esc(short(W))} ${pct(W === m.home ? tw[0] : tw[1])} to win the match.` : "";
+  return `<span class="r-label">Full time</span><p class="r-note mlede">${lede}${said}</p>
+    <div class="mrbar"><span class="r-label">Before kickoff, after 90 minutes</span>${PP.pbarFor(m, p, true)}
+      <div class="plab"><span><b>${pct(p[0])}</b> ${esc(short(m.home))}</span><span>${pct(p[1])} draw</span><span><b>${pct(p[2])}</b> ${esc(short(m.away))}</span></div></div>
+    <p class="r-small">The match report, with the final player ratings (extra time included, the shoot-out not), replaces this view after the overnight update, usually by 6 am ET.</p>`;
+}
+function fullTime(m, s, EV){
+  if(m.ko) return koFullTime(m, s, EV);
   const p = preOf(m), w = s.gh > s.ga ? 0 : s.gh < s.ga ? 2 : 1, W = w === 2 ? m.away : m.home, Lo = w === 2 ? m.home : m.away;
   const lede = w === 1 ? `${esc(short(m.home))} and ${esc(short(m.away))} drew ${s.gh}–${s.ga}.`
     : `${esc(short(W))} ${w === 0 ? "beat" : "won at"} ${esc(short(Lo))} ${Math.max(s.gh, s.ga)}–${Math.min(s.gh, s.ga)}.`;
@@ -229,8 +292,19 @@ function after(m, L, el, hash, O0, drawOurs){
   const t0 = Date.now();
   every(120e3, hash, async () => {
     n++;
-    if(n > 1 && !fin && Date.now() - t0 < 30 * 60e3){ const O = await ours(L, m.id); if(O){ drawOurs(O, true); fin = !!O.final; } }
+    if(n > 1 && !fin && Date.now() - t0 < 30 * 60e3){ const O = await ours(L, m.ws); if(O){ drawOurs(O, true); fin = !!O.final; } }
     if(n % 5 !== 1) return true;
+    if(m.ko){                                         // a playoff match: its report is in data/playoff_matches.json (175)
+      const J = await fetch("data/playoff_matches.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+      if(!(J && (J.matches || {})[m.feed]) || location.hash.slice(1) !== hash) return true;
+      const box = $(".lplate .pp-left", el);
+      if(box && !$(".lready", box)) box.insertAdjacentHTML("afterbegin", `<p class="r-small lready"><b>The match report is ready.</b> <a href="#${esc(hash)}" data-ready>Show it</a></p>`);
+      const a = $("[data-ready]", el);
+      if(a) a.addEventListener("click", async e => { e.preventDefault();
+        await Promise.all(["data/playoff_matches.json", "data/playoffs.json"].map(u => fetch(u, {cache: "reload"}).catch(() => null)));
+        location.reload(); }, {once: true});
+      return false;
+    }
     const I = await fetch("data/matchdays/index.json", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
     const w = I && (I.matchdays || []).find(x => (x.matches || []).includes(+m.id));
     if(!w || location.hash.slice(1) !== hash) return true;
@@ -249,7 +323,8 @@ function after(m, L, el, hash, O0, drawOurs){
 /* ---------------- match page ---------------- */
 async function page(m, el){
   const L = await model(); if(!L) return false;
-  const id = L.ids[String(m.id)]; if(!id) return false;
+  const id = m.feed || L.ids[String(m.id)]; if(!id) return false;
+  m.ws = m.feed ? (m.id || (L.po || {})[m.feed] || null) : m.id;       // our live file is keyed by the WhoScored id
   const hash = location.hash.slice(1); let C = null, EV = [];
   el.innerHTML = `<div class="wrap"><section class="plate pplate mplate lplate" aria-live="polite"><div class="pp-left"><span class="r-label">Live</span><p class="r-small">Checking the match feed.</p></div><div class="pp-right"></div></section></div>
     <section class="band" id="lcurvesec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>${esc(short(m.home))} win (bottom), draw, ${esc(short(m.away))} win (top), as the match has gone. Circles are goals, rectangles red cards; hover them.</p></div><div class="chart" id="lcurve"></div></div></section>
@@ -271,7 +346,7 @@ async function page(m, el){
       : `The live ratings stopped at ${el_} (${at} ET), before the final whistle; the overnight update completes them.`;
   };
   every(POLL_PAGE, hash, async () => {
-    const [s, ev, O] = await Promise.all([stats(id), events(id), ours(L, m.id)]);
+    const [s, ev, O] = await Promise.all([stats(id), events(id), ours(L, m.ws)]);
     if(location.hash.slice(1) !== hash) return false;
     if(!s){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">The match feed is not answering; trying again shortly.</p>`; return true; }
     if(!s.clock.on && !s.clock.done){ $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live</span><p class="r-small">${s.clock.pre ? "Not kicked off yet. The live score and chances appear here from kickoff." : "No live data for this match."}</p>`; return true; }
@@ -281,10 +356,26 @@ async function page(m, el){
     $$(".stk-watch").forEach(e => { e.hidden = true; });             // watchability is a pre-match figure
     const pill = $(".lpill-head"); if(pill) pill.outerHTML = livePill(now);
     else { const lab = $(".mhead .r-label"); if(lab) lab.insertAdjacentHTML("afterend", livePill(now)); }
-    if(now.done){
+    if(m.ko && (now.et || now.pens)){                 // extra time or the shoot-out: the score only
+      const pens = EV.pens;
+      $$(".prematch-sec").forEach(e => { e.hidden = true; });
+      $(".lplate .pp-left", el).innerHTML = `<span class="r-label">${esc(now.label)}</span>
+        <p class="r-note mlede">${now.pens ? `Penalties${pens ? `: ${esc(short(m.home))} ${pens[0]}, ${esc(short(m.away))} ${pens[1]}` : ", about to start"}.` : now.brk && now.label === "Extra time next" ? `Level at ${s.gh}–${s.ga} after 90 minutes: 30 minutes of extra time next, then penalties if still level.` : `${esc(short(m.home))} ${s.gh}–${s.ga} ${esc(short(m.away))} in extra time.`}</p>
+        <p class="r-small">The live chances cover normal time only; in extra time and the shoot-out this page shows the score.</p>
+        <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
+      $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
+    } else if(now.done){
       $$(".prematch-sec").forEach(e => { e.hidden = true; });        // the forecast, the stakes and the likely lineups: pre-match only
-      $(".lplate .pp-left", el).innerHTML = `${fullTime(m, s)}<h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
+      $(".lplate .pp-left", el).innerHTML = `${fullTime(m, s, EV)}<h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
       $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${FT_NOTE}</p>`;
+    } else if(m.ko){                                 // normal time in a knockout: the chance to go through
+      const v = probs(L, m.xg_home, m.xg_away, now.p, now.m, s.gh, s.ga, s.rh, s.ra), t = koThrough(m, v), [kh, ka] = PP.pairKit(m.home, m.away);
+      $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live: ${esc(koWhat(m).toLowerCase())}</span>
+        <div class="pbar big" role="img" aria-label="${esc(short(m.home))} ${pct(t[0])}, ${esc(short(m.away))} ${pct(t[1])}"><i style="width:${t[0]*100}%;background:${kh}"></i><i style="width:${t[1]*100}%;background:${ka}"></i></div>
+        <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pc(t[0])}</b><br>${esc(short(m.home))}</span><span></span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pc(t[1])}</b><br>${esc(short(m.away))}</span></div>
+        <p class="r-small">After 90 minutes: ${pctShort(v[0])} ${esc(short(m.home))} win, ${pctShort(v[1])} level (${m.ko.level === "penalties" ? "straight to penalties" : "extra time, then penalties"}), ${pctShort(v[2])} ${esc(short(m.away))} win. ${(b => `Before kickoff: ${pctShort(b[0])}, ${pctShort(b[1])}, ${pctShort(b[2])}.`)(preOf(m))}</p>
+        <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
+      $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
     } else {
       const v = probs(L, m.xg_home, m.xg_away, now.p, now.m, s.gh, s.ga, s.rh, s.ra);
       $(".lplate .pp-left", el).innerHTML = `<span class="r-label">Live chances</span>
@@ -294,7 +385,9 @@ async function page(m, el){
         <h3 class="r-heading" style="margin-top:var(--s-4)">Match events</h3>${eventsHtml(m, EV)}`;
       $(".lplate .pp-right", el).innerHTML = `<span class="r-label">Match statistics</span>${statsHtml(m, s, O)}<p class="r-small">${note(L)}</p>`;
     }
-    C = curve(L, m, EV, now); if(now.done) C.fin = [s.gh, s.ga];
+    const ev90 = EV.filter(e => e.p <= 2);
+    C = curve(L, m, ev90, now.p > 2 ? {p: 2, m: 999, done: true} : now);
+    if(now.done || now.p > 2){ C.fin = m.ko ? [0, 1].map(k => ev90.filter(e => e.kind === "goal" && e.side === k).length) : [s.gh, s.ga]; C.at90 = !!m.ko; }
     drawOurs(O, now.done);
     $("#lcurvesec").hidden = false;
     PP.chart($("#lcurve"), e2 => drawCurve(e2, m, C, EV)); PP.bindTips($("#lcurve"));
@@ -303,7 +396,7 @@ async function page(m, el){
   });
   return true;
 }
-const livePill = c => c.done ? `<span class="lpill lpill-head done">Full time</span>` : `<span class="lpill lpill-head"><i aria-hidden="true"></i>${c.short === "HT" ? "Half-time" : "Live " + esc(c.short)}</span>`;
+const livePill = c => c.done ? `<span class="lpill lpill-head done">Full time</span>` : `<span class="lpill lpill-head"><i aria-hidden="true"></i>${c.pens ? "Penalties" : c.brk ? esc(c.label) : c.et ? "Extra time " + esc(c.short) : c.short === "HT" ? "Half-time" : "Live " + esc(c.short)}</span>`;
 
 /* ---------------- matches list: live rows ---------------- */
 let LIST = null;                 // one poller per visit to the list; redraws (filters, matchdays) re-apply its last readings
@@ -340,5 +433,36 @@ async function list(root, matches){
 }
 
 PP.pbarFor = PP.pbarFor || ((m, v, big) => { const [h, a] = PP.pairKit(m.home, m.away); return `<div class="pbar${big ? " big" : ""}" role="img" aria-label="${esc(short(m.home))} ${pct(v[0])}, draw ${pct(v[1])}, ${esc(short(m.away))} ${pct(v[2])}"><i style="width:${v[0] * 100}%;background:${h}"></i><i style="width:${v[1] * 100}%;background:var(--mid)"></i><i style="width:${v[2] * 100}%;background:${a}"></i></div>`; });
-PP.live = {model, probs, clock, curve, inWindow, page, list, _test: {reach, binOf}};
+let POL = null;
+async function poList(root){
+  const L = await model(); if(!L) return;
+  const hash = location.hash.slice(1);
+  if(POL && POL.hash === hash){ POL.root = root; POL.apply(); return; }
+  const P = PP.loadPlayoffs ? await PP.loadPlayoffs() : null; if(!P) return;
+  const byId = Object.fromEntries((P.matches || []).map(x => [x.id, x]));
+  const me = POL = {hash, root, cache: {}};
+  if(!$$("[data-po-live]", root).length){ POL = null; return; }
+  me.apply = () => Object.entries(me.cache).forEach(([fid, s]) => { const x = byId[fid], f = x && x.forecast; if(!s || !x || !f || !(s.clock.on || s.clock.done)) return;
+    const m = {home: x.home, away: x.away, pH: f.pH, pD: f.pD, pA: f.pA, xg_home: f.xg_home, xg_away: f.xg_away, ko: {round: x.round, level: x.level || ((P.rules || {}).level || {})[x.round], sw: f.sw_home, sl: f.sl_home, rules: P.rules || {}}};
+    $$(`[data-po-live="${fid}"]`, me.root).forEach(r => {
+      const t = $(".time", r); if(t) t.innerHTML = `${s.clock.done ? `<span class="lpill done">FT</span>` : `<span class="lpill"><i aria-hidden="true"></i>${esc(s.clock.pens ? "Pens" : s.clock.short)}</span>`}<b class="lsc num">${s.gh}–${s.ga}</b>`;
+      const pb = $(".probs", r);
+      if(pb && !s.clock.done && !s.clock.et && !s.clock.pens){ const v = probs(L, m.xg_home, m.xg_away, s.clock.p, s.clock.m, s.gh, s.ga, s.rh, s.ra), th = koThrough(m, v), [kh, ka] = PP.pairKit(m.home, m.away);
+        pb.innerHTML = `<div class="pbar"><i style="width:${th[0]*100}%;background:${kh}"></i><i style="width:${th[1]*100}%;background:${ka}"></i></div><div class="plab"><span><b>${pc(th[0])}</b> ${esc(short(m.home))}</span><span></span><span><b>${pc(th[1])}</b> ${esc(short(m.away))}</span></div><span class="src">Live: ${esc(koWhat(m).toLowerCase())}</span>`; }
+      else if(pb && (s.clock.et || s.clock.pens)) pb.innerHTML = `<span class="src">${esc(s.clock.label)}: the score only</span>`;
+      r.classList.add("is-live");
+    });
+  });
+  every(POLL_LIST, hash, async () => {
+    if(POL !== me) return false;
+    const want = [...new Set($$("[data-po-live]", me.root).map(r => r.dataset.poLive))];
+    await Promise.all(want.map(async fid => { if(me.cache[fid] && me.cache[fid].clock.done) return; const s = await stats(fid); if(s) me.cache[fid] = s; }));
+    if(POL !== me) return false;
+    me.apply();
+    return true;
+  });
+}
+addEventListener("hashchange", () => { POL = null; });
+
+PP.live = {model, probs, clock, curve, inWindow, page, list, poList, _test: {reach, binOf, levelQ, throughOf, shootoutTally, koClock}};
 })();

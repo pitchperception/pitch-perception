@@ -53,7 +53,8 @@ PP.pages.player = async (main, h) => {
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${ix ? clubTag(ix[2], true) : ""}</div><h1 class="r-name">${ix ? esc(ix[1]) : "Player"}</h1><p class="r-small">Loading the model's numbers for this player.</p></section></div>`;
   let rec, peers, teams;
   let photo = null;
-  try { [{rec, teams}, peers, , , photo] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles(), PP.loadInjuries()]); }
+  let PO = null;
+  try { [{rec, teams}, peers, , , photo, , , PO] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles(), PP.loadInjuries(), PP.loadPlayoffPlayers()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">This player's data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   if(location.hash.slice(1) !== h && !(h === "player-"+id && location.hash === "")) return;
   if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No player with this link</h1><p>Search for the player by name above.</p></section></div>`; return; }
@@ -61,15 +62,19 @@ PP.pages.player = async (main, h) => {
   const byYear = {}; seasons.forEach(s => { if(!byYear[s.year] || s.mins > byYear[s.year].mins) byYear[s.year] = s; });
   const years = Object.keys(byYear).map(Number).sort();
   const year = want && byYear[want] ? want : years[years.length-1];
-  ST = {rec, peers, teams, byYear, years, year, s: byYear[year], cmp: null, chainI: 0, zoneMode: "t", photo};
+  ST = {rec, peers, teams, byYear, years, year, s: byYear[year], cmp: null, chainI: 0, zoneMode: "t", photo,
+        po: PO && PO.players ? PO.players[String(id)] || null : null, view: ST && ST.rec && ST.rec.id === rec.id ? ST.view : "reg"};
   render(main);
 };
 
 function render(main){
   const {rec, s} = ST, gk = s.pos === "GK";
-  main.innerHTML = identity() + (gk ? keeperBody() : outfieldBody());
+  const pv = ST.view !== "reg" && poRows().length;              // the playoffs, or the season and the playoffs together
+  main.innerHTML = identity() + (pv ? playoffBody() : gk ? keeperBody() : outfieldBody());
   PP.bindDisclosures(main);
   $$(".pseason button", main).forEach(b => b.addEventListener("click", () => { location.hash = `#player-${rec.id}-${b.dataset.y}`; }));
+  $$(".pview button", main).forEach(b => b.addEventListener("click", () => { ST.view = b.dataset.v; render(main); }));
+  if(pv){ $$(".pid .bdgs, .pid .pfacts, .pplate .pp-left", main).forEach(PP.bindTips); return; }
   if(gk){ drawKeeper(); return; }
   PP.chart($("#psignal"), drawSignal);
   PP.chart($("#fingerprint"), drawFingerprint);
@@ -90,7 +95,9 @@ function identity(){
   const age = rec.age != null ? rec.age - ((rec.age_year || year) - year) : null;
   const facts = [["Position", PP.POS[s.pos] || s.pos || "Not recorded"], age != null ? ["Age", `${age} in ${year}`] : null,
     s.slot ? ["Contract type", PP.SLOT[s.slot] || s.slot] : null, ["Minutes, "+year, PP.int(s.mins)],
-    s.comp ? ["Guaranteed pay", money(s.comp)] : null].filter(Boolean);
+    // a season at two clubs (owner, 2026-10-27): the pay counts once, in full, at the club they finished the season with
+    s.pay_at ? (s.pay_season ? ["Guaranteed pay", `${money(s.pay_season)}, counted at ${short(s.pay_at)}`, "Counted once, in full, at the club they finished the season with, as MLS counts budget charges"] : null)
+      : s.comp ? ["Guaranteed pay", money(s.comp)] : null].filter(Boolean);
   const role = s.pos !== "GK" ? PP.roleFor(rec.id, year, s.team, s.pos) : null;           // playing style (145), 900+ minutes
   if(role) facts.splice(1, 0, ["Playing style", role.label, role.tip]);
   // in his latest season the header shows his current club (latest appearance, 72); figures stay with the club they came from
@@ -105,7 +112,48 @@ function identity(){
     <dl class="pfacts">${facts.map(([k,v,tip]) => `<div><dt>${k}</dt><dd${tip ? ` class="prole" data-tip="${esc(tip)}"` : ""}>${esc(v)}</dd></div>`).join("")}</dl>
     ${injNote(rec.id, year)}
     ${years.length > 1 ? `<div class="seg pseason" role="group" aria-label="Season">${years.map(y => `<button type="button" data-y="${y}" aria-pressed="${y===year}">${y}</button>`).join("")}</div>` : ""}
+    ${poRows().length ? `<div class="seg pview" role="group" aria-label="Which matches">${[["reg", "Regular season"], ["po", "Playoffs"], ["both", "Both"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${ST.view === v}">${l}</button>`).join("")}</div>` : ""}
   </section></div>`;
+}
+
+/* ---------------- the playoffs (owner, 2026-10-27): Regular season (default, the page as it is) / Playoffs / Both ----------------
+   data/playoff_players.json (175): each player's playoff matches and season totals. Playoff values include extra time
+   (the minutes say how much) and never the shoot-out; they are not part of the season rating. Summed playoff values
+   lead with the per-90 figure. "Both" adds the regular season's value and minutes to the playoffs' (per 90 over all the
+   minutes). Percentiles, charts and contract-type comparisons are the regular season's and are not recomputed. */
+let ppoP = null;
+PP.loadPlayoffPlayers = () => ppoP || (ppoP = fetch("data/playoff_players.json").then(r => r.ok ? r.json() : null).then(d => { PP._poPlayers = d; return d; }).catch(() => null));
+const poRows = () => ((ST.po || {}).seasons || []).filter(x => x[0] === ST.year);       // [year, team, matches, mins, mins_et, attack, ballwin, value, value_p90, attack_p90, ballwin_p90, gp]
+const minsTxt = (m, et) => et ? `${PP.int(m)} min, incl. ${PP.int(et)} extra time` : `${PP.int(m)} min`;
+function playoffBody(){
+  const {s, year} = ST, rows = poRows(), both = ST.view === "both";
+  const sum = k => rows.reduce((a, x) => a + (x[k] || 0), 0);
+  const po = {matches: sum(2), mins: sum(3), et: sum(4), attack: sum(5), ball: sum(6), value: sum(7)}, gp = rows.some(x => x[11] != null) ? sum(11) : null;
+  const reg = {mins: s.mins || 0, value: s.rating || 0, attack: s.attack || 0, ball: s.defence || 0};
+  const T = both ? {mins: po.mins + reg.mins, value: po.value + reg.value, attack: po.attack + reg.attack, ball: po.ball + reg.ball} : po;
+  const p90 = v => T.mins > 0 ? v / T.mins * 90 : null;
+  const label = both ? `Regular season and playoffs, ${year}` : `Playoffs, ${year}`;
+  const ms = ((ST.po || {}).matches || []).filter(x => x[1] === year).sort((a, b) => a[2] < b[2] ? -1 : 1);
+  const RL = {wild_card: "Wild card", round_one: "Round One", conf_semi: "Conference semifinal", conf_final: "Conference final", cup: "MLS Cup"};
+  // 2026 matches open their match page; earlier seasons' playoffs have no match pages (their key is the WhoScored id)
+  const tag = x => String(x[0]).startsWith("MLS-") ? `a class="po-prow" href="#playoff-${esc(x[0])}"` : `div class="po-prow"`;
+  const cov = ((PP._poPlayers || {}).coverage || {})[String(year)], partial = cov && cov.with_data < cov.matches;
+  const list = ms.length ? `<div class="po-plist">${ms.map(x => `<${tag(x)}><span class="r-small">${PP.dayShort ? PP.dayShort(x[2]) : esc(x[2])}</span><span>${x[5] ? "at" : "v"} ${clubTag(x[4], true)}</span><span class="r-small">${minsTxt(x[6], x[7])}</span><span class="v num">${sgn(x[8], 2)}</span></${String(x[0]).startsWith("MLS-") ? "a" : "div"}>`).join("")}</div>` : "";
+  return `<div class="wrap"><section class="plate pplate" aria-label="${esc(label)}">
+      <div class="pp-left">
+        <span class="r-label">${both ? "Value above replacement per 90, regular season and playoffs" : "Value above replacement per 90, playoffs"}, ${year}</span>
+        <span class="r-figure" data-tip="${esc("Goals of expected-goal difference added over a replacement player in the same minutes, per 90 minutes" + (both ? ", over the season's and the playoffs' minutes together." : ", over the playoff minutes (extra time included)."))}">${p90(T.value) == null ? "–" : sgn(p90(T.value), 2)}</span>
+        <div class="sub-fig"><span class="num">${sgn(T.value)} goals in all, over ${minsTxt(T.mins, po.et)}</span>${both ? `<span class="r-small">Regular season ${sgn(reg.value)} goals in ${PP.int(reg.mins)} minutes; playoffs ${sgn(po.value)} in ${minsTxt(po.mins, po.et)} (${po.matches} match${po.matches === 1 ? "" : "es"}).</span>` : `<span class="r-small">${po.matches} playoff match${po.matches === 1 ? "" : "es"}.</span>`}</div>
+        <div class="indicators">
+          <div class="ind"><span class="r-label">With the ball, per 90</span><span class="v num">${p90(T.attack) == null ? "–" : sgn(p90(T.attack), 2)}</span><span class="r-small">${sgn(T.attack)} goals in all</span></div>
+          <div class="ind"><span class="r-label">Winning it back, per 90</span><span class="v num">${p90(T.ball) == null ? "–" : sgn(p90(T.ball), 2)}</span><span class="r-small">${sgn(T.ball)} goals in all</span></div>
+          ${gp != null ? `<div class="ind"><span class="r-label">Goals prevented, playoffs</span><span class="v num">${sgn(gp, 2)}</span><span class="r-small">Against an average keeper, extra-time shots included, shoot-outs not; one playoff run is mostly luck, so it is not shrunk or ranked.</span></div>` : ""}
+        </div>
+        ${partial ? `<p class="r-small po-partial"><b>Incomplete season:</b> event data for ${cov.with_data} of the ${cov.matches} playoff matches of ${year}; the others are left out of these figures.</p>` : ""}
+        <p class="r-small">${both ? "The regular season's value and minutes plus the playoffs': " : ""}playoff values include extra time and never a shoot-out, and are not part of the season rating. Percentiles, charts and the contract-type comparison are for the regular season only.</p>
+      </div>
+      <div class="pp-right"><span class="r-label">Playoff matches, ${year}</span>${list || `<p class="r-small">No playoff match report yet.</p>`}</div>
+    </section></div>`;
 }
 
 /* injuries (160, owner 2026-10-21): the current status, then Transfermarkt's spells that touch this season, each with the
@@ -438,7 +486,7 @@ function detailSection(){
   const {rec, s} = ST, teams = ST.teams;
   const seasonRows = rec.seasons.slice().sort((a,b) => b.year - a.year).map(x => `<tr><td>${x.year}</td><td>${PP.crestTag(x.team)}</td><td>${posSing(x.pos)}</td><td class="n">${PP.int(x.mins)}</td>
     <td class="n">${x.rating!=null?sgn(x.rating):x.gk&&x.gk.skill!=null?sgn(x.gk.skill):"–"}</td><td class="n">${x.lo!=null?`${num(x.lo)} to ${num(x.hi)}`:x.gk&&x.gk.skill_lo!=null?`${num(x.gk.skill_lo)} to ${num(x.gk.skill_hi)}`:"–"}</td><td class="n">${x.p90!=null?num(x.p90,3):"–"}</td><td class="n">${x.attack!=null?sgn(x.attack):"–"}</td><td class="n">${x.defence!=null?sgn(x.defence):"–"}</td>
-    <td>${PP.SLOT[x.slot]||x.slot||"–"}</td><td class="n">${x.comp?money(x.comp):"–"}</td><td class="n">${x.slot_value!=null?sgn(x.slot_value):"–"}</td><td class="n">${x.conv&&x.conv.goals!=null?x.conv.goals:"–"}</td><td class="n">${x.conv&&x.conv.shots!=null?x.conv.shots:"–"}</td></tr>`).join("");
+    <td>${PP.SLOT[x.slot]||x.slot||"–"}</td><td class="n">${x.moved_to ? `<span class="r-small">Moved to ${esc(short(x.moved_to))}</span>` : x.pay_at ? (x.pay_season ? money(x.pay_season) : "–") : x.comp ? money(x.comp) : "–"}</td><td class="n">${x.slot_value!=null?sgn(x.slot_value):"–"}</td><td class="n">${x.conv&&x.conv.goals!=null?x.conv.goals:"–"}</td><td class="n">${x.conv&&x.conv.shots!=null?x.conv.shots:"–"}</td></tr>`).join("");
   const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${teams[x[1]] ? PP.crestTag(teams[x[1]]) : ""}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
   const keys = ST.peers.components.map(c => c.key);
   const sk = s.skills ? SKILL_ORDER.filter(k => keys.includes(k)).map(k => { const v = s.skills[keys.indexOf(k)]; return `<tr><td>${COMP[k][0]}</td><td class="n">${sgn(v[1],4)}</td><td class="n">${v[0]!=null?pctile(v[0]):"–"}</td><td class="n">${v[2]!=null?v[2].toFixed(2):"–"}</td></tr>`; }).join("") : "";

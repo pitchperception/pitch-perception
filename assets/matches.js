@@ -93,7 +93,7 @@ PP.pages.matches = async main => {
       <div class="fixtures">${upGroups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(upRow).join("")}`).join("") || `<p class="r-small">No matches scheduled.</p>`}</div></section>
       <section class="band"><div class="band-head"><h2 class="r-title">Results</h2><p>Scores, expected goals, and the player who added the most value on each side. Open a result for its match report.</p></div>
       <div class="fixtures">${group(past).map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(pastRow).join("")}`).join("")}</div></section>`;
-    if(PP.live) PP.live.list($("#mlist"), M.matches);
+    if(PP.live){ PP.live.list($("#mlist"), M.matches); PP.live.poList($("#mlist")); }
   };
   /* matchdays: the league's official rounds, numbered as the matchday review pages number them (75's md from 141; owner,
      2026-10-24). Until then the page grouped matches by its own rule (a new round after a day without matches, numbered
@@ -137,7 +137,7 @@ PP.pages.matches = async main => {
       <section class="band" style="padding-top:0"><div class="band-head"><p>${WATCH_NOTE}</p>${ups.length ? `<div class="seg msort" role="group" aria-label="Order matches"><button type="button" data-sort="time" aria-pressed="${SORT !== "watch"}">By kickoff</button><button type="button" data-sort="watch" aria-pressed="${SORT === "watch"}">Most watchable</button></div>` : ""}</div>
       <div class="fixtures">${groups.map(([k, arr]) => `<div class="fx-day">${k}</div>${arr.map(row).join("")}`).join("")}</div></section>`;
     const sw = $(".wkstrip"), on = $(".wkb.on"); if(sw && on) sw.scrollLeft = on.offsetLeft - sw.clientWidth / 2 + on.clientWidth / 2;
-    if(PP.live) PP.live.list($("#mlist"), M.matches);       // live scores and chances on rows being played (live.js)
+    if(PP.live){ PP.live.list($("#mlist"), M.matches); PP.live.poList($("#mlist")); }       // live scores and chances on rows being played (live.js)
   };
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Matches</h1><p class="r-note standfirst">Every 2026 match: the forecast before it, and what happened after. Open a match for lineups, stakes and who made the difference.</p>${recordLine()}
     <label class="fsel" style="justify-self:start"><span class="r-small">Club</span><select id="mteam"><option value="all">All clubs</option>${teams.map(t => `<option value="${esc(t)}"${t===FILTER?" selected":""}>${esc(full(t))}</option>`).join("")}</select></label></section>
@@ -154,27 +154,27 @@ PP.pages.matches = async main => {
 
 /* ---------------- post-match report (82_weekly.py) ---------------- */
 const POSW = {CB:"centre back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
-function report(m, R, wk){
+function report(m, R, wk, po){
   const [gh, ga] = R.g, hw = gh > ga, aw = ga > gh, win = hw ? 0 : aw ? 2 : 1, W = hw ? m.home : aw ? m.away : null, L = hw ? m.away : m.home;
   // "before kickoff" (owner, 2026-10-27): the recorded forecast wherever the live record has one (82), else reconstructed
   const pc = R.xg_probs[win], pre = R.pre && R.pre[win] != null ? R.pre[win] : null, recon = R.pre && R.pre[3] === "reconstructed", recd = R.pre && R.pre[3] === "recorded";
   const chances = `${num(R.xg[0],2)} expected goals to ${num(R.xg[1],2)}`;
-  const lede = W ? `${esc(short(W))} ${hw ? "beat" : "won at"} ${esc(short(L))} ${Math.max(gh,ga)}–${Math.min(gh,ga)}${pc >= 0.5 ? `, and the chances agreed: ${chances}. On those chances they win ${pct(pc)} of the time.` : pc >= 0.35 ? `, from chances that were close: ${chances}. On those chances they win ${pct(pc)} of the time.` : `, despite the chances: ${chances}. On those chances they win only ${pct(pc)} of the time.`}${pre != null ? ` Before kickoff the ${recd ? "recorded " : ""}forecast gave them ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`
+  const lede = po && po.lede ? po.lede : W ? `${esc(short(W))} ${hw ? "beat" : "won at"} ${esc(short(L))} ${Math.max(gh,ga)}–${Math.min(gh,ga)}${pc >= 0.5 ? `, and the chances agreed: ${chances}. On those chances they win ${pct(pc)} of the time.` : pc >= 0.35 ? `, from chances that were close: ${chances}. On those chances they win ${pct(pc)} of the time.` : `, despite the chances: ${chances}. On those chances they win only ${pct(pc)} of the time.`}${pre != null ? ` Before kickoff the ${recd ? "recorded " : ""}forecast gave them ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`
     : `${esc(short(m.home))} and ${esc(short(m.away))} drew ${gh}–${ga}. The chances: ${chances}; on those a draw happens ${pct(pc)} of the time.${pre != null ? ` Before kickoff the ${recd ? "recorded " : ""}forecast gave a draw ${pct(pre)}${recon ? " (reconstructed)" : ""}.` : ""}`;
   const bar3 = (p, label) => `<div class="mrbar"><span class="r-label">${label}</span>${pbar({home:m.home, away:m.away, pH:p[0], pD:p[1], pA:p[2]}, true)}
     <div class="plab"><span><b>${pct(p[0])}</b> ${esc(short(m.home))}</span><span>${pct(p[1])} draw</span><span><b>${pct(p[2])}</b> ${esc(short(m.away))}</span></div></div>`;
   const tops = side => { const arr = R.top[side] || [], team = side === "home" ? m.home : m.away, mx = Math.max(0.05, ...arr.map(x => Math.abs(x[4]||0))), kp = (R.keepers||[]).find(k => k[2] === (side === "home" ? 0 : 1));
-    return `<div class="mtop"><h3 class="r-heading">${clubTag(team, true)}</h3>${arr.map(x => `<a class="prow" href="#player-${x[0]}"><span class="nm">${esc(x[1]||"")}${PP.badgeMini(PP.badgesFor(x[0], 2026, team))}</span><span class="tr"><i style="width:${Math.max(2,Math.abs(x[4])/mx*100)}%;background:${x[4]>=0?"var(--turf)":"var(--flare)"}"></i></span><span class="v num">${sgn(x[4],2)}</span><span class="r-small">${esc(POSW[x[2]]||"")}, ${PP.int(x[3])} min</span></a>`).join("")}
+    return `<div class="mtop"><h3 class="r-heading">${clubTag(team, true)}</h3>${arr.map(x => `<a class="prow" href="#player-${x[0]}"><span class="nm">${esc(x[1]||"")}${PP.badgeMini(PP.badgesFor(x[0], 2026, team))}</span><span class="tr"><i style="width:${Math.max(2,Math.abs(x[4])/mx*100)}%;background:${x[4]>=0?"var(--turf)":"var(--flare)"}"></i></span><span class="v num">${sgn(x[4],2)}</span><span class="r-small">${esc(POSW[x[2]]||"")}, ${x[5] ? `${PP.int(x[3])} min, incl. ${PP.int(x[5])} extra time` : `${PP.int(x[3])} min`}</span></a>`).join("")}
       ${kp ? `<p class="r-small" style="margin-top:var(--s-2)">In goal: <a href="#player-${kp[0]}">${esc(kp[1])}</a>, ${sgn(kp[3],2)} goals prevented against the shots faced.</p>` : ""}</div>`; };
   const moms = (R.moments || []).map(x => { const team = x[1] === 0 ? m.home : m.away;
     return `<div class="mom"><span class="num min">${x[0]}'</span><span class="who">${chip(team)}<a href="#player-${x[2]}">${esc(x[3]||"")}</a></span><span class="act">${esc(x[4])}</span><span class="v num">${sgn(x[5],2)}</span></div>`; }).join("");
   const ch = R.chain;
   return `<div class="wrap"><section class="plate pplate mplate" aria-label="The result against the chances">
-      <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#matchday-${wk.md}">The matchday in review: Matchday ${wk.md}</a>` : ""}</div>
-      <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, `Before kickoff${recd ? ", as recorded" : recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, "On the chances: every shot scored with its expected-goal probability")}</div>
+      <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#matchday-${wk.md}">The matchday in review: Matchday ${wk.md}</a>` : ""}${po && po.after ? po.after : ""}</div>
+      <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, po ? "Before kickoff, as recorded: the result after 90 minutes" : `Before kickoff${recd ? ", as recorded" : recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, po ? "On the chances in normal time: every shot scored with its expected-goal probability" : "On the chances: every shot scored with its expected-goal probability")}</div>
     </section></div>
-    <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match; filled circles are goals. Hover a shot.</p></div><div class="chart" id="mrace"></div></div></section>
-    <section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>Each player's contribution to the match above what a replacement player would have added in the same minutes; these add up to the season rating.</p></div>
+    <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match${po && R.shots_et && R.shots_et.length ? ", extra time included (after the dashed line at 90')" : ""}; filled circles are goals. Hover a shot.</p></div><div class="chart" id="mrace"></div></div></section>
+    <section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>${po ? po.diff : "Each player's contribution to the match above what a replacement player would have added in the same minutes; these add up to the season rating."}</p></div>
       <div class="mtops">${tops("home")}${tops("away")}</div></div></section>
     ${moms ? `<section class="band"><div class="wrap"><div class="band-head"><h2 class="r-title">The moments that mattered</h2><p>The single actions that most raised a side's chance of scoring, or most lowered the opponent's.</p></div><div class="moms">${moms}</div></div></section>` : ""}
     ${ch ? `<section class="band"><div class="wrap"><div class="band-head"><h2 class="r-title">The move of the match</h2><p>${esc(short(ch.team))}, ${ch.minute} minutes in: ${ch.n_actions} actions${any(ch) ? `, ending in a goal` : ""}, each valued by how much it changed the chance that the possession would end in a goal.</p></div>
@@ -189,8 +189,9 @@ function drawRace(el, m, R){
   shots.slice().sort((a,b) => a[0] - b[0]).forEach(s => { cum[s[1]] += s[2]; series[s[1]].push([s[0], cum[s[1]]]); pts.push({...s, y: cum[s[1]]}); });
   const ymax = Math.max(1, Math.ceil(Math.max(cum[0], cum[1]) * 2) / 2), sx = v => mg.l + v/end*(W-mg.l-mg.r), sy = v => H-mg.b - v/ymax*(H-mg.t-mg.b);
   for(let v = 0; v <= ymax + 1e-9; v += ymax > 2.5 ? 1 : 0.5){ S("line",{x1:mg.l,x2:W-mg.r,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, mg.l-6, sy(v)+4, num(v,1), "t-axis", {"text-anchor":"end"}); }
-  [0,15,30,45,60,75,90].forEach(v => text(svg, sx(v), H-10, v + "'", "t-axis", {"text-anchor":"middle"}));
+  [0,15,30,45,60,75,90].concat(end > 100 ? [105,120] : []).forEach(v => text(svg, sx(v), H-10, v + "'", "t-axis", {"text-anchor":"middle"}));
   S("line",{x1:sx(45),x2:sx(45),y1:mg.t,y2:H-mg.b,class:"g-line","stroke-dasharray":"3 3"},svg);
+  if(end > 100) S("line",{x1:sx(90),x2:sx(90),y1:mg.t,y2:H-mg.b,class:"g-line","stroke-dasharray":"6 3"},svg);      // extra time (playoffs)
   const [ch, ca, dash] = PP.pairKit(m.home, m.away), col = [ch, ca];
   series.forEach((sr, k) => { const d = sr.map(([x, y], i) => i ? `H${sx(x)}V${sy(y)}` : `M${sx(x)},${sy(y)}`).join("") + `H${sx(end)}`;
     S("path",{d, fill:"none", stroke:col[k], "stroke-width":2.5, "stroke-dasharray": k === 1 && dash ? "6 4" : null},svg);
@@ -318,4 +319,98 @@ function drawElo2(el, m){
     const L = tr[tr.length-1]; S("circle",{cx:sx(day(L[0])),cy:sy(L[1]),r:4,fill:c,stroke:"var(--paper)","stroke-width":2},svg); text(svg, sx(day(L[0]))+8, sy(L[1])+4, PP.int(L[1]), "t-lab", {}); });
   [["03-01","Mar"],["05-01","May"],["07-01","Jul"],["09-01","Sep"]].forEach(([d,l]) => { const dd = day("2026-"+d); if(dd > 0 && dd < D1) text(svg, sx(dd), H-6, l, "t-axis", {"text-anchor":"middle"}); });
 }
+/* ---------------- playoff match pages (owner, 2026-10-27): data/playoffs.json (172: fixture, forecast, the league's
+   result) + data/playoff_matches.json (175: the report from the event data). Values include extra time, with the
+   minutes noted; the shoot-out is never valued; playoff values are not counted in season ratings. A finished match
+   without event data yet shows the league's result and "match data not available yet" (retried nightly). ---------- */
+let pmjP = null;
+PP.loadPlayoffReports = () => pmjP || (pmjP = fetch("data/playoff_matches.json").then(r => r.ok ? r.json() : null).catch(() => null));
+const PRL = {wild_card: "Wild card", round_one: "Round One", conf_semi: "Conference semifinal", conf_final: "Conference final", cup: "MLS Cup"};
+const poGame = m => m.round === "round_one" ? `Round One, game ${m.game}` : PRL[m.round] || "Playoffs";
+const poSeries = (m, after) => {
+  let b = (m.series_before || [0, 0]).slice();
+  if(after && m.winner){ b = m.winner === m.home ? [b[0] + 1, b[1]] : [b[0], b[1] + 1]; }
+  if(!b[0] && !b[1]) return "";
+  if(b[0] === b[1]) return `series level ${b[0]}–${b[1]}`;
+  const lead = b[0] > b[1] ? m.home : m.away, won = Math.max(...b) >= 2;
+  return `${esc(short(lead))} ${won ? "win" : "lead"} the series ${Math.max(...b)}–${Math.min(...b)}`;
+};
+function poLede(m, R){
+  const [gh, ga] = [m.g_home, m.g_away], W = m.winner, L = W === m.home ? m.away : m.home;
+  const f = m.forecast, pw = f && f.p_win_home != null ? (W === m.home ? f.p_win_home : 1 - f.p_win_home) : null;
+  let s;
+  if(m.pen_home != null) s = `${esc(short(m.home))} and ${esc(short(m.away))} drew ${gh}–${ga}${m.et ? " after extra time" : ""}; ${esc(short(W))} won ${Math.max(m.pen_home, m.pen_away)}–${Math.min(m.pen_home, m.pen_away)} on penalties.`;
+  else if(W) s = `${esc(short(W))} ${W === m.home ? "beat" : "won at"} ${esc(short(L))} ${Math.max(gh, ga)}–${Math.min(gh, ga)}${m.et ? ` after extra time (${m.g90_home}–${m.g90_away} after 90 minutes)` : ""}.`;
+  else s = `${esc(short(m.home))} and ${esc(short(m.away))} drew ${gh}–${ga}; penalties to come.`;
+  if(R){ const c = `${num(R.xg[0],2)} to ${num(R.xg[1],2)} in expected goals over 90 minutes`;
+    s += ` The chances: ${c}${R.xg_et ? `, ${num(R.xg_et[0],2)} to ${num(R.xg_et[1],2)} in extra time` : ""}.`; }
+  if(pw != null) s += ` Before kickoff the recorded forecast gave ${W ? esc(short(W)) : "the home side"} ${pct(pw)} to win the match.`;
+  const ser = m.round === "round_one" ? poSeries(m, true) : "";
+  return s + (ser ? ` ${ser[0].toUpperCase() + ser.slice(1)}.` : "");
+}
+function poExtra(m, R){
+  const et = R.shots_et || [], kicks = R.kicks || [];
+  const [ch, ca] = PP.pairKit(m.home, m.away);
+  const etHtml = R.et ? `<section class="band" id="po-et"><div class="wrap"><div class="band-head"><h2 class="r-title">Extra time</h2>
+      <p>${R.et[0] + R.et[1] ? `${R.et[0]}–${R.et[1]} in extra time.` : "No goals in extra time."} Expected goals ${num(R.xg_et[0],2)} to ${num(R.xg_et[1],2)}${R.extra_time_rated ? "; extra time counts in the player values above, with each player's minutes" : ""}.</p></div>
+      ${et.length ? `<ol class="po-shots">${et.map(x => `<li><span class="num">${x[0]}'</span><i class="po-dot" style="background:${x[1] ? ca : ch}"></i><span>${esc(x[4] || "")}, ${esc(short(x[1] ? m.away : m.home))}</span><span class="num">${num(x[2],2)} xG${x[3] ? ", goal" : ""}</span></li>`).join("")}</ol>` : `<p class="r-small">No shots in extra time.</p>`}</div></section>` : "";
+  const soHtml = kicks.length ? `<section class="band" id="po-pens"><div class="wrap"><div class="band-head"><h2 class="r-title">The shoot-out</h2>
+      <p>${esc(short(m.home))} ${R.pens[0]}, ${esc(short(m.away))} ${R.pens[1]}. Kicks in order; a shoot-out is not valued in the ratings.</p></div>
+      <ol class="po-kicks">${kicks.map((x, i) => `<li class="${x[2] ? "in" : "out"}"><span class="num">${i + 1}</span><i class="po-dot" style="background:${x[0] ? ca : ch}"></i><span>${x[3] ? `${esc(x[3])}, ` : ""}${esc(short(x[0] ? m.away : m.home))}</span><b>${x[2] ? "scored" : "missed"}</b></li>`).join("")}</ol></div></section>` : "";
+  return etHtml + soHtml;
+}
+PP.pages.playoff = async (main, h) => {
+  const id = h.slice("playoff-".length);
+  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Playoff match</h1><p class="r-small">Loading the match.</p></section></div>`;
+  const [P, J] = await Promise.all([PP.loadPlayoffs(), PP.loadPlayoffReports()]);
+  if(location.hash.slice(1) !== h) return;
+  const m = P && (P.matches || []).find(x => x.id === id);
+  if(!m){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No playoff match with this link</h1><a class="btn-text" href="#matches">All matches</a></section></div>`; return; }
+  const R = J && J.matches ? J.matches[id] : null, miss = J && J.missing ? J.missing[id] : null, f = m.forecast;
+  const played = m.status === "final" || m.status === "final_pending", k = m.time_confirmed ? PP.kick(m.kickoff_utc) : null;
+  const seed = t => { const s = ((P.teams || []).find(x => x.team === t) || {}).seed; return s ? `<span class="po-seed num">${s}</span>` : ""; };
+  const ser = m.round === "round_one" ? poSeries(m, false) : "";
+  const level = m.level || ((P.rules || {}).level || {})[m.round];       // 29's rule for a level score, by round
+  const head = `<div class="wrap"><section class="pid mhead">
+    <span class="r-label">${esc(poGame(m))}${ser ? `, ${ser}` : ""} · ${k ? `${k.day}, ${k.time}` : "Date and time to be confirmed"}</span>
+    <h1 class="mteams"><a href="#team-${PP.slug(m.home)}" class="mt">${seed(m.home)}${chip(m.home)}<span class="r-name">${esc(short(m.home))}</span></a>
+      <span class="mscore num">${played ? `${m.g_home}–${m.g_away}` : "v"}</span>
+      <a href="#team-${PP.slug(m.away)}" class="mt">${seed(m.away)}${chip(m.away)}<span class="r-name">${esc(short(m.away))}</span></a></h1>
+    ${played ? `<p class="dateline">${m.pen_home != null ? `${esc(short(m.winner))} won ${Math.max(m.pen_home, m.pen_away)}–${Math.min(m.pen_home, m.pen_away)} on penalties${m.et ? ", after extra time" : ""}.` : m.et ? `After extra time; ${m.g90_home}–${m.g90_away} after 90 minutes.` : m.status === "final_pending" ? "Level; the shoot-out result is not in the league's feed yet." : ""}</p>` : ""}
+  </section></div>`;
+  let body = "", RP2 = null;
+  const mm = {id: null, feed: m.id, home: m.home, away: m.away, kickoff_utc: m.kickoff_utc, status: played ? "played" : "upcoming",
+              pH: f && f.pH, pD: f && f.pD, pA: f && f.pA, xg_home: f && f.xg_home, xg_away: f && f.xg_away,
+              ko: {round: m.round, level, game: m.game, sw: f && f.sw_home, sl: f && f.sl_home, series_before: m.series_before, rules: P.rules || {}}};
+  const liveOn = !played && f && PP.live && PP.live.inWindow(mm);
+  if(!played){
+    const what = m.round === "round_one" ? "To win the series" : m.round === "cup" ? "To win MLS Cup" : "To go through";
+    body = f ? `<div class="wrap prematch-sec"><section class="plate pplate mplate">
+        <div class="pp-left"><span class="r-label">The forecast, after 90 minutes</span>${pbar({home: m.home, away: m.away, pH: f.pH, pD: f.pD, pA: f.pA}, true)}
+          <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pH)}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pD)}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pA)}</b><br>${esc(short(m.away))} win</span></div>
+          <p class="r-small">${level === "penalties" ? "Level after 90 minutes, it goes straight to penalties" : "Level after 90 minutes, it goes to 30 minutes of extra time, then penalties"}; the forecast counts a shoot-out as ${pct((P.rules || {}).shootout_home ?? 0.5)} for the home side.</p></div>
+        <div class="pp-right"><span class="r-label">${what}</span>
+          <div class="po-thr"><div class="pbar big" role="img" aria-label="${esc(short(m.home))} ${pct(f.p_through_home)}, ${esc(short(m.away))} ${pct(1 - f.p_through_home)}"><i style="width:${f.p_through_home*100}%;background:${PP.pairKit(m.home, m.away)[0]}"></i><i style="width:${(1-f.p_through_home)*100}%;background:${PP.pairKit(m.home, m.away)[1]}"></i></div>
+          <div class="plab"><span><b>${pct(f.p_through_home)}</b> ${esc(short(m.home))}</span><span></span><span><b>${pct(1 - f.p_through_home)}</b> ${esc(short(m.away))}</span></div></div>
+          <p class="r-small">To win this match, penalties included: ${esc(short(m.home))} ${pctShort(f.p_win_home)}, ${esc(short(m.away))} ${pctShort(1 - f.p_win_home)}. From the playoff forecast (team strength), the same numbers the bracket uses.</p></div>
+      </section></div>` : `<div class="wrap"><section class="holding"><p>No forecast for this match yet: it appears once both clubs are known.</p></section></div>`;
+  } else if(R){
+    const R2 = {...R, pre: f ? [f.pH, f.pD, f.pA, "recorded"] : null, shots: (R.shots || []).concat(R.shots_et || [])};
+    RP2 = {m, R: R2};
+    body = `<div class="po-report">` + report(m, R2, null, {lede: poLede(m, R), after: `<a class="btn-text" href="#race">The playoffs</a>`,
+      diff: `Each player's value added in the match above a replacement player in the same minutes${R.et && R.extra_time_rated ? ", extra time included" : ""}. Playoff values are not counted in the season rating; a player's page can show them on their own or with the season.`})
+      + poExtra(m, R) + `</div>`;
+  } else {
+    body = `<div class="wrap"><section class="plate pplate mplate"><div class="pp-left"><span class="r-label">Result</span><p class="r-note mlede">${poLede(m, null)}</p>
+      <p class="r-small"><b>Match data not available yet.</b> The match report, with expected goals and player values, follows once the match's event data are in${miss && miss.reason ? ` (${esc(miss.reason)})` : ""}; we try again every night.</p></div></section></div>`;
+  }
+  main.innerHTML = head + (liveOn ? `<div id="mlivebox"></div>` : "") + body;
+  if(liveOn) PP.live.page(mm, $("#mlivebox"));
+  if(RP2 && $("#mrace")) PP.chart($("#mrace"), el => drawRace(el, RP2.m, RP2.R));
+  if(RP2 && RP2.R.chain && $("#mpitch")){ const ch = PP.chainFrom(RP2.R.chain); PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels: ch.labels})); PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {}));
+    $("#mplay").addEventListener("click", () => { PP.chainPitch($("#mpitch"), ch, {labels: ch.labels, animate: true}); PP.chainSteps($("#msteps"), ch, {animate: true}); }); }
+  ["#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
+  document.title = `${short(m.home)} v ${short(m.away)}, ${poGame(m)} | Pitch Perception`;
+};
+
 })();
