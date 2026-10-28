@@ -1013,3 +1013,10 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .po-report .mtop .prow{grid-template-columns:minmax(0,1fr) 110px 52px}
 .po-report .mtop .prow > .r-small{grid-column:1 / -1;margin-top:-4px}
 .po-partial{color:var(--ink);background:var(--well);padding:6px 10px;border-radius:4px}
+.po-prow.po-nd .po-ndv{font-weight:400;color:var(--ink-3)}
+.po-ndnote{color:var(--ink-3);margin-top:var(--s-2)}
+.po-ranks{display:grid;gap:6px;padding-top:var(--s-3);border-top:1px solid var(--rule)}
+.po-rk{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.po-rk li{display:grid;gap:2px;font-size:var(--t-14)}
+.po-rk li b{font-size:var(--t-18);margin-right:2px}
+.po-rk-pos{color:var(--ink-2)}

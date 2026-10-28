@@ -966,3 +966,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-28T03:01:16Z,1953095,2026-10-31T21:00:00Z,LA Galaxy,Austin FC,0.5445,0.2401,0.2154,availability
 2026-10-28T03:01:16Z,1953096,2026-10-31T21:00:00Z,San Jose Earthquakes,Real Salt Lake,0.4812,0.2544,0.2644,availability
 2026-10-28T03:01:16Z,1953094,2026-10-31T19:00:00Z,Sporting Kansas City,FC Dallas,0.2103,0.2382,0.5515,availability
+2026-10-28T09:12:56Z,1953075,2026-10-28T23:30:00Z,Inter Miami CF,FC Cincinnati,0.5324,0.2432,0.2244,availability
+2026-10-28T09:12:56Z,1953089,2026-10-31T18:00:00Z,FC Cincinnati,Philadelphia Union,0.4071,0.2638,0.3291,availability

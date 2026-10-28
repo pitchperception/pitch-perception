@@ -120,11 +120,45 @@ function identity(){
    data/playoff_players.json (175): each player's playoff matches and season totals. Playoff values include extra time
    (the minutes say how much) and never the shoot-out; they are not part of the season rating. Summed playoff values
    lead with the per-90 figure. "Both" adds the regular season's value and minutes to the playoffs' (per 90 over all the
-   minutes). Percentiles, charts and contract-type comparisons are the regular season's and are not recomputed. */
+   minutes). Percentiles, charts and contract-type comparisons are the regular season's and are not recomputed.
+   Matches without event data (owner, 2026-10-27): the club's playoff matches that are not in the values are listed
+   with their result (2023-25: Sofascore's, checked against the league feed; 2026: the league feed's) and, from
+   Sofascore, each side's shot xG from a different source; never a player value. The notes say how many of the
+   season's matches, and of the club's, are missing. Ranks (Playoffs view): by value per 90 among players with the
+   file's minimum playoff minutes, by total value among all who played, each within position (175 computes them; 87
+   checks them against this file). */
 let ppoP = null;
 PP.loadPlayoffPlayers = () => ppoP || (ppoP = fetch("data/playoff_players.json").then(r => r.ok ? r.json() : null).then(d => { PP._poPlayers = d; return d; }).catch(() => null));
 const poRows = () => ((ST.po || {}).seasons || []).filter(x => x[0] === ST.year);       // [year, team, matches, mins, mins_et, attack, ballwin, value, value_p90, attack_p90, ballwin_p90, gp]
 const minsTxt = (m, et) => et ? `${PP.int(m)} min, incl. ${PP.int(et)} extra time` : `${PP.int(m)} min`;
+const poCol = n => (((PP._poPlayers || {}).cols) || []).indexOf(n);
+// the club's playoff matches of that season without event data: [key, year, date, home, away, g90, et, pens, winner, xg, ...]
+const poND = (year, club) => { const P = PP._poPlayers || {}, c = P.nd_cols || [];
+  return ((P.no_data || {})[String(year)] || []).map(r => Object.fromEntries(c.map((k, i) => [k, r[i]]))).filter(r => r.home === club || r.away === club); };
+function poNDRow(r, club){
+  const us = r.home === club ? 0 : 1, them = 1 - us, opp = us ? r.home : r.away, et = r.et || [0, 0];
+  const g = r.g90 ? [r.g90[0] + et[0], r.g90[1] + et[1]] : null;
+  const res = !g ? "Result in the league feed" : g[us] !== g[them] ? `${g[us] > g[them] ? "Won" : "Lost"} ${g[us]}–${g[them]}${r.et ? " after extra time" : ""}`
+    : `${g[us]}–${g[them]}${r.pens ? `, ${r.winner === us ? "won" : "lost"} ${r.pens[us]}–${r.pens[them]} on penalties` : ""}`;
+  const og = r.not_in_shot_map ? r.not_in_shot_map[0] + r.not_in_shot_map[1] : 0;
+  const xg = r.xg ? ` · xG ${num(r.xg[us] + (r.xg_et ? r.xg_et[us] : 0), 2)}–${num(r.xg[them] + (r.xg_et ? r.xg_et[them] : 0), 2)}` : "";
+  const feed = r.src === "feed", el = feed ? "a" : "div";
+  return `<${el} class="po-prow po-nd"${feed ? ` href="#playoff-${esc(r.key)}"` : ""}><span class="r-small">${PP.dayShort(r.date)}</span><span>${us ? "at" : "v"} ${clubTag(opp, true)}</span><span class="r-small">${res}${og ? ` (${og} own goal${og === 1 ? "" : "s"})` : ""}${xg}</span><span class="v r-small po-ndv">${feed ? "pending" : "no data"}</span></${el}>`;
+}
+// where the player-season ranks in that season's playoffs (Playoffs view; computed by 175 from the figures in this file)
+function poRanks(rows, year, cov){
+  const P = PP._poPlayers || {}, mm = (P.rank_rule || {}).min_mins;
+  if(rows.length !== 1 || poCol("rk_tot") < 0 || mm == null) return "";
+  const x = rows[0], g = n => x[poCol(n)], pl = PP.POSPL[g("pos")];
+  const line = (lab, rk, n, who, prk, pn) => `<li><span class="r-label">${lab}</span><span><b class="num">${PP.ord(rk)}</b> of ${PP.int(n)} ${who}${prk != null && pl ? `<span class="po-rk-pos"> · ${PP.ord(prk)} of ${PP.int(pn)} ${pl}</span>` : ""}</span></li>`;
+  const p90 = g("rk_p90") != null ? line("By value per 90", g("rk_p90"), g("n_p90"), `players with ${PP.int(mm)}+ playoff minutes in ${year}`, g("rk_pos_p90"), g("n_pos_p90")) : "";
+  const tot = g("rk_tot") != null ? line("By total value", g("rk_tot"), g("n_tot"), `players in the ${year} playoffs`, g("rk_pos_tot"), g("n_pos_tot")) : "";
+  if(!p90 && !tot) return "";
+  const under = p90 ? "" : `<p class="r-small">Under ${PP.int(mm)} playoff minutes (${PP.int(g("mins"))} played), so not ranked per 90.</p>`;
+  const gap = cov && cov.with_data < cov.matches ? `<p class="r-small po-rk-gap">Values from ${cov.with_data} of ${cov.matches} matches.</p>` : "";
+  const gk = g("pos") === "GK" ? `<p class="r-small">A keeper's value leaves out shot-stopping (goals prevented, above).</p>` : "";
+  return `<div class="po-ranks"><span class="r-label">Where they rank, ${year} playoffs</span><ul class="po-rk">${p90}${tot}</ul>${under}${gap}${gk}</div>`;
+}
 function playoffBody(){
   const {s, year} = ST, rows = poRows(), both = ST.view === "both";
   const sum = k => rows.reduce((a, x) => a + (x[k] || 0), 0);
@@ -138,7 +172,17 @@ function playoffBody(){
   // 2026 matches open their match page; earlier seasons' playoffs have no match pages (their key is the WhoScored id)
   const tag = x => String(x[0]).startsWith("MLS-") ? `a class="po-prow" href="#playoff-${esc(x[0])}"` : `div class="po-prow"`;
   const cov = ((PP._poPlayers || {}).coverage || {})[String(year)], partial = cov && cov.with_data < cov.matches;
-  const list = ms.length ? `<div class="po-plist">${ms.map(x => `<${tag(x)}><span class="r-small">${PP.dayShort ? PP.dayShort(x[2]) : esc(x[2])}</span><span>${x[5] ? "at" : "v"} ${clubTag(x[4], true)}</span><span class="r-small">${minsTxt(x[6], x[7])}</span><span class="v num">${sgn(x[8], 2)}</span></${String(x[0]).startsWith("MLS-") ? "a" : "div"}>`).join("")}</div>` : "";
+  const club = rows.length ? rows[0][1] : s.team, nd = poND(year, club), cc = (((PP._poPlayers || {}).club_cover || {})[String(year)] || {})[club];
+  const miss = cc ? cc[0] - cc[1] : nd.length, gone = cov ? cov.matches - cov.with_data : 0;
+  const pm = n => `${n} playoff match${n === 1 ? "" : "es"}`;
+  const clubNote = !cc ? "" : miss ? ` ${miss === cc[0] ? (miss === 1 ? "The one" : `All ${cc[0]}`) : `${miss} of the ${cc[0]}`} ${miss === cc[0] && miss === 1 ? "playoff match" : "playoff matches"} ${esc(short(club))} played ${miss === 1 ? "is" : "are"} among them, so not in these values; listed with ${miss === 1 ? "its result" : "their results"}.`
+    : cc[0] === 1 ? ` The one playoff match ${esc(short(club))} played is in these values.` : ` All ${pm(cc[0])} ${esc(short(club))} played are in these values.`;
+  const gapNote = partial ? `<p class="r-small po-partial"><b>Incomplete season:</b> playoff values from ${cov.with_data} of ${cov.matches} matches in ${year}; ${gone} ${gone === 1 ? "has" : "have"} no event data.${clubNote}</p>` : "";
+  const items = ms.map(x => [x[2], `<${tag(x)}><span class="r-small">${PP.dayShort ? PP.dayShort(x[2]) : esc(x[2])}</span><span>${x[5] ? "at" : "v"} ${clubTag(x[4], true)}</span><span class="r-small">${minsTxt(x[6], x[7])}</span><span class="v num">${sgn(x[8], 2)}</span></${String(x[0]).startsWith("MLS-") ? "a" : "div"}>`])
+    .concat(nd.map(r => [r.date, poNDRow(r, club)])).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  const ndSofa = nd.some(r => r.src === "sofascore"), ndFeed = nd.some(r => r.src === "feed");
+  const ndNote = nd.length ? `<p class="r-small po-ndnote">${ndSofa ? "“No data”: WhoScored has no event data for the match, so it has no player values. Its result is Sofascore’s, checked against the league feed; its xG is our shot model on Sofascore’s shots, a different source from the expected goals elsewhere on this site." : ""}${ndSofa && ndFeed ? " " : ""}${ndFeed ? "“Pending”: the event data has not arrived yet; the result is the league feed’s, and the values follow once it does." : ""}</p>` : "";
+  const list = items.length ? `<div class="po-plist">${items.map(i => i[1]).join("")}</div>${ndNote}` : "";
   return `<div class="wrap"><section class="plate pplate" aria-label="${esc(label)}">
       <div class="pp-left">
         <span class="r-label">${both ? "Value above replacement per 90, regular season and playoffs" : "Value above replacement per 90, playoffs"}, ${year}</span>
@@ -149,8 +193,9 @@ function playoffBody(){
           <div class="ind"><span class="r-label">Winning it back, per 90</span><span class="v num">${p90(T.ball) == null ? "–" : sgn(p90(T.ball), 2)}</span><span class="r-small">${sgn(T.ball)} goals in all</span></div>
           ${gp != null ? `<div class="ind"><span class="r-label">Goals prevented, playoffs</span><span class="v num">${sgn(gp, 2)}</span><span class="r-small">Against an average keeper, extra-time shots included, shoot-outs not; one playoff run is mostly luck, so it is not shrunk or ranked.</span></div>` : ""}
         </div>
-        ${partial ? `<p class="r-small po-partial"><b>Incomplete season:</b> event data for ${cov.with_data} of the ${cov.matches} playoff matches of ${year}; the others are left out of these figures.</p>` : ""}
-        <p class="r-small">${both ? "The regular season's value and minutes plus the playoffs': " : ""}playoff values include extra time and never a shoot-out, and are not part of the season rating. Percentiles, charts and the contract-type comparison are for the regular season only.</p>
+        ${both ? "" : poRanks(rows, year, cov)}
+        ${gapNote}
+        <p class="r-small">${both ? "The regular season's value and minutes plus the playoffs': playoff values" : "Playoff values"} include extra time and never a shoot-out, and are not part of the season rating. Percentiles, charts and the contract-type comparison are for the regular season only.</p>
       </div>
       <div class="pp-right"><span class="r-label">Playoff matches, ${year}</span>${list || `<p class="r-small">No playoff match report yet.</p>`}</div>
     </section></div>`;
