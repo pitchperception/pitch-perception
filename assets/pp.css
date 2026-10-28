@@ -1020,3 +1020,39 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 .po-rk li{display:grid;gap:2px;font-size:var(--t-14)}
 .po-rk li b{font-size:var(--t-18);margin-right:2px}
 .po-rk-pos{color:var(--ink-2)}
+
+/* Today: the points record and the last playoff places (owner, 2026-10-27) */
+.front-main{display:grid;gap:var(--s-8);align-content:start;min-width:0}
+.lead-2{padding-top:var(--s-6);border-top:1px solid var(--rule)}
+.rc-legend{margin-bottom:6px}
+.rc-fx{display:grid}
+.rc-row{display:grid;gap:6px 16px;padding-block:10px;border-top:1px solid var(--rule);text-decoration:none;color:inherit;align-items:center}
+@media (min-width:560px){.rc-row{grid-template-columns:100px minmax(0,1fr) minmax(0,1.8fr)}}
+.rc-row:hover .rc-opp{text-decoration:underline}
+.rc-when{font-size:var(--t-13);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.rc-when b{color:var(--ink);font-weight:600;display:block}
+.rc-opp{font-weight:600}
+.rc-row .probs{display:grid;gap:4px}
+.rc-row .plab{display:flex;justify-content:space-between;font-size:var(--t-13);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.rc-row .plab b{color:var(--ink);font-weight:600}
+.rc-table{margin-top:var(--s-4)}
+.rc-ways{display:block;color:var(--ink-2);margin-top:2px;white-space:normal}
+.pl-confs{display:grid;gap:var(--s-6)}
+@media (min-width:720px){.pl-confs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.pl-conf{display:grid;gap:var(--s-2);align-content:start;min-width:0}
+.pl-sub{color:var(--ink-2)}
+.pl-list{display:grid}
+.pl-row{display:grid;grid-template-columns:minmax(0,1fr) auto 48px 58px;gap:10px;align-items:center;padding-block:7px;border-top:1px solid var(--rule);text-decoration:none;color:inherit}
+.pl-row .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-row .pts{color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pl-row .v{text-align:right;font-weight:600;font-size:var(--t-13)}
+.pl-row:hover .nm{text-decoration:underline}
+.pl-decs{display:grid;gap:var(--s-2)}
+.pl-dec{display:grid;gap:4px 16px;padding-block:10px;border-top:1px solid var(--rule);text-decoration:none;color:inherit}
+@media (min-width:720px){.pl-dec{grid-template-columns:170px minmax(0,0.9fr) minmax(0,1.6fr);align-items:baseline}}
+.pl-when{font-size:var(--t-13);color:var(--ink-2)}
+.pl-when b{color:var(--ink);font-weight:600;margin-right:4px}
+.pl-teams{font-weight:600}
+.pl-stakes{display:grid;gap:2px;font-size:var(--t-13);color:var(--ink-2)}
+.pl-stakes b{color:var(--ink);font-weight:600}
+.pl-dec:hover .pl-teams{text-decoration:underline}

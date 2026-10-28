@@ -19,7 +19,7 @@ PP.pages.today = main => {
       <p class="dateline">${dateline(H)}</p>
     </header>
     <div class="front">
-      ${lead(H)}
+      <div class="front-main">${leadBlock(H)}${H.season_over ? "" : placesLead(H)}</div>
       <div class="rail">${[H.season_over ? `<div id="ins-po"></div>` : insRace(H), insContract(H)].join("")}</div>
     </div>
   </div>
@@ -32,12 +32,13 @@ PP.pages.today = main => {
   PP.bindDisclosures(main);
   PP.chart($("#scatter"), drawScatter);
   PP.chart($("#bridge"), drawBridge);
+  PP.chart($("#rcpace"), drawPace);
   PP.chart($("#spark"), drawSpark);
   PP.chart($("#payvalue"), drawPayValue);
   $$(".mv-glyph").forEach(el => PP.chart(el, drawMover));
   $$(".race-chart").forEach(el => PP.chart(el, drawRace));
   if(H.chain){ PP.chart($("#pitch"), drawPitch); PP.chart($("#steps"), drawSteps); }
-  ["#scatter","#bridge","#spark","#payvalue","#pitch","#steps","#lboard",".rail","#movers-band"].forEach(s => $$(s).forEach(PP.bindTips));
+  ["#scatter","#bridge","#spark","#payvalue","#pitch","#steps","#lboard",".rail","#movers-band","#places"].forEach(s => $$(s).forEach(PP.bindTips));
   if(H.chain) bindChain();
   bindRaceTools();
   weekTeaser();
@@ -53,7 +54,7 @@ async function playoffBits(H){
   if(rail && slot) slot.outerHTML = ins("ins-race", P.phase === "complete" ? "MLS Cup" : "Playoffs", rail.head, rail.body, "",
     `<p class="r-small">${PP.poRecordLine(P)}</p>`);
   PP.bindDisclosures($("#ins-race"));
-  const cl = $("#cupline"), line = PP.poCupLine(P, H.outperformer.team); if(cl && line) cl.innerHTML = line;
+  const cl = $("#cupline"), line = PP.poCupLine(P, PP.leadTeam || H.outperformer.team); if(cl && line) cl.innerHTML = line;   // the lead's club (record chase or results vs chances)
 }
 
 /* ---------------- the matchday in review, teaser (82 / weeks.js; per matchday since 2026-10-15) ---------------- */
@@ -116,6 +117,177 @@ function lead(H){
     <div class="disc" id="why-lead" aria-hidden="true"><div><div class="why-body">
       <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Expected goals come from a shot model fitted to MLS for this site: each shot is worth the share of similar shots that were scored. Goals prevented compare the goals a keeper conceded with the post-shot expected goals of the shots they faced, centred so an average keeper is zero. The dashed line on the chart is the league-wide fit of points on expected-goal difference; a team's height above it is points the chances alone would not explain.</p>
     </div></div></div></div>
+  </article>`;
+}
+
+/* ---------------- lead: the points record (owner, 2026-10-27: the Today page's headline while the chase is live) ----------------
+   The rule is the record sentence's (2026-10-15): the points leader, while the chance of breaking the league record is between
+   2% and 98%, or once it is broken; plus a leader that finished level with it. Otherwise the results-against-chances lead. */
+const recordLive = rc => !!(rc && rc.pace && rc.pace.length) &&
+  (rc.points > rc.record || (rc.points === rc.record && !rc.left) || (rc.p_break >= 0.02 && rc.p_break <= 0.98));
+function leadBlock(H){
+  const live = recordLive(H.record_chase);
+  PP.leadTeam = live ? H.record_chase.team : H.outperformer.team;
+  return live ? recordLead(H) : lead(H);
+}
+const cupLineFor = (H, team) => {
+  const t = PP.byTeam[team] || {}, cup = H.race.teams.slice().sort((a,b) => b.p_champion - a.p_champion), cr = cup.findIndex(x => x.team === team);
+  return cr === 0 ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(team))} favourites for MLS Cup (${pct(t.p_champion)}).`
+    : `The playoff forecast, which weighs results and chances equally, gives ${esc(short(team))} a ${pct(t.p_champion)} chance of MLS Cup, ${PP.ordWord(cr + 1)} behind ${esc(short(cup[0].team))} (${pct(cup[0].p_champion)}).`;
+};
+const NW = n => PP.WORDS[n] || String(n);
+const nMatches = n => `${NW(n)} ${n === 1 ? "match" : "matches"}`, nPoints = n => `${NW(n)} ${n === 1 ? "point" : "points"}`;
+/* the fewest results that reach `need` points from `left` matches (each one needed: one result worse falls short), in words */
+function waysTo(left, need, exact){
+  const say = (w, d) => [w ? (w === 1 ? "a win" : `${NW(w)} wins`) : "", d ? (d === 1 ? "a draw" : `${NW(d)} draws`) : ""].filter(Boolean).join(" and ") || `${NW(left)} defeats`;
+  const out = [];
+  for(let w = left; w >= 0; w--) for(let d = left - w; d >= 0; d--){
+    const p = 3*w + d;
+    if(exact ? p === need : p >= need && (!w || p - 2 < need) && (!d || p - 1 < need)) out.push(say(w, d));
+  }
+  return out.join(", or ");
+}
+function recordLead(H){
+  const rc = H.record_chase, team = rc.team, T = esc(short(team)), b = rc.best_at_stage, yr = H.season;
+  const holder = `${esc(short(rc.holder))} in ${rc.holder_season}`, broke = rc.points > rc.record, level = rc.points === rc.record;
+  const head = broke ? (rc.left ? `${T} have broken the league points record` : `${T} finished with ${rc.points} points, a league record`)
+    : level ? (rc.left ? `${T} have equalled the league points record` : `${T} finished level with the league points record`)
+    : `${T} need ${nPoints(rc.need)} from their last ${nMatches(rc.left)} to break the league points record`;
+  const isRecord = b && b.team === rc.holder && b.season === rc.holder_season && b.points === rc.record;
+  const stage = !b || isRecord ? "" : rc.points > b.points ? `, the most any team has had after ${rc.played} matches since 2013 (the previous best: ${esc(short(b.team))}, ${b.points} in ${b.season})`
+    : rc.points === b.points ? `, level with the most any team has had after ${rc.played} matches since 2013 (${esc(short(b.team))}, ${b.season})`
+    : `; ${esc(short(b.team))} had ${b.points} after ${rc.played} matches in ${b.season}`;
+  const chase = broke ? `The previous record was ${rc.record}, set by ${holder}.${rc.left ? ` They have ${nMatches(rc.left)} left.` : ""}`
+    : level ? `The record is ${rc.record}, set by ${holder}.${rc.left ? ` One more point from their last ${nMatches(rc.left)} breaks it; the forecast gives them a ${pct(rc.p_break)} chance.` : ""}`
+    : `The record is ${rc.record}, set by ${holder}. ${cap(NW(rc.need))} more ${rc.need === 1 ? "point" : "points"} would break it and ${NW(rc.need - 1)} would equal it; the forecast gives them a ${pct(rc.p_break)} chance of breaking it and ${pct(rc.p_tie_or_break)} of at least equalling it.`;
+  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}).replace(",", "");
+  const fx = rc.fixtures.map(f => {
+    const opp = f.at_home ? f.away : f.home, k = f.kickoff_utc ? PP.kick(f.kickoff_utc) : null, kit = PP.pairKit(f.home, f.away), [cW, cL] = f.at_home ? kit : [kit[1], kit[0]];
+    return `<a class="rc-row" href="#match-${f.ws_match_id}">
+      <span class="rc-when"><b>${f.kickoff_utc ? day(f.kickoff_utc) : PP.dateLong(f.date)}</b>${k ? `<span>${k.time}</span>` : ""}</span>
+      <span class="rc-opp">${f.at_home ? "v" : "at"} ${clubTag(opp)}</span>
+      <span class="probs"><span class="pbar" role="img" aria-label="${T} win ${pct(f.p_win)}, draw ${pct(f.p_draw)}, defeat ${pct(f.p_loss)}"><i style="width:${f.p_win*100}%;background:${cW}"></i><i style="width:${f.p_draw*100}%;background:var(--mid)"></i><i style="width:${f.p_loss*100}%;background:${cL}"></i></span>
+        <span class="plab"><span><b>${pctShort(f.p_win)}</b> win</span><span>${pctShort(f.p_draw)} draw</span><span><b>${pctShort(f.p_loss)}</b> defeat</span></span></span></a>`;
+  }).join("");
+  const pLevel = Math.max(0, rc.p_tie_or_break - rc.p_break), pShort = Math.max(0, 1 - rc.p_tie_or_break);
+  const rows = broke || !rc.left ? [] : level
+    ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equalled", pLevel, `${NW(rc.left)} defeats`]]
+    : [[`${rc.need} or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, rc.need)],
+       [`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
+       ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])];
+  const table = rows.length ? `<table class="mini-table rc-table"><thead><tr><th>${rc.left === 1 ? "Points from the last match" : `Points from the last ${NW(rc.left)}`}</th><th class="n">Final total</th><th>Record</th><th class="n">Chance</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${r[0]}${r[4] ? `<span class="r-small rc-ways">${esc(cap(r[4]))}</span>` : ""}</td><td class="n">${r[1]}</td><td>${r[2]}</td><td class="n">${pct(r[3])}</td></tr>`).join("")}</tbody></table>` : "";
+  const dash = s => s.role === "record" ? "" : s.role === "next" && s === rc.seasons.filter(x => x.role !== "record")[1] ? " dash" : "";
+  const sw = (c, w, d) => `<i class="lg-line" style="background:none;height:0;border-top:${w}px ${d ? "dashed" : "solid"} ${c}"></i>`;
+  const legend = `<div class="legend rc-legend"><span>${sw(PP.kit(team), 3)}${T} ${yr}</span>${rc.seasons.map(s =>
+    `<span>${sw(s.role === "record" ? "var(--ink)" : "var(--ink-3)", 2, dash(s))}${esc(short(s.team))} ${s.season}${s.role === "record" ? " (record)" : ""}</span>`).join("")}</div>`;
+  return `<article class="lead" aria-labelledby="lead-h">
+    <span class="kicker">The points record</span>
+    <h2 id="lead-h">${head}</h2>
+    <p class="r-note">${T} have ${rc.points} points from ${rc.played} matches${stage}. ${chase}</p>
+    <p class="r-note" style="color:var(--ink-2)"><span id="cupline">${cupLineFor(H, team)}</span></p>
+    <div class="lead-figs rc-figs">
+      <figure style="margin:0"><div class="fig-cap"><span class="r-label">Points after each match: ${T} ${yr} and the highest totals since 2013</span><span class="r-small">From match ${Math.max(1, rc.played - 16)}; shaded: ${T}'s likely finish (the middle 80%)</span></div>${legend}<div class="chart" id="rcpace"></div></figure>
+      ${rc.left ? `<figure style="margin:0"><div class="fig-cap"><span class="r-label">${rc.left === 1 ? "The last match" : `The last ${nMatches(rc.left)}`}: ${T}'s chances</span><span class="r-small">Kickoff times are Eastern</span></div><div class="rc-fx">${fx}</div>${table}</figure>` : ""}
+    </div>
+    <div><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="why-lead" id="why-lead-btn">How this is measured</button>
+    <div class="disc" id="why-lead" aria-hidden="true"><div><div class="why-body">
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Points come from every regular-season result since 2013, three for a win and one for a draw. The chance of the record combines the forecast's win, draw and defeat chances for each match left over every combination of results, worked out exactly rather than simulated${rc.left ? `; the range drawn after the last match holds the middle 80% of those combinations (${rc.q10} to ${rc.q90} points)` : ""}. The forecast is the same one shown on each match page.</p>
+    </div></div></div></div>
+  </article>`;
+}
+
+function drawPace(el){
+  const H = PP.data.home, rc = H.record_chase, W = el.clientWidth; if(!W || !rc) return;
+  const narrow = W < 560, Ht = narrow ? 280 : 320; el.innerHTML = "";
+  const kit = PP.kit(rc.team), others = rc.seasons, second = others.filter(s => s.role !== "record")[1];
+  const L = Math.max(rc.played + rc.left, ...others.map(s => s.pts.length));
+  // the second half of the season: the chase is decided there; the hover reads any match
+  const X0 = Math.max(1, Math.min(rc.played, L) - 16);
+  const at = (pts, i) => pts[Math.min(i, pts.length) - 1];
+  const lo = Math.min(...others.map(s => at(s.pts, X0)), at(rc.pace, X0)), top = Math.max(rc.record, rc.q90 || 0, rc.points, ...others.map(s => s.pts[s.pts.length - 1]));
+  const y0 = Math.max(0, Math.floor((lo - 3) / 10) * 10), y1 = Math.ceil((top + 3) / 10) * 10;
+  const svg = S("svg",{width:W,height:Ht,viewBox:`0 0 ${W} ${Ht}`,role:"img","aria-label":`Points after each match from match ${X0}: ${full(rc.team)} ${H.season} and the highest totals since 2013`},el);
+  const m = {l:30, r:narrow ? 66 : 138, t:12, b:30}, iw = W - m.l - m.r, ih = Ht - m.t - m.b;
+  const sx = i => m.l + (i - X0) / (L - X0) * iw, sy = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+  for(let v = y0; v <= y1; v += 10){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===y0?"g-base":"g-line"},svg); text(svg, m.l-6, sy(v)+4, v, "t-axis", {"text-anchor":"end"}); }
+  const ticks = []; for(let i = Math.ceil(X0 / 5) * 5; i < L - 1; i += 5) ticks.push(i);
+  [X0, ...ticks.filter(i => i - X0 >= 3), L].forEach(i => text(svg, sx(i), Ht - 12, i, "t-axis", {"text-anchor":"middle"}));
+  S("line",{x1:m.l,x2:m.l+iw,y1:sy(rc.record),y2:sy(rc.record),stroke:"var(--ink-2)","stroke-width":1,"stroke-dasharray":"4 4"},svg);
+  text(svg, m.l + 6, sy(rc.record) - 6, `Record: ${rc.record}`, "t-lab2 halo", {});
+  const path = pts => pts.map((v,i) => [i + 1, v]).filter(([i]) => i >= X0).map(([i,v], k) => (k ? "L" : "M") + sx(i) + "," + sy(v)).join("");
+  if(rc.left){   // where the leader can end up: from today's total to the middle 80% of final totals, through the expected one
+    const xe = sx(rc.played + rc.left), xn = sx(rc.played), yn = sy(rc.points);
+    S("path",{d:`M${xn},${yn}L${xe},${sy(rc.q90)}L${xe},${sy(rc.q10)}Z`,fill:kit,"fill-opacity":0.16,stroke:"none"},svg);
+    S("line",{x1:xn,y1:yn,x2:xe,y2:sy(rc.exp_final),stroke:kit,"stroke-width":1.5,"stroke-dasharray":"3 3"},svg);
+  }
+  others.slice().reverse().forEach(s => S("path",{d:path(s.pts),fill:"none",stroke:s.role === "record" ? "var(--ink)" : "var(--ink-3)","stroke-width":s.role === "record" ? 1.75 : 1.25,
+    "stroke-dasharray":s === second ? "5 3" : null,"stroke-linejoin":"round"},svg));
+  S("path",{d:path(rc.pace),fill:"none",stroke:kit,"stroke-width":3,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+  S("circle",{cx:sx(rc.played),cy:sy(rc.points),r:4.5,fill:kit,stroke:"var(--paper)","stroke-width":2},svg);
+  const below = sy(rc.points) - sy(rc.record) < 22;          // keep the leader's label clear of the record line
+  text(svg, sx(rc.played) - 8, sy(rc.points) + (below ? 18 : -10), `${short(rc.team)} ${rc.points}`, "t-lab halo", {"text-anchor":"end"});
+  // end labels: the comparison seasons' totals and the leader's likely range, kept 14px apart
+  const ends = others.map(s => ({y:sy(s.pts[s.pts.length - 1]), lab:`${narrow ? (PP.CLUB[s.team] || [s.team])[0] : short(s.team)} ${narrow ? "’" + String(s.season).slice(2) : s.season} · ${s.pts[s.pts.length - 1]}`,
+    cls:s.role === "record" ? "t-lab" : "t-lab2", dot:[sx(s.pts.length), sy(s.pts[s.pts.length - 1]), s.role === "record" ? "var(--ink)" : "var(--ink-3)"]}));
+  if(rc.left) ends.push({y:sy(rc.exp_final), lab:narrow ? `${(PP.CLUB[rc.team] || [rc.team])[0]} ${rc.q10}–${rc.q90}` : `${short(rc.team)} ${rc.q10}–${rc.q90}`, cls:"t-lab", fill:kit});
+  ends.sort((a,b) => a.y - b.y);
+  for(let i = 1; i < ends.length; i++) if(ends[i].y - ends[i-1].y < 14) ends[i].y = ends[i-1].y + 14;
+  const over = ends.length ? ends[ends.length - 1].y - (m.t + ih) : 0; if(over > 0) ends.forEach(e => e.y -= over);
+  ends.forEach(e => { if(e.dot) S("circle",{cx:e.dot[0],cy:e.dot[1],r:2.5,fill:e.dot[2]},svg);
+    const t_ = text(svg, sx(L) + 8, e.y + 4, e.lab, e.cls, {}); if(e.fill) t_.setAttribute("style", `fill:${e.fill}`); });
+  // hover: every season's points after the same number of matches
+  const cross = S("line",{x1:0,x2:0,y1:m.t,y2:m.t+ih,stroke:"var(--ink-3)","stroke-width":1,opacity:0},svg);
+  const ov = S("rect",{x:m.l,y:m.t,width:iw,height:ih,fill:"transparent"},svg);
+  const move = e => { const r = svg.getBoundingClientRect(), i = Math.max(X0, Math.min(L, Math.round((e.clientX - r.left - m.l) / iw * (L - X0)) + X0));
+    cross.setAttribute("x1", sx(i)); cross.setAttribute("x2", sx(i)); cross.setAttribute("opacity", 1);
+    const lines = [[`${full(rc.team)} ${H.season}`, rc.pace[i - 1]], ...others.map(s => [`${full(s.team)} ${s.season}`, s.pts[i - 1]])].filter(x => x[1] != null).sort((a,b) => b[1] - a[1]);
+    const proj = rc.left && i > rc.played ? `<br>${esc(short(rc.team))}, likely final total ${Math.round(rc.exp_final)} (${rc.q10} to ${rc.q90})` : "";
+    PP.showTip(`<b>After ${i} matches</b><br>${lines.map(x => `${esc(x[0])}: ${x[1]}`).join("<br>")}${proj}`, e.clientX, e.clientY); };
+  ov.addEventListener("pointermove", move); ov.addEventListener("pointerdown", move);
+  ov.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); PP.hideTip(); });
+}
+
+/* ---------------- second headline: the last playoff places (owner, 2026-10-27), until the regular season ends ----------------
+   From home.json `bubble` (71): the thresholds are fixed there and stated here; "clinched" and "eliminated" only when points
+   and matches left prove it, otherwise the simulation's own count. */
+const pct1 = v => `${(v * 100).toFixed(1).replace(/\.0$/, "")}%`;
+function placesLead(H){
+  const B = H.bubble; if(!B) return "";
+  const C = B.conferences, confs = ["East","West"].filter(c => C[c]), sims = B.sims.toLocaleString("en-US");
+  const total = confs.reduce((a,c) => a + C[c].open, 0), withOpen = confs.filter(c => C[c].open);
+  const head = !total ? "Every playoff place is all but settled"
+    : withOpen.length === 1 ? (total === 1 ? `One playoff place is still open, in the ${withOpen[0]}` : `${cap(NW(total))} playoff places are still open, ${total === 2 ? "both" : "all"} in the ${withOpen[0]}`)
+    : `${cap(NW(total))} playoff places are still open: ${confs.map(c => `${NW(C[c].open)} in the ${c}`).join(", ")}`;
+  const nSim = p => Math.round(p * B.sims);
+  const certain = x => nSim(x.p_playoffs) === B.sims ? `in every one of ${sims} simulations` : `in ${nSim(x.p_playoffs).toLocaleString("en-US")} of ${sims} simulations`;
+  const gone = x => nSim(x.p_playoffs) === 0 ? `in none of ${sims} simulations` : `in ${nSim(x.p_playoffs).toLocaleString("en-US")} of ${sims} simulations`;
+  const names = arr => arr.map(x => `<a href="#team-${PP.slug(x.team)}">${esc(short(x.team))}</a>`).join(", ");
+  const group = (arr, say) => { const g = {}; arr.forEach(x => { const k = say(x); (g[k] = g[k] || []).push(`<a href="#team-${PP.slug(x.team)}">${esc(short(x.team))}</a>`); });
+    return Object.entries(g).map(([k, v]) => `${v.join(", ")} (${k})`).join("; "); };
+  const panel = c => {
+    const v = C[c], cont = v.clubs.filter(x => x.state === "contention"), cert = v.clubs.filter(x => x.state === "certain"), out = v.clubs.filter(x => x.state === "out");
+    const sub = v.open ? `${cap(NW(v.open))} ${v.open === 1 ? "place" : "places"} open, ${NW(cont.length)} ${cont.length === 1 ? "club" : "clubs"} in contention` : `No places open: ${NW(cert.length)} clubs have clinched or are all but certain`;
+    const row = x => `<a class="pl-row" href="#team-${PP.slug(x.team)}"><span class="nm">${clubTag(x.team)}</span><span class="pts r-small">${x.points} pts, ${x.left} left</span>
+      <span class="pbar1" aria-hidden="true"><i style="width:${Math.max(1.5, x.p_playoffs * 100)}%"></i></span><span class="v num">${pct(x.p_playoffs)}</span></a>`;
+    return `<div class="pl-conf"><h3 class="r-heading">${c}ern Conference</h3><p class="r-small pl-sub">${sub}</p>
+      ${cont.length ? `<div class="pl-list">${cont.map(row).join("")}</div>` : ""}
+      <div class="settled">${[[cert.filter(x => x.clinched), "Clinched", null], [cert.filter(x => !x.clinched), "All but certain", certain],
+        [out.filter(x => !x.eliminated), "All but out", gone], [out.filter(x => x.eliminated), "Eliminated", null]].filter(([a]) => a.length)
+        .map(([a, lab, say]) => `<span><b>${lab}:</b> ${say ? group(a, say) : names(a)}</span>`).join("")}</div></div>`;
+  };
+  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}).replace(",", "");
+  const dec = B.deciders.map(d => { const k = d.kickoff_utc ? PP.kick(d.kickoff_utc) : null;
+    return `<a class="pl-dec" href="#match-${d.ws_match_id}"><span class="pl-when"><b>${k ? day(d.kickoff_utc) : PP.dateLong(d.date)}</b>${k ? ` ${k.time}` : ""}</span>
+      <span class="pl-teams">${esc(short(d.home))} v ${esc(short(d.away))}</span>
+      <span class="pl-stakes">${d.stakes.map(s => `<span><b>${esc(short(s.team))}</b>: ${pct(s.if_win)} with a win, ${pct(s.if_loss)} with a defeat</span>`).join("")}</span></a>`; }).join("");
+  return `<article class="lead lead-2" id="places" aria-labelledby="places-h">
+    <span class="kicker">The last playoff places</span>
+    <h2 id="places-h">${head}</h2>
+    <p class="r-note">The top ${NW(B.places)} in each conference reach the playoffs. A place counts as open until ${NW(B.places)} clubs are all but certain of one, at ${pct1(B.hi)} or more in ${sims} simulations of the rest of the season; clubs between ${pct1(B.lo)} and ${pct1(B.hi)} are in contention. Clinched and eliminated mean the points already settle it, whatever happens in the matches left.</p>
+    <div class="pl-confs">${confs.map(panel).join("")}</div>
+    ${dec ? `<div class="pl-decs"><h3 class="r-heading">The matches that decide it</h3><p class="r-small">The upcoming matches whose results move a contender's playoff chances most, with that chance after a win and after a defeat. Kickoff times are Eastern.</p>${dec}</div>` : ""}
+    <div><a href="#race" class="btn-text">Full playoff forecast</a></div>
   </article>`;
 }
 
