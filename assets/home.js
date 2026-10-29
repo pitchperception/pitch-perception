@@ -494,10 +494,17 @@ function raceBand(H){
   const biggest = d.teams.slice().sort((a,b) => Math.abs(b.move_playoffs) - Math.abs(a.move_playoffs))[0].conference;
   const panel = c => {
     const t = d.teams.filter(x => x.conference === c), through = t.filter(x => x.p_playoffs >= 0.995), out = t.filter(x => x.p_playoffs < 0.005);
+    // 99.5% is not a proof (owner, 2026-10-29): "Clinched" / "Eliminated" only where points and matches left prove it (71's
+    // bubble, as in the band above), "All but" otherwise; once the season is over the table decides: "Through" / "Out"
+    const pr = {}; Object.values((H.bubble || {}).conferences || {}).forEach(v => v.clubs.forEach(x => { pr[x.team] = x; }));
+    const link = x => `<a href="#team-${PP.slug(x.team)}">${esc(short(x.team))}</a>`;
+    const groups = H.season_over ? [[through, "Through"], [out, "Out"]]
+      : [[through.filter(x => (pr[x.team] || {}).clinched), "Clinched"], [through.filter(x => !(pr[x.team] || {}).clinched), "All but through"],
+         [out.filter(x => !(pr[x.team] || {}).eliminated), "All but out"], [out.filter(x => (pr[x.team] || {}).eliminated), "Eliminated"]];
     return `<div class="race-conf" data-conf="${c}" data-hidden="${c!==biggest}">
       <div class="fig-cap"><h3 class="r-heading">${c}ern Conference</h3><span class="r-small">Chance of the playoffs, last twelve weeks</span></div>
       <div class="chart race-chart" data-conf="${c}"></div>
-      <div class="settled">${through.length?`<span><b>Through:</b> ${through.map(x => `<a href="#team-${PP.slug(x.team)}">${esc(short(x.team))}</a>`).join(", ")}</span>`:""}${out.length?`<span><b>Out:</b> ${out.map(x => `<a href="#team-${PP.slug(x.team)}">${esc(short(x.team))}</a>`).join(", ")}</span>`:""}</div>
+      <div class="settled">${groups.filter(([a]) => a.length).map(([a, lab]) => `<span><b>${lab}:</b> ${a.map(link).join(", ")}</span>`).join("")}</div>
     </div>`;
   };
   return `<section class="band well" id="race-band" aria-labelledby="race-h"><div class="wrap">

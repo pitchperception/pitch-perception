@@ -341,7 +341,8 @@ async function page(m, el){
     if(!done){ $("#lplup").textContent = `Last updated ${at} ET, at ${el_}.`; return; }
     $("#lplh").textContent = "Player ratings at full time";
     $("#lplp").textContent = "Each player's value added in the match above a replacement player in the same minutes, from the live data. Provisional: the overnight update recalculates them from the final, corrected data, and the match report then shows the final figures. Hover a player for attack and ball-winning; keepers are rated in the match report.";
-    $("#lplup").textContent = O.final ? `From the live data after the final whistle (${at} ET).`
+    $("#lplup").textContent = O.settled ? `From the live data, checked again about half an hour after the final whistle (${at} ET).`
+      : O.final ? `From the live data after the final whistle (${at} ET).`
       : Date.now() - Date.parse(O.updated) < 10 * 60e3 ? `The full-time figures follow in a few minutes; these are from ${el_} (${at} ET).`
       : `The live ratings stopped at ${el_} (${at} ET), before the final whistle; the overnight update completes them.`;
   };
