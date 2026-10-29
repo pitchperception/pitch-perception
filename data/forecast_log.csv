@@ -987,3 +987,4 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-29T01:34:30Z,1953085,2026-10-29T02:30:00Z,Seattle Sounders FC,Houston Dynamo FC,0.4704,0.2563,0.2733,lineups
 2026-10-29T01:46:42Z,1953100,2026-11-02T01:30:00Z,Los Angeles FC,Minnesota United,0.5125,0.248,0.2395,availability
 2026-10-29T01:46:42Z,1953101,2026-11-02T00:00:00Z,New England Revolution,Inter Miami CF,0.3736,0.2652,0.3612,availability
+2026-10-29T03:47:41Z,1953102,2026-11-02T02:30:00Z,Portland Timbers,Houston Dynamo FC,0.4496,0.2594,0.2909,availability
