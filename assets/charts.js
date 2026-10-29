@@ -30,7 +30,7 @@ PP.zoneMap = (el, cells, opts={}) => {
   const {sx, sy} = PP.pitchBase(svg, W, H, false), cw = W/12, ch = H/8;
   let best = -1, bv = -Infinity;
   cells.forEach((v,z) => { if(v > bv){ bv = v; best = z; } });
-  const zmax = opts.zmax || PP.ZMAX, unit = opts.unit || "goals per 90", whose = opts.whose || "their";
+  const zmax = opts.zmax || PP.ZMAX, unit = opts.unit || "goals per 90", whose = opts.whose || "his";
   cells.forEach((v,z) => {
     const ix = Math.floor(z/8), iy = z%8, x = ix*cw, y = H-(iy+1)*ch, f = PP.valueFill(v, zmax);
     S("rect",{x:x+1,y:y+1,width:cw-2,height:ch-2,fill:f,rx:1.5,"data-tip":`<b>${sgn(v,3)} ${unit}</b><br>${Math.round(ix*8.75)}–${Math.round((ix+1)*8.75)} m from ${whose} own goal line${opts.tipExtra?"<br>"+opts.tipExtra:""}`},svg);
@@ -133,7 +133,7 @@ PP.drawEleven = (el, xi, opts={}) => {
   const maxV = opts.maxV || 1;
   xi.forEach(p => { const c = at(p), v = p.value || 0, rr = Math.max(13, Math.min(W/(portrait?14:22), 13 + Math.abs(v) / maxV * 8)), f = PP.valueFill(v, maxV);
     // each player opens his page, and his club's crest sits on the ring (owner, 2026-10-15)
-    const g = p.id != null ? S("a",{href:`#player-${p.id}`,class:"xi-link","aria-label":`${p.player}, ${PP.short(p.team)}: open their page`},svg) : svg;
+    const g = p.id != null ? S("a",{href:`#player-${p.id}`,class:"xi-link","aria-label":`${p.player}, ${PP.short(p.team)}: open his page`},svg) : svg;
     S("circle",{cx:c.cx,cy:c.cy,r:rr+3,fill:PP.kit(p.team),opacity:.9},g);
     S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":1.5,"data-tip":opts.tip ? opts.tip(p) : `<b>${PP.esc(p.player)}</b>, ${PP.esc(PP.short(p.team))}<br>${PP.sgn(v,2)}`},g);
     text(g, c.cx, c.cy+4, PP.sgn(v, 2), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:${portrait?10:11}px;pointer-events:none`});

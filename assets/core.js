@@ -175,8 +175,8 @@ PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.play
   const head = fit === "balanced" ? `<b>Balanced</b><br>No one style stands out: no role's score reaches ${R.clear}.`
     : [r1, r2].filter(Boolean).map(r => `<b>${PP.esc(by[r].name)}</b><br>${PP.esc(by[r].text)}`).join("<br>");
   const rows = shown.map((d, i) => sc[i] == null ? "" : `${PP.esc(d.name)} ${sc[i] >= 0 ? "+" : "−"}${(Math.trunc(Math.abs(sc[i])*100)/100).toFixed(2)}`).filter(Boolean).join("<br>");
-  const tip = `${head}<br><br>Their ${year} style against other ${PP.ROLE_POS[pos]} (0 is typical; a role needs ${R.clear}, and ${R.margin} more than the next):<br>${rows}`
-    + `<br><br>How they play, not how well. Partly their team's: when players change clubs, their style carries over at about two-thirds strength.`;
+  const tip = `${head}<br><br>His ${year} style against other ${PP.ROLE_POS[pos]} (0 is typical; a role needs ${R.clear}, and ${R.margin} more than the next):<br>${rows}`
+    + `<br><br>How he plays, not how well. Partly his team's: when players change clubs, their style carries over at about two-thirds strength.`;
   return {label, tip}; };
 
 /* ---------- Transfermarkt in the scouting hub (62_tm_market.py): value bands, contracts, MLS-move likelihood ---------- */
@@ -270,7 +270,7 @@ PP.pages.player = (main, h) => {
     <div class="r-label">${PP.clubTag(team, true)}</div><h1 class="r-name">${PP.esc(name)}</h1>
     <dl class="facts"><div><dt>Position</dt><dd>${PP.POS[pos]||pos}</dd></div><div><dt>Minutes, 2026</dt><dd class="num">${PP.int(mins)}</dd></div>
     ${pos!=="GK"?`<div><dt>Value above replacement, 2026</dt><dd class="num">${PP.sgn(rating)} goals</dd></div>`:""}</dl>
-    ${holdingNote("their full page, with the skills breakdown and every season,", "Stage 4")}</section></div>`;
+    ${holdingNote("his full page, with the skills breakdown and every season,", "Stage 4")}</section></div>`;
 };
 PP.pages.team = (main, h) => {
   const team = PP.teamBySlug(h.slice(5)); if(!team){ PP.pages.teams(main); return; }

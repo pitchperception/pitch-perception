@@ -31,12 +31,16 @@ function strengthNote(race){
 /* ---------------- Teams index ---------------- */
 PP.pages.teams = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-small">Loading.</p></section></div>`;
-  let L, TR = null; try { [L, TR] = await Promise.all([loadLeague(), fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null), PP.loadImages()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The league data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
+  let L, TR = null, PO = null; try { [L, TR, , PO] = await Promise.all([loadLeague(), fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null), PP.loadImages(), PP.loadPlayoffs ? PP.loadPlayoffs() : null]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The league data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
   const race = ((PP.data.home||{}).race||{teams:[]}).teams, byT = Object.fromEntries(race.map(t => [t.team, t]));
   const col = c => race.filter(t => t.conference === c).sort((a,b) => b.points - a.points || a.played - b.played);
+  // from the playoff phase on (owner, 2026-10-29) the last column is each club's playoff status, not the regular-season chance
+  const poT = PO && PO.phase && PO.phase !== "regular" ? Object.fromEntries((PO.teams || []).map(x => [x.team, x])) : null;
+  const OUT = {wild_card:"Out, wild card", round_one:"Out, Round One", conf_semi:"Out, semifinal", conf_final:"Out, conference final", cup:"Runners-up"};
+  const poCell = x => `<span class="num">${!x ? "Missed" : x.status === "champion" ? "Champions" : x.status === "out" ? OUT[x.out_in] || "Out" : "Still in"}</span>`;
   const rows = arr => arr.map((t,i) => `<a class="trow" href="#team-${PP.slug(t.team)}"><span class="rk">${i+1}</span><span class="nm">${PP.crestOr(t.team, 22)}<span class="nmt"><span class="nm-full">${esc(full(t.team))}</span><span class="nm-short">${esc(short(t.team))}</span></span></span>
-    <span class="num">${t.points} pts, ${t.played} played</span><span class="num"><span class="sr">Strength </span>${PP.int(t.elo)}</span><span class="tp"><span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span></span></a>`).join("");
-  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. Ordered by points; the bar is the chance of reaching the playoffs.</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a>
+    <span class="num">${t.points} pts, ${t.played} played</span><span class="num"><span class="sr">Strength </span>${PP.int(t.elo)}</span><span class="tp">${poT ? poCell(poT[t.team]) : `<span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span>`}</span></a>`).join("");
+  main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. ${poT ? "Ordered by regular-season points; the last column is each club's playoff status." : "Ordered by points; the bar is the chance of reaching the playoffs."}</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a>
       ${strengthNote(race)}</section>
     <div class="tindex">${["East","West"].map(c => `<section><h2 class="r-title">${c}ern Conference</h2><div class="thead"><span></span><span>Club</span><span>Record</span><span>Strength</span><span>Playoffs</span></div>${rows(col(c))}</section>`).join("")}</div></div>
     <section class="band" id="lstyle"><div class="wrap"><div class="band-head"><h2 class="r-title">How the league plays</h2><p>Every club of 2026 by the chances it creates and allows per match, from our shot model. Up and to the right is better at both ends; the diagonal lines mark equal expected-goal difference.</p></div>
@@ -93,11 +97,11 @@ PP.pages.team = async (main, h) => {
   const team = PP.teamBySlug(slug);
   if(!team){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No club with this link</h1><p>Pick a club from the Teams list.</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   main.innerHTML = `<div class="wrap"><section class="pid"><div class="r-label">${clubTag(team)}</div><h1 class="r-name">${esc(full(team))}</h1><p class="r-small">Loading the model's view of this club.</p></section></div>`;
-  let D, L, SY; try { [D, L, , , SY] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages(), loadStyles(), PP.loadInjuries()]); }
+  let D, L, SY, PO; try { [D, L, , , SY, , PO] = await Promise.all([loadTeam(slug), loadLeague(), PP.loadArch(), PP.loadImages(), loadStyles(), PP.loadInjuries(), PP.loadPlayoffs ? PP.loadPlayoffs() : null]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">${team ? "This club's data did not load" : "No club with this link"}</h1><p>${team ? esc(e.message)+". Reload the page; if it persists, the site needs republishing." : "Pick a club from the Teams list."}</p><a class="btn-text" href="#teams">All teams</a></section></div>`; return; }
   if(location.hash.slice(1) !== h) return;
   const seasons = D.seasons.slice().sort((a,b) => a.year - b.year), years = seasons.map(s => s.year), y = year && years.includes(year) ? year : years[years.length-1];
-  T = {D, L, SY, seasons, years, year: y, s: seasons.find(s => s.year === y), zoneMode: "create"};
+  T = {D, L, SY, PO, seasons, years, year: y, s: seasons.find(s => s.year === y), zoneMode: "create"};
   render(main);
 };
 
@@ -109,7 +113,7 @@ function confRank(){ const conf = T.D.conference, east = new Set(T.L.east), rows
 
 function render(main){
   const s = T.s, cur = s.year === 2026 && s.forecast;
-  main.innerHTML = identity() + plate() + `<div id="tmgr"></div>` + piecesSection() + injSection() + playSection() + resultsSection() + (cur ? runinSection() : "") + rankSection() + moneySection() + detailSection();
+  main.innerHTML = identity() + plate() + `<div id="tmgr"></div>` + piecesSection() + injSection() + playSection() + resultsSection() + (cur ? (poOn() ? poSection() : runinSection()) : "") + rankSection() + moneySection() + detailSection();
   if(PP.managerCard) PP.managerCard(T.D.team, T.year).then(html => { const el = $("#tmgr"); if(el) el.outerHTML = html; });
   PP.bindDisclosures(main);
   $$(".tseason button", main).forEach(b => b.addEventListener("click", () => { location.hash = `#team-${T.D.slug}-${b.dataset.y}`; }));
@@ -121,7 +125,7 @@ function render(main){
   if($("#televo")) PP.chart($("#televo"), drawElo);
   if($("#tseeds")) PP.chart($("#tseeds"), drawSeeds);
   $$(".cstrip").forEach(el => PP.chart(el, drawStrip));
-  ["#tstrength","#tzones","#txi","#tresults","#televo","#tseeds",".cstrips","#tsquad",".tstyle","#tdetail","#tinj"].forEach(q => $$(q).forEach(PP.bindTips));
+  ["#tstrength","#tzones","#txi","#tresults","#televo","#tseeds",".cstrips","#tsquad",".tstyle","#tdetail","#tinj","#runin"].forEach(q => $$(q).forEach(PP.bindTips));
 }
 
 /* identity */
@@ -162,8 +166,8 @@ function plate(){
       <div class="chart" id="tstrength"></div>
       <div class="indicators">
         <div class="ind"><span class="r-label">Chances</span><span class="v num">${sgn(s.xgd_pg,2)} xG per match</span><span class="r-small">${PP.ord(rankOf("xgd_pg").rank)} in MLS: ${num(s.xgf_pg,2)} created, ${num(s.xga_pg,2)} allowed per match.</span></div>
-        ${cur ? `<div class="ind"><span class="r-label">Outlook</span><span class="v">${pct(F.p_playoffs)} playoffs</span><span class="r-small">${pct(F.p_champion)} to win MLS Cup; ${Math.round(F.proj_points)} points projected (${Math.round(F.points_p10)} to ${Math.round(F.points_p90)}).</span></div>
-        <div class="ind"><span class="r-label">Movement, four weeks</span>${eloMove!=null ? `<span class="v"><span class="tri ${eloMove>=0?"up":"down"}" aria-hidden="true"></span><span class="num">${sgn(eloMove,0)} strength</span></span>` : `<span class="v">–</span>`}<span class="r-small">${poMove!=null ? `Playoff chance ${PP.pp(poMove)} points (${pctShort(hist[n-5][1])} to ${pctShort(hist[n-1][1])}).` : ""}</span></div>`
+        ${cur ? `${poOn() ? poIndicator() : `<div class="ind"><span class="r-label">Outlook</span><span class="v">${pct(F.p_playoffs)} playoffs</span><span class="r-small">${pct(F.p_champion)} to win MLS Cup; ${Math.round(F.proj_points)} points projected (${Math.round(F.points_p10)} to ${Math.round(F.points_p90)}).</span></div>`}
+        <div class="ind"><span class="r-label">Movement, four weeks</span>${eloMove!=null ? `<span class="v"><span class="tri ${eloMove>=0?"up":"down"}" aria-hidden="true"></span><span class="num">${sgn(eloMove,0)} strength</span></span>` : `<span class="v">–</span>`}<span class="r-small">${poMove!=null && !poOn() ? `Playoff chance ${PP.pp(poMove)} points (${pctShort(hist[n-5][1])} to ${pctShort(hist[n-1][1])}).` : ""}</span></div>`
         : `<div class="ind"><span class="r-label">Squad value</span><span class="v num">${sgn(s.squad_value,1)} goals</span><span class="r-small">${sv ? `${PP.ord(sv.rank)} of ${sv.of} clubs.` : ""}</span></div>`}
       </div>
     </div>
@@ -214,11 +218,12 @@ function piecesSection(){
   const sq = order.filter(g => groups[g]).map(g => { const tot = groups[g].map(val).filter(v => v != null).reduce((a,b)=>a+b,0);
     const main = groups[g].filter(p => p.mins >= 450), rest = groups[g].filter(p => p.mins >= 1 && p.mins < 450);
     return `<div class="sqgroup"><div class="sqhead"><span>${g}</span><span class="num">${sgn(tot,1)}</span></div>${main.map(row).join("")}${rest.length ? `<details class="sqmore"><summary>${rest.length} more under 450 minutes</summary>${rest.map(row).join("")}</details>` : ""}</div>`; }).join("");
-  const imp = s.impact || [];
-  const impH = imp.length ? `<div class="impact"><h3 class="r-heading">Who they can least afford to lose</h3><p class="r-small">The rest of the season re-simulated with each of their four most valuable outfield players replaced by a replacement-level player. Computed ${PP.dateLong(s.impact_date)} with the earlier lineup model (Elo plus lineup strength).</p>
-      <div class="tbl-wrap"><table class="dtable"><thead><tr><th>Without</th><th class="n">Points</th><th class="n">Playoffs</th><th class="n">MLS Cup</th></tr></thead><tbody>${imp.map(p => `<tr><td><a href="#player-${p.id}">${esc(p.name)}</a></td><td class="n">${sgn(p.d_points,1)}</td><td class="n">${PP.pp(p.d_playoffs)} pts</td><td class="n">${PP.pp(p.d_cup)} pts</td></tr>`).join("")}</tbody></table></div></div>` : "";
+  const po = s.year === 2026 && poOn(), poIn = po && poStatus().state === "in";
+  const imp = po && !poIn ? [] : s.impact || [];
+  const impH = imp.length ? `<div class="impact"><h3 class="r-heading">Who they can least afford to lose</h3><p class="r-small">The rest of the ${po ? "playoffs" : "season"} re-simulated with each of their four most valuable outfield players replaced by a replacement-level player. Computed ${PP.dateLong(s.impact_date)} with the earlier lineup model (Elo plus lineup strength).</p>
+      <div class="tbl-wrap"><table class="dtable"><thead><tr><th>Without</th>${po ? "" : `<th class="n">Points</th><th class="n">Playoffs</th>`}<th class="n">MLS Cup</th></tr></thead><tbody>${imp.map(p => `<tr><td><a href="#player-${p.id}">${esc(p.name)}</a></td>${po ? "" : `<td class="n">${sgn(p.d_points,1)}</td><td class="n">${PP.pp(p.d_playoffs)} pts</td>`}<td class="n">${PP.pp(p.d_cup)} pts</td></tr>`).join("")}</tbody></table></div></div>` : "";
   return `<section class="band" id="pieces" aria-labelledby="pieces-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>The most-used starting eleven of ${s.year}, each player drawn by the value they add above a replacement at their position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p>${ros.some(p => injHere(p.id)) ? `<p class="r-small injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</p>` : ""}</div>
+    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>The most-used starting eleven of ${s.year}, each player drawn by the value he adds above a replacement at his position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p>${ros.some(p => injHere(p.id)) ? `<p class="r-small injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</p>` : ""}</div>
     <div class="pieces">
       <div class="pleft"><figure class="tfig"><div class="fig-cap"><span class="r-label">Most-used eleven${s.formation?`, ${esc(s.formation)}`:""}</span><span class="r-small">Size and colour: value added in ${s.year}</span></div><div class="chart" id="txi"></div></figure>${impH}</div>
       <aside class="aside" id="tsquad">
@@ -245,7 +250,7 @@ function drawXI(el){
   // lineup x: 0 = left flank, 1 = right flank; y: 1 = own goal. Attacking right, the right flank is at the bottom.
   const at = p => { const L = 6 + (1 - p.y) * 88; return portrait ? {cx: (6 + p.x * 56)/68*W, cy: H - L/105*H} : {cx: sx(L), cy: sy(6 + (1 - p.x) * 56)}; };
   xi.forEach(p => { const c = at(p), q = {x:0,y:0}, v = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(v||0) * 3.2)), f = PP.valueFill(v||0, 5);
-    const g = p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open their page`},svg) : svg;
+    const g = p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open his page`},svg) : svg;
     S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, started ${Math.round((p.share||0)*100)}% of matches<br>${p.pos==="GK"?"Shot-stopping":"Value above replacement"}: ${sgn(v,2)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
     const st = injHere(p.ws_player_id);
     if(st){ const m = S("g",{transform:`translate(${c.cx + rr*0.55},${c.cy - rr*0.55 - 14})`,class:"xi-inj","data-tip":esc(PP.injTip(st))},g);
@@ -395,6 +400,63 @@ function drawElo(el){
   tr.forEach((x,i) => { const nx = tr[i+1], w = nx ? sx(day(nx[0])) - sx(day(x[0])) : 12; S("rect",{x:sx(day(x[0]))-Math.min(w,12)/2,y:m.t,width:Math.max(4,Math.min(w,12)),height:ih,class:"hit","data-tip":`<b>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</b><br>Strength ${PP.int(x[1])}`},svg); });
 }
 
+/* the playoffs on a club's page (owner, 2026-10-29: "Reword once playoffs begin"). From the playoff phase on
+   (data/playoffs.json, 172; the matchday refresh keeps it current) the page shows the club's playoff status instead of the
+   regular-season chance: still in (the next match, the chance of each round to come), knocked out (the round, and by whom),
+   or missed the playoffs (the final place). The regular-season run-in comes back only for earlier seasons' pages. */
+const PO_RN = {wild_card:"the wild card", round_one:"Round One", conf_semi:"the conference semifinals", conf_final:"the conference final", cup:"MLS Cup"};
+const poOn = () => T.year === 2026 && !!(T.PO && T.PO.phase && T.PO.phase !== "regular");
+function poStatus(){
+  const P = T.PO, t = T.D.team, x = (P.teams || []).find(y => y.team === t);
+  if(!x) return {state: "missed"};
+  const ms = (P.matches || []).filter(m => m.home === t || m.away === t);
+  if(x.status === "champion") return {state: "champion", x, ms};
+  if(x.status === "out"){
+    const rm = ms.filter(m => m.round === x.out_in), last = rm[rm.length - 1], opp = last ? (last.home === t ? last.away : last.home) : null;
+    return {state: "out", x, ms, round: x.out_in, last, opp, w: rm.filter(m => m.winner === t).length, l: rm.filter(m => m.winner && m.winner !== t).length};
+  }
+  const M = Object.fromEntries((P.matches || []).map(m => [m.id, m]));
+  return {state: "in", x, ms, next: (P.next || []).map(id => M[id]).find(m => m && (m.home === t || m.away === t))};
+}
+const poScore = (m, t) => {      // a result from the club's side: "won 2-1", "lost 1-1 on penalties (3-4)"
+  const us = m.home === t, g = us ? [m.g_home, m.g_away] : [m.g_away, m.g_home], won = m.winner === t;
+  const pen = m.pen_home != null ? (us ? [m.pen_home, m.pen_away] : [m.pen_away, m.pen_home]) : null;
+  return `${won ? "won" : "lost"} ${g[0]}–${g[1]}${pen ? ` on penalties (${pen[0]}–${pen[1]})` : m.et ? " after extra time" : ""}`;
+};
+const poGame = m => m.round === "round_one" ? `Round One, game ${m.game}` : cap(PO_RN[m.round].replace(/^the /, ""));
+const nextOpp = (m, t) => { const o = m.home === t ? m.away : m.home; return o ? `${m.home === t ? "v" : "at"} ${esc(short(o))}` : "opponent to be decided"; };
+function poIndicator(){
+  const S_ = poStatus(), t = T.D.team, x = S_.x, conf = T.D.conference;
+  const kick = m => { if(!m.time_confirmed) return "date to be confirmed"; const k = PP.kick(m.kickoff_utc); return k ? `${k.day}, ${k.time}` : ""; };
+  const [v, small] = S_.state === "missed" ? ["Missed the playoffs", `Finished ${PP.ord(confRank().rank)} in the ${conf}; the top nine qualify.`]
+    : S_.state === "champion" ? ["MLS Cup winners", `The ${PP.ord(x.seed)} seed in the ${conf}.`]
+    : S_.state === "out" ? [S_.round === "cup" ? "MLS Cup runners-up" : `Out in ${PO_RN[S_.round]}`, S_.opp ? (S_.round === "round_one" ? `Lost the series ${S_.w}–${S_.l} to ${esc(short(S_.opp))}.` : `Beaten by ${esc(short(S_.opp))}${S_.round === "cup" ? " in the final" : ""}: ${poScore(S_.last, t)}.`) : ""]
+    : [`In the playoffs, ${PP.ord(x.seed)} seed`, `${S_.next ? `Next: ${poGame(S_.next)}, ${nextOpp(S_.next, t)}, ${kick(S_.next)}. ` : ""}${pct(x.p_champion)} to win MLS Cup.`];
+  return `<div class="ind"><span class="r-label">Playoffs</span><span class="v">${v}</span><span class="r-small">${small}</span></div>`;
+}
+function poSection(){
+  const S_ = poStatus(), P = T.PO, t = T.D.team, x = S_.x, T_ = esc(short(t)), conf = T.D.conference + "ern Conference";
+  const rows = (S_.ms || []).map(m => m.status === "final" || m.status === "final_pending" ? PP.poPastRow(m, P) : PP.poUpRow(m, P)).join("");
+  const REACH = [["p_round1", "Round One"], ["p_semis", "Conference semifinals"], ["p_conf_final", "Conference final"], ["p_cup_final", "MLS Cup final"], ["p_champion", "Win MLS Cup"]];
+  let lead, funnel = "";
+  if(S_.state === "missed") lead = `${T_} finished ${PP.ord(confRank().rank)} in the ${conf} and missed the playoffs: the top nine in each conference qualify.`;
+  else if(S_.state === "champion") lead = `${T_} won MLS Cup, from the ${PP.ord(x.seed)} seed in the ${conf}.`;
+  else if(S_.state === "out" && S_.round === "cup") lead = `${T_} reached MLS Cup and lost the final${S_.opp ? ` to ${esc(short(S_.opp))}: they ${poScore(S_.last, t)}` : ""}.`;
+  else if(S_.state === "out") lead = `${T_} went out in ${PO_RN[S_.round]}${S_.opp ? (S_.round === "round_one" ? `, losing the series ${S_.w}–${S_.l} to ${esc(short(S_.opp))}` : `: they ${poScore(S_.last, t)} against ${esc(short(S_.opp))}`) : ""}.`;
+  else {
+    lead = `${T_} are in the playoffs as the ${PP.ord(x.seed)} seed in the ${conf}. Every match still to come is played out ${PP.int(P.sims || 20000)} times from team strength, with every result so far held fixed; these are the shares of simulations.`;
+    funnel = REACH.filter(([k]) => x[k] != null && x[k] < 1).map(([k, l]) => `<div class="fn"><span>${l}</span><span class="tr"><i style="width:${Math.max(0.5, x[k] * 100)}%"></i></span><span class="num">${pct(x[k])}</span></div>`).join("");
+  }
+  return `<section class="band well" id="runin" aria-labelledby="runin-h"><div class="wrap">
+    <div class="band-head"><h2 class="r-title" id="runin-h">The playoffs</h2><p>${lead}</p></div>
+    <div class="runin">
+      <div class="rcol">${funnel ? `<h3 class="r-heading">How far they go</h3><div class="funnel">${funnel}</div>` : ""}
+        <p class="r-small"><a class="btn-text" href="#race">The bracket and every club's chances</a></p></div>
+      <div class="rcol">${rows ? `<h3 class="r-heading">${S_.state === "in" ? "Their playoff matches" : "Their playoffs"}</h3><div class="fixtures">${rows}</div>` : `<h3 class="r-heading">The regular season</h3><p class="r-small">${T_} finished with ${T.s.pts} points from ${T.s.games} matches.</p>`}</div>
+    </div>
+  </div></section>`;
+}
+
 /* run-in: playoff outlook */
 function runinSection(){
   const s = T.s, F = s.forecast, seeds = s.seeds || [], home = seeds.slice(0,4).reduce((a,b)=>a+b,0), sch = s.schedule, rem = s.remaining || [];
@@ -457,7 +519,7 @@ function moneySection(){
   if(!sl.length) return "";
   const M = Math.max(...sl.map(x => Math.abs(x.vs_slot||0)), 1);
   return `<section class="band" id="money" aria-labelledby="money-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="money-h">What the money buys</h2><p>Value added by players on each kind of contract, against what a typical player on that contract returns in the same minutes. Pay is guaranteed compensation, counted once for each player, in full, at the club they finished the season with, as MLS counts budget charges; a player who moved on during the season keeps their value here, without pay.</p></div>
+    <div class="band-head"><h2 class="r-title" id="money-h">What the money buys</h2><p>Value added by players on each kind of contract, against what a typical player on that contract returns in the same minutes. Pay is guaranteed compensation, counted once for each player, in full, at the club he finished the season with, as MLS counts budget charges; a player who moved on during the season keeps his value here, without pay.</p></div>
     <div class="tbl-wrap"><table class="dtable mtable"><thead><tr><th>Contract type</th><th class="n">Players</th><th class="n">Pay</th><th class="n">Value</th><th>Against a typical player on that contract</th><th class="n">Beating it</th></tr></thead>
     <tbody>${sl.map(x => `<tr><td>${PP.SLOT[x.slot]||x.slot}</td><td class="n">${x.players}</td><td class="n">${money(x.pay)}</td><td class="n">${sgn(x.value,1)}</td>
       <td><span class="dg" style="display:grid;grid-template-columns:minmax(80px,1fr) 52px;gap:8px;align-items:center"><span class="dz"><span class="z"></span><span class="b ${x.vs_slot>=0?"pos":"neg"}" style="${x.vs_slot>=0?`left:50%;width:${x.vs_slot/M*50}%`:`left:${50+x.vs_slot/M*50}%;width:${-x.vs_slot/M*50}%`}"></span></span><span class="num" style="text-align:right">${sgn(x.vs_slot,1)}</span></span></td><td class="n">${x.beating} of ${x.players}</td></tr>`).join("")}</tbody></table></div>
@@ -468,7 +530,7 @@ function moneySection(){
 function detailSection(){
   const s = T.s, ros = s.roster || [], ms = (s.matches || []).slice().reverse(), out = new Set(s.out || []), squad = s.squad ? new Set(s.squad) : null;
   const disc = (id, title, inner) => `<div class="ddisc"><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="${id}">${title}</button><div class="disc" id="${id}" aria-hidden="true"><div><div class="why-body">${inner}</div></div></div></div>`;
-  const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${injHere(p.id)?PP.injMark(p.id, s.year):""}${out.has(p.id)&&!injHere(p.id)?" (out)":""}${squad&&!squad.has(p.id)&&!injHere(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?`${sgn(p.skill,1)} shot-stopping`:sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.moved_to?`<span class="r-small" data-tip="${esc(`Moved to ${short(p.moved_to)} during the season: their pay counts there`)}">Moved to ${esc(short(p.moved_to))}</span>`:p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
+  const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${injHere(p.id)?PP.injMark(p.id, s.year):""}${out.has(p.id)&&!injHere(p.id)?" (out)":""}${squad&&!squad.has(p.id)&&!injHere(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?(p.skill!=null?`${sgn(p.skill,1)} shot-stopping`:"–"):sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.moved_to?`<span class="r-small" data-tip="${esc(`Moved to ${short(p.moved_to)} during the season: his pay counts there`)}">Moved to ${esc(short(p.moved_to))}</span>`:p.joined_from&&p.comp?`<span data-tip="${esc(`Joined from ${short(p.joined_from)} during the season and did not play for the club: his pay counts here`)}">${money(p.comp)}</span>`:p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
   const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${PP.crestTag(x[1])}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
   const hr = T.seasons.slice().reverse().map(x => `<tr><td><a href="#team-${T.D.slug}-${x.year}">${x.year}</a></td><td class="n">${x.games}</td><td class="n">${x.w}–${x.d}–${x.l}</td><td class="n">${x.pts}</td><td class="n">${x.gf}–${x.ga}</td><td class="n">${num(x.xgf,1)}–${num(x.xga,1)}</td><td class="n">${PP.ord(x.pts_pg_rank)}</td><td class="n">${PP.ord(x.xgd_pg_rank)}</td><td class="n">${sgn(x.squad_value,1)}</td></tr>`).join("");
   return `<section class="band" id="tdetail" aria-labelledby="tdet-h"><div class="wrap">

@@ -1033,3 +1033,8 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-29T09:51:16Z,1953101,2026-11-02T00:00:00Z,New England Revolution,Inter Miami CF,0.379,0.2651,0.3559,availability
 2026-10-29T09:51:16Z,1953102,2026-11-02T02:30:00Z,Portland Timbers,Houston Dynamo FC,0.4562,0.2585,0.2853,availability
 2026-10-29T09:51:16Z,1953098,2026-11-01T21:30:00Z,Vancouver Whitecaps,Seattle Sounders FC,0.5804,0.2297,0.1899,availability
+2026-10-29T20:07:52Z,1953088,2026-10-31T17:00:00Z,Charlotte FC,Orlando City,0.4883,0.2531,0.2587,availability
+2026-10-29T20:07:52Z,1953090,2026-10-31T18:00:00Z,Columbus Crew,DC United,0.6135,0.2187,0.1677,availability
+2026-10-29T20:07:52Z,1953089,2026-10-31T18:00:00Z,FC Cincinnati,Philadelphia Union,0.398,0.2644,0.3376,availability
+2026-10-29T20:07:52Z,1953097,2026-10-31T19:00:00Z,St. Louis City,San Diego FC,0.4556,0.2586,0.2858,availability
+2026-10-29T20:07:52Z,1953098,2026-11-01T21:30:00Z,Vancouver Whitecaps,Seattle Sounders FC,0.5805,0.2297,0.1898,availability

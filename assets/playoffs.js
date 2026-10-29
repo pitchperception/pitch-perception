@@ -191,6 +191,9 @@ PP.poRecordLine = P => { const R = P.record || {}, T = R.ties || {}, H = R.highe
   if(!T.n) return `${lead} No tie has been decided yet.${bench}${dl}`;
   return `${lead} ${T.n} tie${T.n === 1 ? " has" : "s have"} been decided: the forecasts' favourite went through in ${T.favourite_through}, and their own chances said about ${Math.round(T.favourite_expected)}; the higher seed went through in ${T.higher_seed_through}.${bench} Too few to judge the forecasts yet.${dl}`;
 };
+/* 188 (owner, 2026-10-29): the same forecasts run back over past playoffs, in counts and words only */
+const btLine = P => { const B = (P.record || {}).backtest;
+  return B ? `<p>Run back over the ${esc(String(B.window).replace("-", "–"))} playoffs, forecasts made the same way picked the side that went through in ${B.favourite_through} of ${B.n_ties} ties; backing the higher seed every time picked ${B.higher_seed_through}. The forecasts did ${esc(B.words)}.</p>` : ""; };
 function method(P){
   const F = (P.format || []).map(f => `<li><b>${RL[f.round]}</b>, ${esc(f.dates)}: ${esc(f.rule)}.</li>`).join("");
   return `<section class="band" id="po-method" aria-labelledby="pom-h"><div class="wrap">
@@ -200,6 +203,7 @@ function method(P){
       <ul class="po-format">${F}</ul>
       <p>A level match after 90 minutes: in the wild card and Round One it goes straight to penalties; from the conference semifinals it goes to 30 minutes of extra time, played at a third of each side's usual scoring rate, then penalties. The forecast treats a shoot-out as a coin toss.</p>
       <p>${PP.poRecordLine(P)} Playoff forecasts are graded apart from the regular season: on the score after 90 minutes, against how often home sides, draws and away sides won playoff matches in 2013–25, and on who went through, once per tie, against the higher seed's record over the same years.</p>
+      ${btLine(P)}
       <p class="r-small">Player ratings and every other page stay regular season only.</p>
     </div></div></section>`;
 }

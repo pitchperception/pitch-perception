@@ -7,8 +7,11 @@ const surname = n => { const p = String(n).split(" "); return p.length > 1 ? p.s
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-PP.pages.today = main => {
+PP.pages.today = async main => {
   const H = PP.data.home;
+  // once the regular season is over the lead can be the playoffs (owner, 2026-10-29), so their file is read first
+  const P = H.season_over ? await PP.loadPlayoffs() : null;
+  if(H.season_over && location.hash.replace("#","") && location.hash !== "#today") return;
   const race = H.race, teams = race.teams, byTeam = Object.fromEntries(teams.map(t => [t.team, t]));
   PP.byTeam = byTeam;
   main.innerHTML = `
@@ -19,7 +22,7 @@ PP.pages.today = main => {
       <p class="dateline">${dateline(H)}</p>
     </header>
     <div class="front">
-      <div class="front-main">${leadBlock(H)}${H.season_over ? "" : placesLead(H)}</div>
+      <div class="front-main">${leadBlock(H, P)}${H.season_over ? "" : placesLead(H)}</div>
       <div class="rail">${[H.season_over ? `<div id="ins-po"></div>` : insRace(H), insContract(H)].join("")}</div>
     </div>
   </div>
@@ -38,7 +41,7 @@ PP.pages.today = main => {
   $$(".mv-glyph").forEach(el => PP.chart(el, drawMover));
   $$(".race-chart").forEach(el => PP.chart(el, drawRace));
   if(H.chain){ PP.chart($("#pitch"), drawPitch); PP.chart($("#steps"), drawSteps); }
-  ["#scatter","#bridge","#spark","#payvalue","#pitch","#steps","#lboard",".rail","#movers-band","#places"].forEach(s => $$(s).forEach(PP.bindTips));
+  ["#scatter","#bridge","#spark","#payvalue","#pitch","#steps","#lboard",".rail","#movers-band","#places","#po-lead"].forEach(s => $$(s).forEach(PP.bindTips));
   if(H.chain) bindChain();
   bindRaceTools();
   weekTeaser();
@@ -100,6 +103,8 @@ function lead(H){
   const rc = H.record_chase, N = n => PP.WORDS[n] || String(n);
   const recLine = !(rc && first && rc.team === o.team) ? "" : rc.points > rc.record
     ? `${esc(short(o.team))} have broken the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
+    : rc.points === rc.record && !rc.left
+      ? `${esc(short(o.team))} finished level with the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
     : rc.p_break >= 0.02 && rc.p_break <= 0.98
       ? `The model gives them a ${pct(rc.p_break)} chance of breaking the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}): they need ${N(rc.need)} points from their last ${N(rc.left)} matches. `
       : "";
@@ -115,20 +120,24 @@ function lead(H){
     </div>
     <div><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="why-lead" id="why-lead-btn">How this is measured</button>
     <div class="disc" id="why-lead" aria-hidden="true"><div><div class="why-body">
-      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Expected goals come from a shot model fitted to MLS for this site: each shot is worth the share of similar shots that were scored. Goals prevented compare the goals a keeper conceded with the post-shot expected goals of the shots they faced, centred so an average keeper is zero. The dashed line on the chart is the league-wide fit of points on expected-goal difference; a team's height above it is points the chances alone would not explain.</p>
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Expected goals come from a shot model fitted to MLS for this site: each shot is worth the share of similar shots that were scored. Goals prevented compare the goals a keeper conceded with the post-shot expected goals of the shots he faced, centred so an average keeper is zero. The dashed line on the chart is the league-wide fit of points on expected-goal difference; a team's height above it is points the chances alone would not explain.</p>
     </div></div></div></div>
   </article>`;
 }
 
 /* ---------------- lead: the points record (owner, 2026-10-27: the Today page's headline while the chase is live) ----------------
-   The rule is the record sentence's (2026-10-15): the points leader, while the chance of breaking the league record is between
-   2% and 98%, or once it is broken; plus a leader that finished level with it. Otherwise the results-against-chances lead. */
-const recordLive = rc => !!(rc && rc.pace && rc.pace.length) &&
-  (rc.points > rc.record || (rc.points === rc.record && !rc.left) || (rc.p_break >= 0.02 && rc.p_break <= 0.98));
-function leadBlock(H){
-  const live = recordLive(H.record_chase);
-  PP.leadTeam = live ? H.record_chase.team : H.outperformer.team;
-  return live ? recordLead(H) : lead(H);
+   Since 2026-10-29 (owner: "Switch to playoff news on front page after the Nashville points record is settled") the record
+   leads while the chase is open: the points leader has matches left and can still equal or break the record. Once it is
+   settled (no matches left, or out of reach), the lead is the playoffs when the regular season is over (data/playoffs.json,
+   with one line on the record if it was broken or equalled), and results against chances before that. As before, a chase
+   that has never been plausible (under a 2% chance of even equalling it, e.g. early in a season) does not lead. */
+const chaseOpen = rc => !!(rc && rc.pace && rc.pace.length) && rc.left > 0 && rc.points + 3 * rc.left >= rc.record
+  && (rc.points >= rc.record || rc.p_tie_or_break >= 0.02);
+function leadBlock(H, P){
+  const rc = H.record_chase;
+  if(chaseOpen(rc)){ PP.leadTeam = rc.team; return recordLead(H); }
+  PP.leadTeam = H.outperformer.team;
+  return P && P.phase && P.phase !== "regular" ? poLead(H, P) : lead(H);
 }
 const cupLineFor = (H, team) => {
   const t = PP.byTeam[team] || {}, cup = H.race.teams.slice().sort((a,b) => b.p_champion - a.p_champion), cr = cup.findIndex(x => x.team === team);
@@ -137,6 +146,7 @@ const cupLineFor = (H, team) => {
 };
 const NW = n => PP.WORDS[n] || String(n);
 const nMatches = n => `${NW(n)} ${n === 1 ? "match" : "matches"}`, nPoints = n => `${NW(n)} ${n === 1 ? "point" : "points"}`;
+const lastN = n => n === 1 ? "match" : nMatches(n);        // "their last match", not "their last one match"
 /* the fewest results that reach `need` points from `left` matches (each one needed: one result worse falls short), in words */
 function waysTo(left, need, exact){
   const say = (w, d) => [w ? (w === 1 ? "a win" : `${NW(w)} wins`) : "", d ? (d === 1 ? "a draw" : `${NW(d)} draws`) : ""].filter(Boolean).join(" and ") || `${NW(left)} defeats`;
@@ -150,15 +160,18 @@ function waysTo(left, need, exact){
 function recordLead(H){
   const rc = H.record_chase, team = rc.team, T = esc(short(team)), b = rc.best_at_stage, yr = H.season;
   const holder = `${esc(short(rc.holder))} in ${rc.holder_season}`, broke = rc.points > rc.record, level = rc.points === rc.record;
+  const canBreak = rc.need <= 3 * rc.left;             // otherwise only equalling it is left (the lead shows while that is possible)
   const head = broke ? (rc.left ? `${T} have broken the league points record` : `${T} finished with ${rc.points} points, a league record`)
     : level ? (rc.left ? `${T} have equalled the league points record` : `${T} finished level with the league points record`)
-    : `${T} need ${nPoints(rc.need)} from their last ${nMatches(rc.left)} to break the league points record`;
+    : !canBreak ? `${T} need ${nPoints(rc.need - 1)} from their last ${lastN(rc.left)} to equal the league points record`
+    : `${T} need ${nPoints(rc.need)} from their last ${lastN(rc.left)} to break the league points record`;
   const isRecord = b && b.team === rc.holder && b.season === rc.holder_season && b.points === rc.record;
   const stage = !b || isRecord ? "" : rc.points > b.points ? `, the most any team has had after ${rc.played} matches since 2013 (the previous best: ${esc(short(b.team))}, ${b.points} in ${b.season})`
     : rc.points === b.points ? `, level with the most any team has had after ${rc.played} matches since 2013 (${esc(short(b.team))}, ${b.season})`
     : `; ${esc(short(b.team))} had ${b.points} after ${rc.played} matches in ${b.season}`;
   const chase = broke ? `The previous record was ${rc.record}, set by ${holder}.${rc.left ? ` They have ${nMatches(rc.left)} left.` : ""}`
-    : level ? `The record is ${rc.record}, set by ${holder}.${rc.left ? ` One more point from their last ${nMatches(rc.left)} breaks it; the forecast gives them a ${pct(rc.p_break)} chance.` : ""}`
+    : level ? `The record is ${rc.record}, set by ${holder}.${rc.left ? ` One more point from their last ${lastN(rc.left)} breaks it; the forecast gives them a ${pct(rc.p_break)} chance.` : ""}`
+    : !canBreak ? `The record is ${rc.record}, set by ${holder}. Breaking it is now out of reach; ${NW(rc.need - 1)} more ${rc.need - 1 === 1 ? "point" : "points"} would equal it, and the forecast gives them a ${pct(rc.p_tie_or_break)} chance.`
     : `The record is ${rc.record}, set by ${holder}. ${cap(NW(rc.need))} more ${rc.need === 1 ? "point" : "points"} would break it and ${NW(rc.need - 1)} would equal it; the forecast gives them a ${pct(rc.p_break)} chance of breaking it and ${pct(rc.p_tie_or_break)} of at least equalling it.`;
   const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}).replace(",", "");
   const fx = rc.fixtures.map(f => {
@@ -172,6 +185,8 @@ function recordLead(H){
   const pLevel = Math.max(0, rc.p_tie_or_break - rc.p_break), pShort = Math.max(0, 1 - rc.p_tie_or_break);
   const rows = broke || !rc.left ? [] : level
     ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equalled", pLevel, `${NW(rc.left)} defeats`]]
+    : !canBreak ? [[`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
+       ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])]
     : [[`${rc.need} or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, rc.need)],
        [`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
        ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])];
@@ -194,6 +209,72 @@ function recordLead(H){
     <div class="disc" id="why-lead" aria-hidden="true"><div><div class="why-body">
       <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2);max-width:64ch">Points come from every regular-season result since 2013, three for a win and one for a draw. The chance of the record combines the forecast's win, draw and defeat chances for each match left over every combination of results, worked out exactly rather than simulated${rc.left ? `; the range drawn after the last match holds the middle 80% of those combinations (${rc.q10} to ${rc.q90} points)` : ""}. The forecast is the same one shown on each match page.</p>
     </div></div></div></div>
+  </article>`;
+}
+
+/* ---------------- lead: the playoffs (owner, 2026-10-29: "Switch to playoff news on front page after the Nashville points record
+   is settled"). From data/playoffs.json (172), which the matchday refresh keeps current: the latest result, what comes next
+   and the favourites, with one line on the points record if the leader broke or equalled it. ---------------- */
+const PO_RND = {wild_card:"the wild card", round_one:"Round One", conf_semi:"the conference semifinals", conf_final:"the conference final", cup:"MLS Cup"};
+const PO_NEXT = {wild_card:"Round One", round_one:"the conference semifinals", conf_semi:"the conference final", conf_final:"MLS Cup"};
+const poScore = m => {
+  const s = `${esc(short(m.home))} ${m.g_home}–${m.g_away} ${esc(short(m.away))}`;
+  if(m.pen_home != null) return `${s}; ${esc(short(m.winner))} won ${Math.max(m.pen_home, m.pen_away)}–${Math.min(m.pen_home, m.pen_away)} on penalties`;
+  return m.et ? `${s} after extra time` : s;
+};
+function recordNote(rc){
+  if(!rc || !rc.pace || !rc.pace.length || rc.left) return "";
+  const T = esc(short(rc.team)), was = `${esc(short(rc.holder))}, ${rc.holder_season}`;
+  return rc.points > rc.record ? `${T} finished the regular season with ${rc.points} points, a league record (the previous one: ${rc.record}, ${was}).`
+    : rc.points === rc.record ? `${T} finished the regular season level with the league record of ${rc.record} points (${was}).` : "";
+}
+function poLead(H, P){
+  const M = Object.fromEntries((P.matches || []).map(m => [m.id, m])), tm = t => (P.teams || []).find(x => x.team === t) || {};
+  const alive = (P.teams || []).filter(t => t.status !== "out"), order = alive.slice().sort((a,b) => (b.p_champion||0) - (a.p_champion||0));
+  const f = order[0], g = order[1], n = alive.length, N = cap(NW(n));
+  const done = (P.matches || []).filter(m => m.status === "final" || m.status === "final_pending"), last = done[done.length - 1];
+  const nx = (P.next || []).map(id => M[id]).filter(Boolean)[0];
+  const when = m => { if(!m.time_confirmed) return "date to be confirmed"; const k = PP.kick(m.kickoff_utc); return k ? `${k.day}, ${k.time}` : ""; };
+  const side = c => c ? esc(short(c)) : "a club to be decided";
+  const next = nx ? ` Next: ${side(nx.home)} v ${side(nx.away)}, ${nx.round === "round_one" ? `Round One, game ${nx.game}` : PO_RND[nx.round].replace(/^the /, "")}, ${when(nx)}.` : "";
+  let kicker = "The playoffs", head, body, fig;
+  if(P.phase === "complete"){
+    const cup = done.filter(m => m.round === "cup").slice(-1)[0];
+    kicker = `MLS Cup ${H.season}`;
+    head = `${esc(full(P.champion))} won MLS Cup`;
+    body = cup ? `${poScore(cup)} in the final.` : "";
+    const path = done.filter(m => m.home === P.champion || m.away === P.champion);
+    fig = path.length ? `<figure style="margin:0"><div class="fig-cap"><span class="r-label">${esc(short(P.champion))}'s playoffs</span><span class="r-small">With the forecast written down before kickoff</span></div><div class="fixtures">${path.map(m => PP.poPastRow(m, P)).join("")}</div></figure>` : "";
+  } else if(!last){
+    head = f ? `The playoff field is set: ${esc(short(f.team))} are favourites for MLS Cup` : "The playoff field is set";
+    body = `${N} clubs are in.${f ? ` The forecast gives ${esc(short(f.team))} a ${pct(f.p_champion)} chance of winning MLS Cup${g ? `, ahead of ${esc(short(g.team))} (${pct(g.p_champion)})` : ""}.` : ""}${next}`;
+    const seeds = c => { const s = ((P.bracket || {})[c] || {}).seeds || {};
+      return Object.keys(s).sort((a,b) => a - b).map(k => `<tr><td class="n">${k}</td><td>${clubTag(s[k], true)}</td></tr>`).join(""); };
+    fig = ["East", "West"].map(c => `<figure style="margin:0"><div class="fig-cap"><span class="r-label">${c}ern Conference seeds</span></div>
+      <table class="mini-table"><thead><tr><th class="n">Seed</th><th>Club</th></tr></thead><tbody>${seeds(c)}</tbody></table></figure>`).join("");
+  } else {
+    const W = last.winner, L = W ? (W === last.home ? last.away : last.home) : null;
+    const out = !!L && tm(L).status === "out" && tm(L).out_in === last.round;
+    let ctx = "";
+    if(!W) head = `${esc(short(last.home))} and ${esc(short(last.away))} were level after 90 minutes; the shoot-out result is still to come`;
+    else if(out){ head = `${esc(short(W))} knock out ${esc(short(L))}`; if(PO_NEXT[last.round]) ctx = `, so ${esc(short(W))} ${last.round === "conf_final" ? "reach MLS Cup" : `go through to ${PO_NEXT[last.round]}`}`; }
+    else {
+      head = `${esc(short(W))} win game ${last.game} against ${esc(short(L))}`;
+      const s = done.filter(m => m.round === "round_one" && [m.home, m.away].includes(W) && [m.home, m.away].includes(L));
+      const a = s.filter(m => m.winner === W).length, b = s.filter(m => m.winner === L).length;
+      ctx = a === b ? `; the series is level at ${a}–${b}` : `; ${esc(short(a > b ? W : L))} lead the series ${Math.max(a, b)}–${Math.min(a, b)}`;
+    }
+    body = `${poScore(last)}${ctx}. ${N} clubs are still in${f ? `, and ${esc(short(f.team))} are favourites for MLS Cup at ${pct(f.p_champion)}` : ""}.${next}`;
+    fig = `<figure style="margin:0"><div class="fig-cap"><span class="r-label">Latest results</span><span class="r-small">With the forecast written down before kickoff</span></div><div class="fixtures">${done.slice(-4).reverse().map(m => PP.poPastRow(m, P)).join("")}</div></figure>`;
+  }
+  const rec = recordNote(H.record_chase);
+  return `<article class="lead" id="po-lead" aria-labelledby="lead-h">
+    <span class="kicker">${kicker}</span>
+    <h2 id="lead-h">${head}</h2>
+    <p class="r-note">${body}</p>
+    ${rec ? `<p class="r-note" style="color:var(--ink-2)">${rec}</p>` : ""}
+    ${fig ? `<div class="lead-figs">${fig}</div>` : ""}
+    <div><a href="#race" class="btn-text">The bracket and every club's chances</a></div>
   </article>`;
 }
 
@@ -576,7 +657,7 @@ function chainBand(H){
         <div class="chart" id="steps"></div>
       </figure>
       <div class="credits" aria-label="Credit by player">
-        <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see their actions.</span>
+        <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see his actions.</span>
         ${credits}
         <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${PP.plink(first.id, first.player)}'s ${esc(first.action)}) counts toward defence and is not included here.`:""}</p>
       </div>
@@ -638,8 +719,8 @@ function leadersBand(H){
     <div class="leaders">
       <div class="lboard" id="lboard">${rows}</div>
       <aside class="aside">
-        <p class="r-note" style="font-size:var(--t-15)">Every action is valued by how much it changes the chance that a possession ends in a goal, at either end. A player's value is the sum, measured against what a replacement-level player at the same position would add in the same minutes.</p>
-        ${def.length ? `<p class="r-note" style="font-size:var(--t-15)">${cap(PP.WORDS[def.length]||String(def.length))} of the top ten earn most of their value by winning the ball back: ${and(names(def))}. ${att.length ? `${and(names(att))} earn${att.length===1?"s":""} most of theirs on the ball.` : ""}</p>` : ""}
+        <p class="r-note" style="font-size:var(--t-15)">Every action is valued by how much it changes the chance that a possession ends in a goal, at either end. A player's value is the sum, measured against what a replacement-level player at his position would add in the same minutes.</p>
+        ${def.length ? `<p class="r-note" style="font-size:var(--t-15)">${cap(PP.WORDS[def.length]||String(def.length))} of the top ten earn most of their value by winning the ball back: ${and(names(def))}. ${att.length ? `${and(names(att))} earn${att.length===1?"s":""} most of ${att.length===1?"his":"theirs"} on the ball.` : ""}</p>` : ""}
         <a href="#players" class="btn-text">Every player</a>
       </aside>
     </div>

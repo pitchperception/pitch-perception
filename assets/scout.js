@@ -29,7 +29,7 @@ const ctInd = (c, age, meta) => { if(!c) return "";
   const bar = `<span class="ctbar" role="img" aria-label="${CT.map((k,j) => `${k[1]} ${Math.round(c[j]*100)}%`).join(", ")}">${CT.map((k,j) => c[j] >= 0.005 ? `<i style="width:${c[j]*100}%;background:${k[2]}" data-tip="${esc(`<b>${k[1]}</b><br>${Math.round(c[j]*100)}%`)}"></i>` : "").join("")}</span>`;
   const how = shares
     ? `How the ${n != null ? PP.int(n) + " " : ""}foreign signings of ${yrs} aged ${young ? "22 or under" : "23 or over"} signed in MLS. Every player in the age group shows the same shares: a model that also used league, ratings and output did not beat them in a test fixed in advance, so they are not an estimate for this player. Transfer fees are not known.`
-    : M.source === "model" ? `If they signed in MLS: estimated by a model learned from ${n != null ? PP.int(n) + " " : ""}foreign signings of ${yrs} by age, league, ratings and output; it cannot see the transfer fee.`
+    : M.source === "model" ? `If he signed in MLS: estimated by a model learned from ${n != null ? PP.int(n) + " " : ""}foreign signings of ${yrs} by age, league, ratings and output; it cannot see the transfer fee.`
     : `From the contract types past foreign signings were given in MLS; transfer fees are not known.`;
   return `<div class="ind ctind"><span class="r-label">${shares ? "How players this age signed" : "Likely contract type"}</span><span class="v">${top[1]}, ${Math.round(c[i]*100)}%</span>${bar}
     <span class="r-small">${(() => { const t = [CT.filter((k,j) => j !== i && c[j] >= 0.05).map(k => `${k[1]} ${Math.round(c[CT.indexOf(k)]*100)}%`).join(", "), age != null && age > 22 ? "too old for U22" : ""].filter(Boolean).join("; ");

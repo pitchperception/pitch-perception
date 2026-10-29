@@ -12,13 +12,13 @@ const loadPlayer = async id => { const d = await loadShard(id); return {rec: d.p
 const loadPeers = () => peersP || (peersP = fetch("data/peers.json").then(r => { if(!r.ok) throw new Error(`peers.json returned ${r.status}`); return r.json(); }));
 
 const COMP = { // key: [label, what it measures]
-  passing:["Passing","How much each of their passes changed their team's chance of scoring. A completed pass shares its value with the receiver."],
+  passing:["Passing","How much each of his passes changed his team's chance of scoring. A completed pass shares its value with the receiver."],
   setpiece:["Set-piece delivery","Passes from corners, free kicks and other restarts."],
-  carrying:["Carrying","Moving the ball with their feet between other actions."],
+  carrying:["Carrying","Moving the ball with his feet between other actions."],
   dribbling:["Dribbling","Take-ons: beating a defender with the ball."],
-  shooting:["Shot selection","Each shot's expected-goal value minus the value of keeping the ball where they shot from. This is chance quality, not finishing."],
-  receiving:["Receiving","Their half of the value of passes they received: getting to where the ball goes."],
-  security:["Ball security","The value lost when they give the ball away. Zero is the best possible score."],
+  shooting:["Shot selection","Each shot's expected-goal value minus the value of keeping the ball where he shot from. This is chance quality, not finishing."],
+  receiving:["Receiving","His half of the value of passes he received: getting to where the ball goes."],
+  security:["Ball security","The value lost when he gives the ball away. Zero is the best possible score."],
   penalties:["Penalties won","Being fouled for a penalty: what the penalty is worth beyond having the ball on the spot. Left out of the rating because it barely repeats from one half-season to the next; the pass or run before the foul still earns the value of reaching the spot."],
   other:["Other touches","Every other action on the ball: headed flick-ons, clearances in possession, loose touches."],
   winning_ball:["Winning the ball","Interceptions, tackles and loose-ball recoveries together, each valued by the danger removed. The three rows beneath it are its parts."],
@@ -33,7 +33,7 @@ const COMP = { // key: [label, what it measures]
   fouls:["Fouls","The value given away by fouls. Not part of the rating."]};
 const SKILL_ORDER = ["passing","setpiece","carrying","dribbling","shooting","receiving","security","winning_ball","interceptions","tackles","recoveries","clearances","blocks","aerials","high_regains","not_beaten","fouls"];
 const posSing = p => (PP.POS[p] || p || "player").toLowerCase();
-const posPl = p => PP.POSPL[p] || "players at their position";
+const posPl = p => PP.POSPL[p] || "players at his position";
 const conf = p => p == null ? null : p >= 0.95 ? ["Clear",3] : p >= 0.8 ? ["Likely",2] : ["Unclear",1];
 /* percentile bars under the model signal: where the player ranks per 90, by position and overall (0 = lowest, 100 = highest) */
 const pctBars = (rows, s) => {
@@ -57,7 +57,7 @@ PP.pages.player = async (main, h) => {
   try { [{rec, teams}, peers, , , photo, , , PO] = await Promise.all([loadPlayer(id), loadPeers(), PP.loadArch(), PP.loadImages(), PP.loadPhoto(id), PP.loadRoles(), PP.loadInjuries(), PP.loadPlayoffPlayers()]); }
   catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">This player's data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   if(location.hash.slice(1) !== h && !(h === "player-"+id && location.hash === "")) return;
-  if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No player with this link</h1><p>Search for the player by name above.</p></section></div>`; return; }
+  if(!rec){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No player with this link</h1><p>Search for him by name above.</p></section></div>`; return; }
   const seasons = rec.seasons.slice().sort((a,b) => a.year - b.year || a.mins - b.mins);
   const byYear = {}; seasons.forEach(s => { if(!byYear[s.year] || s.mins > byYear[s.year].mins) byYear[s.year] = s; });
   const years = Object.keys(byYear).map(Number).sort();
@@ -96,7 +96,7 @@ function identity(){
   const facts = [["Position", PP.POS[s.pos] || s.pos || "Not recorded"], age != null ? ["Age", `${age} in ${year}`] : null,
     s.slot ? ["Contract type", PP.SLOT[s.slot] || s.slot] : null, ["Minutes, "+year, PP.int(s.mins)],
     // a season at two clubs (owner, 2026-10-27): the pay counts once, in full, at the club they finished the season with
-    s.pay_at ? (s.pay_season ? ["Guaranteed pay", `${money(s.pay_season)}, counted at ${short(s.pay_at)}`, "Counted once, in full, at the club they finished the season with, as MLS counts budget charges"] : null)
+    s.pay_at ? (s.pay_season ? ["Guaranteed pay", `${money(s.pay_season)}, counted at ${short(s.pay_at)}`, "Counted once, in full, at the club he finished the season with, as MLS counts budget charges"] : null)
       : s.comp ? ["Guaranteed pay", money(s.comp)] : null].filter(Boolean);
   const role = s.pos !== "GK" ? PP.roleFor(rec.id, year, s.team, s.pos) : null;           // playing style (145), 900+ minutes
   if(role) facts.splice(1, 0, ["Playing style", role.label, role.tip]);
@@ -106,7 +106,7 @@ function identity(){
   return `<div class="wrap"><section class="pid${ph ? " has-ph" : ""}" aria-labelledby="pname">
     ${ph ? `<div class="pid-ph">${ph}</div>` : ""}
     <a class="pclub" href="#team-${PP.slug(club)}">${PP.crestImg(club, 28) || ""}${clubTag(club, true)}</a>
-    ${moved ? `<p class="r-small" style="margin:0">Now at ${esc(short(club))}. The ${year} figures below are from their ${PP.int(s.mins)} minutes at ${esc(short(s.team))}.</p>` : ""}
+    ${moved ? `<p class="r-small" style="margin:0">Now at ${esc(short(club))}. The ${year} figures below are from his ${PP.int(s.mins)} minutes at ${esc(short(s.team))}.</p>` : ""}
     <h1 class="r-name" id="pname">${esc(rec.name)}</h1>
     ${PP.badgeChips(PP.badgesFor(rec.id, year, s.team), s.pos, year)}
     <dl class="pfacts">${facts.map(([k,v,tip]) => `<div><dt>${k}</dt><dd${tip ? ` class="prole" data-tip="${esc(tip)}"` : ""}>${esc(v)}</dd></div>`).join("")}</dl>
@@ -157,7 +157,7 @@ function poRanks(rows, year, cov){
   const under = p90 ? "" : `<p class="r-small">Under ${PP.int(mm)} playoff minutes (${PP.int(g("mins"))} played), so not ranked per 90.</p>`;
   const gap = cov && cov.with_data < cov.matches ? `<p class="r-small po-rk-gap">Values from ${cov.with_data} of ${cov.matches} matches.</p>` : "";
   const gk = g("pos") === "GK" ? `<p class="r-small">A keeper's value leaves out shot-stopping (goals prevented, above).</p>` : "";
-  return `<div class="po-ranks"><span class="r-label">Where they rank, ${year} playoffs</span><ul class="po-rk">${p90}${tot}</ul>${under}${gap}${gk}</div>`;
+  return `<div class="po-ranks"><span class="r-label">Where he ranks, ${year} playoffs</span><ul class="po-rk">${p90}${tot}</ul>${under}${gap}${gk}</div>`;
 }
 function playoffBody(){
   const {s, year} = ST, rows = poRows(), both = ST.view === "both";
@@ -231,8 +231,8 @@ function whyText(){
   const pos = ps.filter(p => p.v > 0).sort((a,b) => b.v - a.v), neg = ps.filter(p => p.v < 0).sort((a,b) => a.v - b.v)[0];
   const lead = s.attack >= s.defence ? `most of it with the ball (${sgn(s.attack)} in attack, ${sgn(s.defence)} winning it back)` : `most of it by winning the ball back (${sgn(s.defence)}, against ${sgn(s.attack)} in attack)`;
   let t = `${esc(nm)} added ${sgn(s.rating)} goals over a replacement-level ${posSing(s.pos)} in ${PP.int(s.mins)} minutes, ${lead}.`;
-  if(pos.length >= 2) t += ` Their biggest contributions were ${COMP[pos[0].k][0].toLowerCase()} (${sgn(pos[0].v)}) and ${COMP[pos[1].k][0].toLowerCase()} (${sgn(pos[1].v)})`;
-  if(neg && pos.length >= 2) t += `; ${COMP[neg.k][0].toLowerCase()} cost them ${num(-neg.v)}.`; else if(pos.length >= 2) t += ".";
+  if(pos.length >= 2) t += ` His biggest contributions were ${COMP[pos[0].k][0].toLowerCase()} (${sgn(pos[0].v)}) and ${COMP[pos[1].k][0].toLowerCase()} (${sgn(pos[1].v)})`;
+  if(neg && pos.length >= 2) t += `; ${COMP[neg.k][0].toLowerCase()} cost him ${num(-neg.v)}.`; else if(pos.length >= 2) t += ".";
   return t;
 }
 function outfieldBody(){
@@ -258,7 +258,7 @@ function outfieldBody(){
         </div>
       </div>
       <div class="pp-right">
-        <div class="fig-cap"><span class="r-label">Where they add value, per 90 minutes</span>
+        <div class="fig-cap"><span class="r-label">Where he adds value, per 90 minutes</span>
           <div class="seg zmode" role="group" aria-label="Which value"><button type="button" data-m="t" aria-pressed="true">All</button><button type="button" data-m="a" aria-pressed="false">With the ball</button><button type="button" data-m="d" aria-pressed="false">Winning it</button></div></div>
         <div class="chart" id="fingerprint"></div>
         <div id="zleg" class="zleg"></div>
@@ -308,10 +308,10 @@ function decompSection(){
   const bar = (v, na="–", cls=null) => v == null ? `<span class="dz-na">${na}</span>` : `<span class="dz"><span class="z"></span><span class="b ${cls || (v>=0?"pos":"neg")}" style="${v>=0?`left:50%;width:${v/M*50}%`:`left:${50+v/M*50}%;width:${-v/M*50}%`}"></span></span><span class="dv num">${sgn(v)}</span>`;
   const pbar = (k) => { const p = P(k); if(!p || p[0] == null) return `<span class="pc-na r-small">${k==="other"?"":"–"}</span>`; const noise = noisy(k), band = Math.min(5, Math.floor(p[0]*5)+1);
     const cm = ST.cmp && ST.cmp.s && ST.cmp.s.skills ? ST.cmp.s.skills[keys.indexOf(k)] : null;
-    return `<span class="pc" data-tip="${esc(`<b>${COMP[k][0]}</b><br>Better than ${Math.round(p[0]*100)}% of ${posPl(s.pos)} with 900+ minutes in ${s.year}, per 90<br>${sgn(p[1],4)} goals per 90 (raw possession value)${R(k) != null ? `<br>Reliability ${R(k).toFixed(2)} among ${posPl(s.pos)} with their ${PP.int(s.mins)} minutes${noise?", mostly noise":""}: how closely one half of a season agrees with the other` : ""}`)}"><span class="tr"><span class="fl${noise?" noise":""}" style="width:${Math.max(1.5,p[0]*100)}%;--c:var(--pct-${band});background:var(--pct-${band})"></span>${cm && cm[0]!=null?`<span class="cmp-ring" style="left:${cm[0]*100}%"></span>`:""}</span><span class="pn${p[0]>=0.9?" top":""}">${pctile(p[0])}</span></span>`; };
+    return `<span class="pc" data-tip="${esc(`<b>${COMP[k][0]}</b><br>Better than ${Math.round(p[0]*100)}% of ${posPl(s.pos)} with 900+ minutes in ${s.year}, per 90<br>${sgn(p[1],4)} goals per 90 (raw possession value)${R(k) != null ? `<br>Reliability ${R(k).toFixed(2)} among ${posPl(s.pos)} with his ${PP.int(s.mins)} minutes${noise?", mostly noise":""}: how closely one half of a season agrees with the other` : ""}`)}"><span class="tr"><span class="fl${noise?" noise":""}" style="width:${Math.max(1.5,p[0]*100)}%;--c:var(--pct-${band});background:var(--pct-${band})"></span>${cm && cm[0]!=null?`<span class="cmp-ring" style="left:${cm[0]*100}%"></span>`:""}</span><span class="pn${p[0]>=0.9?" top":""}">${pctile(p[0])}</span></span>`; };
   const row = (k, v, extra="", cls="") => k === "other"
     ? `<div class="dr" role="row"><span class="dl"><span>${COMP[k][0]}</span><small>${COMP[k][1]}</small></span><span class="dg">${bar(v)}</span><span></span></div>`
-    : `<div class="dr${cls?" "+cls:""}" role="row"><button type="button" class="dl" aria-expanded="false" data-k="${k}"><span>${COMP[k][0]}</span>${noisy(k)?`<small>mostly noise at their minutes</small>`:""}${k==="security"?`<small>always a cost; green when they lose less than most ${posPl(s.pos)}</small>`:""}${extra}</button><span class="dg">${bar(v, k==="high_regains"?"counted above":"not counted", k==="security"?secCls:null)}</span>${pbar(k)}</div>
+    : `<div class="dr${cls?" "+cls:""}" role="row"><button type="button" class="dl" aria-expanded="false" data-k="${k}"><span>${COMP[k][0]}</span>${noisy(k)?`<small>mostly noise at his minutes</small>`:""}${k==="security"?`<small>always a cost; green when he loses less than most ${posPl(s.pos)}</small>`:""}${extra}</button><span class="dg">${bar(v, k==="high_regains"?"counted above":"not counted", k==="security"?secCls:null)}</span>${pbar(k)}</div>
     <div class="dx" data-k="${k}" hidden><p class="r-small">${COMP[k][1]}</p><div class="chart dstrip" data-k="${k}"></div></div>`;
   const sub = (label, v, cls="") => `<div class="dr dsub ${cls}" role="row"><span class="dl">${label}</span><span class="dg">${bar(v)}</span><span></span></div>`;
   const repl = (v, what) => `<div class="dr drepl" role="row"><span class="dl">Replacement level<small>${what}</small></span><span class="dg">${bar(v)}</span><span></span></div>`;
@@ -322,17 +322,17 @@ function decompSection(){
     + ["clearances","blocks","aerials","other"].map(k => k === "other" ? (Math.abs(d.def.other||0) > 0.005 ? row("other", d.def.other) : "") : row(k, d.def[k])).join("") + row("high_regains", null) : "";
   const O = d && d.outside ? row("not_beaten", null, `<small>not in the rating</small>`) + row("fouls", null, `<small>not in the rating</small>`) + (keys.includes("penalties") ? row("penalties", null, `<small>not in the rating</small>`) : "") : "";
   return `<section class="band" id="value" aria-labelledby="value-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="value-h">How they add value</h2>
-      <p>The rating, broken into the actions that earned it. The first column adds up exactly to their value above replacement (indented rows make up the row above them); the second ranks each skill per 90 minutes against ${posPl(s.pos)} with 900+ minutes in ${s.year}. Select a row to see where they sit among them.</p></div>
+    <div class="band-head"><h2 class="r-title" id="value-h">How he adds value</h2>
+      <p>The rating, broken into the actions that earned it. The first column adds up exactly to his value above replacement (indented rows make up the row above them); the second ranks each skill per 90 minutes against ${posPl(s.pos)} with 900+ minutes in ${s.year}. Select a row to see where he sits among them.</p></div>
     ${ST.cmp ? cmpStrip() : ""}
     <div class="decomp" id="decomp" role="table">
       <div class="dr dhead" role="row"><span>Action</span><span>Season total, goals</span><span>Rank per 90</span></div>
       <div class="dgroup">With the ball</div>${A}${d ? repl(d.att_repl, d.att_repl <= 0 ? `a replacement ${posSing(s.pos)} would add ${num(-d.att_repl)} with the ball in ${PP.int(s.mins)} minutes; it is taken off` : `a replacement ${posSing(s.pos)} would lose ${num(d.att_repl)} with the ball in ${PP.int(s.mins)} minutes; it is added back`) + sub("Attack", s.attack) : ""}
-      <div class="dgroup">Winning it back</div>${D}${d ? repl(d.def_repl, d.def_repl <= 0 ? `a replacement ${posSing(s.pos)} would win back ${num(-d.def_repl)} in ${PP.int(s.mins)} minutes, given the danger they faced; it is taken off` : `added back for the danger they faced`) + sub("Winning it back", s.defence) : ""}
+      <div class="dgroup">Winning it back</div>${D}${d ? repl(d.def_repl, d.def_repl <= 0 ? `a replacement ${posSing(s.pos)} would win back ${num(-d.def_repl)} in ${PP.int(s.mins)} minutes, given the danger he faced; it is taken off` : `added back for the danger he faced`) + sub("Winning it back", s.defence) : ""}
       ${sub("Value above replacement", s.rating, "dtotal")}
       ${O ? `<div class="dgroup">Outside the rating</div>${O}` : ""}
     </div>
-    <div class="pct-key">${[1,2,3,4,5].map(i => `<span><i style="background:var(--pct-${i})"></i>${["0–20","20–40","40–60","60–80","80–100"][i-1]}</span>`).join("")}<span><i class="hatchkey"></i>Mostly noise at their minutes (reliability under ${NOISE})</span>${ST.cmp?`<span><i class="cmp-key"></i>${PP.plink(ST.cmp.rec.id, ST.cmp.rec.name, ST.cmp.s && ST.cmp.s.year)}</span>`:""}</div>
+    <div class="pct-key">${[1,2,3,4,5].map(i => `<span><i style="background:var(--pct-${i})"></i>${["0–20","20–40","40–60","60–80","80–100"][i-1]}</span>`).join("")}<span><i class="hatchkey"></i>Mostly noise at his minutes (reliability under ${NOISE})</span>${ST.cmp?`<span><i class="cmp-key"></i>${PP.plink(ST.cmp.rec.id, ST.cmp.rec.name, ST.cmp.s && ST.cmp.s.year)}</span>`:""}</div>
   </div></section>`;
 }
 function bindDecomp(){
@@ -378,10 +378,10 @@ function impactSection(){
       <div class="ctabs" role="tablist" aria-label="Possessions">${tabs}</div>
       <p class="r-small" id="pchain-cap"></p>
       <div class="chart" id="ppitch"></div><div class="chart" id="psteps"></div>
-      <div class="legend"><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain"></line></svg>Pass</span><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain carry"></line></svg>Carry</span><span>Their actions are full strength; teammates' are faded</span></div></div>`
+      <div class="legend"><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain"></line></svg>Pass</span><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain carry"></line></svg>Carry</span><span>His actions are full strength; teammates' are faded</span></div></div>`
     : `<div class="missing"><b>No possession chains for ${s.year}</b><span>They are shown for 2025 and 2026 seasons with 450+ minutes.</span></div>`;
   return `<section class="band" id="impact" aria-labelledby="impact-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="impact-h">How they shape possessions</h2><p>Every possession their team had while they were on the pitch, from the first touch to the shot or the loss of the ball. The model values each action by how much it moved the chance of a goal.</p></div>
+    <div class="band-head"><h2 class="r-title" id="impact-h">How he shapes possessions</h2><p>Every possession his team had while he was on the pitch, from the first touch to the shot or the loss of the ball. The model values each action by how much it moved the chance of a goal.</p></div>
     ${metrics}
     <div class="impactwrap">${chains}${partners}</div>
   </div></section>`;
@@ -394,7 +394,7 @@ function bindChains(){
   const show = (animate) => {
     const c = ch[ST.chainI], o = chainObj(c), me = String(ST.rec.id), mine = o.steps.filter(x => x.key === me).length;
     const opp = c.home === c.team ? c.away : c.home, [gh, ga] = String(c.score||"").split(":").map(x => x.trim());
-    $("#pchain-cap").innerHTML = `${esc(short(c.home))} ${gh||""}–${ga||""} ${esc(short(c.away))}, ${c.date ? PP.dateLong(c.date) : ""}, ${c.minute} minutes in. ${o.steps.length} actions, ${c.ends === "goal" ? "ending in a goal" : c.ends === "shot" ? "ending in a shot" : "ending when the ball was lost"}. They made ${PP.WORDS[mine]||mine} of them, worth ${sgn(c.his,3)} goals of possession value to them: each bar is an action's full change in value, and a completed pass shares it with the receiver. The rating then weights attack and subtracts the replacement level, so the match-by-match figures are on a smaller scale.`;
+    $("#pchain-cap").innerHTML = `${esc(short(c.home))} ${gh||""}–${ga||""} ${esc(short(c.away))}, ${c.date ? PP.dateLong(c.date) : ""}, ${c.minute} minutes in. ${o.steps.length} actions, ${c.ends === "goal" ? "ending in a goal" : c.ends === "shot" ? "ending in a shot" : "ending when the ball was lost"}. He made ${PP.WORDS[mine]||mine} of them, worth ${sgn(c.his,3)} goals of possession value to him: each bar is an action's full change in value, and a completed pass shares it with the receiver. The rating then weights attack and subtracts the replacement level, so the match-by-match figures are on a smaller scale.`;
     const big = o.steps.map((x,i) => [x.delta||0, i]).filter(([,i]) => o.steps[i].key === me).sort((a,b) => b[0]-a[0]).map(x => x[1]);
     const labels = [0, o.steps.length-1].concat(big.length ? [big[0]] : []);
     PP.chainPitch($("#ppitch"), o, {focus: me, labels, animate, maxW: 820});
@@ -409,7 +409,7 @@ function bindChains(){
 function trajectorySection(){
   const s = ST.s;
   return `<section class="band" id="trajectory" aria-labelledby="traj-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="traj-h">Over time</h2><p>Their value above replacement in every MLS season in our data, with its 90% range, and how the selected season built up match by match.</p></div>
+    <div class="band-head"><h2 class="r-title" id="traj-h">Over time</h2><p>His value above replacement in every MLS season in our data, with its 90% range, and how the selected season built up match by match.</p></div>
     <div class="trajwrap">
       <figure class="tfig"><div class="fig-cap"><span class="r-label">Season by season</span></div><div class="chart" id="pseasons"></div></figure>
       <figure class="tfig"><div class="fig-cap"><span class="r-label">${s.year}, match by match: running total</span><span class="r-small">Value above replacement, the rating's units. Hover to scrub</span></div><div class="chart" id="pmatches"></div></figure>
@@ -468,11 +468,11 @@ function peersSection(){
   const s = ST.s, grp = ST.peers.groups[`${s.year}|${s.pos}`] || [], sorted = grp.slice().sort((a,b) => b[4]-a[4]), rank = sorted.findIndex(r => r[0] === ST.rec.id);
   const sim = s.similar || [];
   return `<section class="band" id="peers" aria-labelledby="peers-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="peers-h">Among their peers</h2><p>${grp.length} ${posPl(s.pos)} played 900+ minutes in ${s.year}. ${rank >= 0 ? `Per 90 minutes they rank <b>${PP.ord(rank+1)}</b>.` : `With fewer than 900 minutes, they are drawn but not ranked.`} Each dot is one of them: attack across, winning the ball back up.</p></div>
+    <div class="band-head"><h2 class="r-title" id="peers-h">Among his peers</h2><p>${grp.length} ${posPl(s.pos)} played 900+ minutes in ${s.year}. ${rank >= 0 ? `Per 90 minutes he ranks <b>${PP.ord(rank+1)}</b>.` : `He played fewer than 900 minutes, so he is drawn against them but not ranked.`} Each dot is one of them: attack across, winning the ball back up.</p></div>
     <div class="peerswrap">
       <figure class="tfig"><div class="chart" id="ppeers"></div></figure>
       <aside class="aside">
-        ${sim.length ? `<div><h3 class="r-heading">Most similar skills profiles</h3><p class="r-small">${cap(posPl(s.pos))} in ${s.year} whose 16 skill percentiles sit closest to theirs, weighted by how reliable each skill is.</p>
+        ${sim.length ? `<div><h3 class="r-heading">Most similar skills profiles</h3><p class="r-small">${cap(posPl(s.pos))} in ${s.year} whose 16 skill percentiles sit closest to his, weighted by how reliable each skill is.</p>
           <div class="simlist">${sim.map(x => `<div class="sim"><a href="#player-${x[0]}-${s.year}" class="nm">${esc(x[1])}</a><span class="meta">${PP.crestOr(x[2], 16)}${esc(short(x[2]))}</span><span class="num r-small">${Math.round(x[3]*100)}% alike</span><button type="button" class="btn-text cmpbtn" data-id="${x[0]}">Compare</button></div>`).join("")}</div></div>` : ""}
         <div class="cmpbox"><label class="r-label" for="cmpq">Compare with any player from ${s.year}</label><div class="cfield"><input id="cmpq" type="search" placeholder="Type a name" autocomplete="off"><div class="cres" id="cmpres" hidden></div></div></div>
       </aside>
@@ -505,7 +505,7 @@ function drawPeers(el){
 }
 function cmpStrip(){
   const c = ST.cmp, cs = c.s;
-  return `<div class="cmpstrip"><span>Comparing with <a href="#player-${c.rec.id}-${cs.year}"><b>${esc(c.rec.name)}</b></a>, ${PP.crestTag(cs.team)}, ${cs.year}: ${cs.rating!=null?`${sgn(cs.rating)} goals in ${PP.int(cs.mins)} minutes`:"no outfield rating"}. Their percentiles show as rings.</span><button type="button" class="btn-text" id="cmpclear">Stop comparing</button></div>`;
+  return `<div class="cmpstrip"><span>Comparing with <a href="#player-${c.rec.id}-${cs.year}"><b>${esc(c.rec.name)}</b></a>, ${PP.crestTag(cs.team)}, ${cs.year}: ${cs.rating!=null?`${sgn(cs.rating)} goals in ${PP.int(cs.mins)} minutes`:"no outfield rating"}. His percentiles show as rings.</span><button type="button" class="btn-text" id="cmpclear">Stop comparing</button></div>`;
 }
 function bindCompare(){
   const setCmp = async id => {
@@ -541,10 +541,10 @@ function detailSection(){
     <div class="band-head"><h2 class="r-title" id="det-h">Detailed data</h2><p>The numbers behind every chart on this page.</p></div>
     ${disc("d-seasons","Every season", `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Season</th><th>Club</th><th>Position</th><th class="n">Minutes</th><th class="n">Value</th><th class="n">90% range</th><th class="n">Per 90</th><th class="n">Attack</th><th class="n">Winning it</th><th>Contract type</th><th class="n">Pay</th><th class="n">Against type</th><th class="n">Goals</th><th class="n">Shots</th></tr></thead><tbody>${seasonRows}</tbody></table></div>`)}
     ${ms ? disc("d-matches", `Every match in ${s.year}`, `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Date</th><th>Opponent</th><th class="n">Score</th><th class="n">Minutes</th><th class="n">Value added</th></tr></thead><tbody>${ms}</tbody></table></div><p class="r-small">Value added per match sums exactly to the season total. Scores are home–away.</p>`) : ""}
-    ${sk ? disc("d-skills", `Skills per 90, ${s.year}`, `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Skill</th><th class="n">Goals per 90 (raw)</th><th class="n">Percentile</th><th class="n">Reliability</th></tr></thead><tbody>${sk}</tbody></table></div><p class="r-small">Raw possession value before calibration and replacement. Reliability is how consistently a skill ranks ${posPl(s.pos)} over a season of their ${PP.int(s.mins)} minutes, estimated from how closely one half of a season agrees with the other (${ry.length ? `${ry[0]}–${String(ry[1]).slice(2)} ` : ""}players with 900+ minutes, within each position); under ${ST.peers.noise_below} is mostly noise.</p>`) : ""}
+    ${sk ? disc("d-skills", `Skills per 90, ${s.year}`, `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Skill</th><th class="n">Goals per 90 (raw)</th><th class="n">Percentile</th><th class="n">Reliability</th></tr></thead><tbody>${sk}</tbody></table></div><p class="r-small">Raw possession value before calibration and replacement. Reliability is how consistently a skill ranks ${posPl(s.pos)} over a season of his ${PP.int(s.mins)} minutes, estimated from how closely one half of a season agrees with the other (${ry.length ? `${ry[0]}–${String(ry[1]).slice(2)} ` : ""}players with 900+ minutes, within each position); under ${ST.peers.noise_below} is mostly noise.</p>`) : ""}
     ${disc("d-method", "How this is calculated", s.pos === "GK" ? keeperMethod() : `<div class="r-small" style="font-size:var(--t-13);color:var(--ink-2);display:grid;gap:8px;max-width:72ch">
-      <p>Every on-ball action is valued by how much it changes the value of the possession: the expected goals of the next shot, counted for their team if it takes that shot and against it if the opponent does, from a model of how possessions move between 96 zones of the pitch, taking account of how the ball arrived. A completed pass splits its value equally between passer and receiver. Winning the ball is valued by the danger it removes.</p>
-      <p>Attack is their on-ball value minus what a replacement-level ${posSing(s.pos)} would add in the same minutes; winning it back is their ball-winning minus what a replacement would have won back: a fixed amount per 90 plus a share of the danger that came their way. Both are in goals of expected-goal difference${ST.peers.w_off === 1 && ST.peers.w_def === 1 ? " and count as they are" : ` (weights ${ST.peers.w_off.toFixed(2)} for attack, ${ST.peers.w_def.toFixed(2)} for ball-winning)`}; the Method page explains the ball-winning weight. Replacement level is set per position and season.</p>
+      <p>Every on-ball action is valued by how much it changes the value of the possession: the expected goals of the next shot, counted for his team if it takes that shot and against it if the opponent does, from a model of how possessions move between 96 zones of the pitch, taking account of how the ball arrived. A completed pass splits its value equally between passer and receiver. Winning the ball is valued by the danger it removes.</p>
+      <p>Attack is his on-ball value minus what a replacement-level ${posSing(s.pos)} would add in the same minutes; winning it back is his ball-winning minus what a replacement would have won back: a fixed amount per 90 plus a share of the danger that came his way. Both are in goals of expected-goal difference${ST.peers.w_off === 1 && ST.peers.w_def === 1 ? " and count as they are" : ` (weights ${ST.peers.w_off.toFixed(2)} for attack, ${ST.peers.w_def.toFixed(2)} for ball-winning)`}; the Method page explains the ball-winning weight. Replacement level is set per position and season.</p>
       <p>The 90% range comes from resampling the season's matches 1,000 times. It shows how much the season's numbers could have differed, not uncertainty in the model itself.</p></div>`)}
   </div></section>`;
 }
@@ -557,7 +557,7 @@ const GK_K = 500;
 const gkRel = n => n > 0 ? n / (n + GK_K) : 0;
 function keeperMethod(){
   return `<div class="r-small" style="font-size:var(--t-13);color:var(--ink-2);display:grid;gap:8px;max-width:72ch">
-      <p>Each shot on target gets a post-shot expected-goal value from where it was struck, where it was heading in the goal mouth and how high, the body part and the situation, from a model fitted on other seasons. Goals prevented is that value minus the goals they conceded, measured against the season's average keeper.</p>
+      <p>Each shot on target gets a post-shot expected-goal value from where it was struck, where it was heading in the goal mouth and how high, the body part and the situation, from a model fitted on other seasons. Goals prevented is that value minus the goals he conceded, measured against the season's average keeper.</p>
       <p>A season of shots is mostly luck, so shot-stopping keeps only the share of goals prevented that repeats: shots / (shots + ${GK_K}). The ${GK_K} comes from how well one season predicted the next for keepers in MLS and eleven other leagues. The method was chosen by a test fixed in advance: fitted on 2017–21, its 90% range held 89% of the time on 2022–25, seasons it had not seen; the ${GK_K} is the same fit repeated on 2017–25. Both figures are against an average keeper.</p>
       <p>The 90% range on goals prevented comes from resampling the season's shots 1,000 times. It shows how much the season could have differed, not uncertainty in the model itself.</p></div>`;
 }
@@ -565,7 +565,7 @@ function keeperBody(){
   const s = ST.s, g = s.gk || {}, pc = s.pct || {}, prev = (() => { const i = ST.years.indexOf(ST.year); for(let k = i-1; k >= 0; k--){ const p = ST.byYear[ST.years[k]]; if(p.gk && p.gk.skill != null && p.mins >= 900) return p; } return null; })();
   // a club's share of a season at two clubs (2026-10-27): the season's shots set the reliability; this club's are shown
   const n = g.shots_faced || 0, N = g.season_shots || n, rel = Math.round(gkRel(N) * 100), nm = esc(surname(ST.rec.name));
-  const over = N !== n ? `Over their ${PP.int(N)} shots on target this season, ${PP.int(n)} of them at ${esc(short(s.team))},` : `Over ${PP.int(n)} shots on target,`;
+  const over = N !== n ? `Over his ${PP.int(N)} shots on target this season, ${PP.int(n)} of them at ${esc(short(s.team))},` : `Over ${PP.int(n)} shots on target,`;
   return `<div class="wrap"><section class="plate pplate pk" aria-label="Model signal">
       <div class="pp-left">
         <span class="r-label">Shot-stopping, ${s.year}</span>
@@ -574,15 +574,15 @@ function keeperBody(){
         ${pctBars([["Among goalkeepers", pc.model]], s)}
         <div class="sig-cap"><span class="r-label">90% range</span><span class="r-small">${num(g.skill_lo,1)} to ${num(g.skill_hi,1)} goals</span></div>
         <div class="indicators">
-          <div class="ind"><span class="r-label">Goals prevented this season</span><span class="v num">${sgn(g.goals_prevented,1)}</span><span class="r-small">${PP.int(n)} shots on target worth ${num(g.psxg_faced,1)} post-shot expected goals; they conceded ${PP.int(g.goals_conceded||0)}.${g.gp_lo != null ? ` Range ${num(g.gp_lo,1)} to ${num(g.gp_hi,1)}.` : ""}</span></div>
+          <div class="ind"><span class="r-label">Goals prevented this season</span><span class="v num">${sgn(g.goals_prevented,1)}</span><span class="r-small">${PP.int(n)} shots on target worth ${num(g.psxg_faced,1)} post-shot expected goals; he conceded ${PP.int(g.goals_conceded||0)}.${g.gp_lo != null ? ` Range ${num(g.gp_lo,1)} to ${num(g.gp_hi,1)}.` : ""}</span></div>
           <div class="ind"><span class="r-label">Movement</span>${prev ? `<span class="v"><span class="tri ${g.skill-prev.gk.skill>=0?"up":"down"}" aria-hidden="true"></span>${sgn(g.skill - prev.gk.skill,1)} goals</span><span class="r-small">Shot-stopping since ${prev.year} (${sgn(prev.gk.skill,1)}).</span>` : `<span class="v">No earlier season</span>`}</div>
         </div>
       </div>
-      <div class="pp-right"><p class="r-note pp-why">${nm} faced shots on target worth ${num(g.psxg_faced,1)} goals and let in ${PP.int(g.goals_conceded||0)}: ${sgn(g.goals_prevented,1)} goals prevented. Most of a season's goals prevented is luck. ${over} about ${rel}% of the difference between keepers is skill, judged by how well one season predicts the next, so their shot-stopping keeps ${rel}% of it: ${sgn(g.skill,1)} goals. That is the figure keepers are ranked by.</p>
+      <div class="pp-right"><p class="r-note pp-why">${nm} faced shots on target worth ${num(g.psxg_faced,1)} goals and let in ${PP.int(g.goals_conceded||0)}: ${sgn(g.goals_prevented,1)} goals prevented. Most of a season's goals prevented is luck. ${over} about ${rel}% of the difference between keepers is skill, judged by how well one season predicts the next, so his shot-stopping keeps ${rel}% of it: ${sgn(g.skill,1)} goals. That is the figure keepers are ranked by.</p>
         <p class="r-small">Shot-stopping is the only part of a keeper's game that relates to goals conceded in our tests.${g.distribution!=null?` Claims and sweeping (${sgn(g.claims_sweeping,2)}) are measured but showed no link to goals conceded beyond it, so they are reported, not rated. ${Math.abs((g.keeper_value ?? NaN) - (g.skill ?? NaN) - g.distribution) < 1e-3 ? `Distribution (${sgn(g.distribution,2)}) repeats and passed the test fixed for it in advance, a positive link with their own team's chances when keepers rotate, so the keeper value on lineup charts adds it to shot-stopping.` : `Distribution (${sgn(g.distribution,2)}) is reported, not rated.`}`:""}</p></div>
     </section></div>
     <section class="band" id="trajectory"><div class="wrap"><div class="band-head"><h2 class="r-title">Over time</h2><p>Shot-stopping in every MLS season in our data, with its 90% range; the small circle is that season's raw goals prevented.</p></div><div class="chart" id="kseasons"></div></div></section>
-    <section class="band" id="peers"><div class="wrap"><div class="band-head"><h2 class="r-title">Among their peers</h2><p>Goalkeepers with 900+ minutes in ${s.year}: shots faced across, shot-stopping up.</p></div><div class="chart" id="kpeers"></div></div></section>
+    <section class="band" id="peers"><div class="wrap"><div class="band-head"><h2 class="r-title">Among his peers</h2><p>Goalkeepers with 900+ minutes in ${s.year}: shots faced across, shot-stopping up.</p></div><div class="chart" id="kpeers"></div></div></section>
     ${detailSection()}`;
 }
 function drawKeeper(){
