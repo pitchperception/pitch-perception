@@ -1052,3 +1052,5 @@ logged_at,match,kickoff_utc,home,away,pH,pD,pA,source
 2026-10-31T05:13:18Z,1953098,2026-11-01T21:30:00Z,Vancouver Whitecaps,Seattle Sounders FC,0.6088,0.2201,0.1711,elo
 2026-10-31T15:59:05Z,1953088,2026-10-31T17:00:00Z,Charlotte FC,Orlando City,0.4651,0.2571,0.2777,lineups
 2026-10-31T16:59:08Z,1953090,2026-10-31T18:00:00Z,Columbus Crew,DC United,0.649,0.2056,0.1454,lineups
+2026-10-31T17:02:20Z,1953089,2026-10-31T18:00:00Z,FC Cincinnati,Philadelphia Union,0.3987,0.2644,0.3369,lineups
+2026-10-31T17:02:20Z,1953092,2026-10-31T18:00:00Z,New York City FC,CF Montreal,0.593,0.2257,0.1813,lineups
