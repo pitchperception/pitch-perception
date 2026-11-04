@@ -121,6 +121,8 @@ function render(main){
   PP.chart($("#tzones"), drawZones);
   $$(".tzmode button").forEach(b => b.addEventListener("click", () => { T.zoneMode = b.dataset.m; $$(".tzmode button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); drawZones($("#tzones")); }));
   PP.chart($("#txi"), drawXI);
+  $$(".txmode button").forEach(b => b.addEventListener("click", () => { T.xiMode = b.dataset.m; $$(".txmode button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("#txilab").textContent = xiLabel(); $("#txicap").textContent = xiCap(); drawXI($("#txi")); }));
   PP.chart($("#tresults"), drawResults);
   if($("#televo")) PP.chart($("#televo"), drawElo);
   if($("#tseeds")) PP.chart($("#tseeds"), drawSeeds);
@@ -223,9 +225,9 @@ function piecesSection(){
   const impH = imp.length ? `<div class="impact"><h3 class="r-heading">Who they can least afford to lose</h3><p class="r-small">The rest of the ${po ? "playoffs" : "season"} re-simulated with each of their four most valuable outfield players replaced by a replacement-level player. Computed ${PP.dateLong(s.impact_date)} with the earlier lineup model (Elo plus lineup strength).</p>
       <div class="tbl-wrap"><table class="dtable"><thead><tr><th>Without</th>${po ? "" : `<th class="n">Points</th><th class="n">Playoffs</th>`}<th class="n">MLS Cup</th></tr></thead><tbody>${imp.map(p => `<tr><td><a href="#player-${p.id}">${esc(p.name)}</a></td>${po ? "" : `<td class="n">${sgn(p.d_points,1)}</td><td class="n">${PP.pp(p.d_playoffs)} pts</td>`}<td class="n">${PP.pp(p.d_cup)} pts</td></tr>`).join("")}</tbody></table></div></div>` : "";
   return `<section class="band" id="pieces" aria-labelledby="pieces-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>The most-used starting eleven of ${s.year}, each player drawn by the value he adds above a replacement at his position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p>${ros.some(p => injHere(p.id)) ? `<p class="r-small injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</p>` : ""}</div>
+    <div class="band-head"><h2 class="r-title" id="pieces-h">How the pieces fit together</h2><p>Their starting eleven of ${s.year} (${(s.elevens||{}).current ? "lately, most used, or as a depth chart" : "most used, or as a depth chart"}), each player drawn by the value he adds above a replacement at his position, and every player's share of the squad's total. Keepers count by shot-stopping: goals prevented, allowing for luck, against an average keeper.</p>${ros.some(p => injHere(p.id)) ? `<p class="r-small injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</p>` : ""}</div>
     <div class="pieces">
-      <div class="pleft"><figure class="tfig"><div class="fig-cap"><span class="r-label">Most-used eleven${s.formation?`, ${esc(s.formation)}`:""}</span><span class="r-small">Size and colour: value added in ${s.year}</span></div><div class="chart" id="txi"></div></figure>${impH}</div>
+      <div class="pleft"><figure class="tfig"><div class="fig-cap"><span class="r-label" id="txilab">${xiLabel()}</span>${xiModes().length > 1 ? `<div class="seg txmode" role="group" aria-label="Which eleven">${xiModes().map(([k, l]) => `<button type="button" data-m="${k}" aria-pressed="${k === T.xiMode}">${l}</button>`).join("")}</div>` : ""}</div><div class="chart" id="txi"></div><p class="r-small" id="txicap">${xiCap()}</p></figure>${impH}</div>
       <aside class="aside" id="tsquad">
         <div class="sqtotal"><span class="r-label">Squad value above replacement</span><span class="r-figure" style="font-size:var(--t-36)">${sgn(s.squad_value,1)}</span><span class="r-small">goals${sv?`, ${PP.ord(sv.rank)} of ${sv.of} clubs`:""}</span></div>
         ${sq}
@@ -233,11 +235,23 @@ function piecesSection(){
     </div>
   </div></section>`;
 }
+/* the elevens (199, owner 2026-11-03): current (latest season), most-used, depth chart */
+const PP_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+const XIM = [["current", "Current"], ["season", "Most-used"], ["depth", "Depth chart"]];
+function xiModes(){ const E = T.s.elevens || {}; return XIM.filter(([k]) => E[k]); }
+function xiView(){ const E = T.s.elevens || {}; if(!T.xiMode || !E[T.xiMode]) T.xiMode = E.current ? "current" : "season"; return E[T.xiMode]; }
+function xiLabel(){ const v = xiView(), f = v ? v.formation : T.s.formation;
+  return `${{current: "Current eleven", season: "Most-used eleven", depth: "Depth chart"}[T.xiMode]}${f ? `, ${f}` : ""}`; }
+function xiCap(){ const v = xiView(), y = T.s.year; if(!v) return `Size and colour: value added in ${y}.`;
+  if(T.xiMode === "current") return `Recent matches count most: each match counts half as much as the one ${PP_WORDS[v.half_life] || v.half_life} matches later. A player's minutes count toward the nearest positions, whatever the formation. Size and colour: value added in ${y}.`;
+  if(T.xiMode === "season") return `Every ${y} regular-season minute counts the same, toward the nearest positions of the most-used formation (${Math.round((v.formation_share || 0) * 100)}% of minutes). Size and colour: value added in ${y}.`;
+  return `At each position: its player in the ${v.base === "current" ? "current" : "most-used"} eleven, then the players who started there most in ${y}, with their starts at that position (of ${v.n} matches). Colour: value added in ${y}.`; }
+const dShort = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"});
 function drawXI(el){
-  const s = T.s, xi = s.lineup || [], W = Math.min(el.clientWidth, 760); if(!W) return;
-  if(!xi.length){ el.innerHTML = `<div class="missing"><b>Not available</b><span>No starting lineups on record for this season.</span></div>`; return; }
+  const s = T.s, v = xiView(), depth = T.xiMode === "depth", xi = depth ? [] : (v ? v.lineup : s.lineup) || [], W = Math.min(el.clientWidth, 760); if(!W) return;
+  if(!(depth ? v && v.slots.length : xi.length)){ el.innerHTML = `<div class="missing"><b>Not available</b><span>No starting lineups on record for this season.</span></div>`; return; }
   const portrait = W < 520, H = portrait ? Math.round(W*105/68) : Math.round(W*68/105); el.innerHTML = "";
-  const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`Most-used eleven of ${full(T.D.team)} with each player's value`},el);
+  const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`${xiLabel()} of ${full(T.D.team)}${depth ? "" : " with each player's value"}`},el);
   let sx, sy;
   if(portrait){                                                            // attack runs up the screen
     const px = (L, Wd) => ({x: Wd/68*W, y: H - L/105*H});
@@ -249,14 +263,28 @@ function drawXI(el){
   } else { const b = PP.pitchBase(svg, W, H, false); PP.pitchLines(svg, b.sx, b.sy); sx = b.sx; sy = b.sy; }
   // lineup x: 0 = left flank, 1 = right flank; y: 1 = own goal. Attacking right, the right flank is at the bottom.
   const at = p => { const L = 6 + (1 - p.y) * 88; return portrait ? {cx: (6 + p.x * 56)/68*W, cy: H - L/105*H} : {cx: sx(L), cy: sy(6 + (1 - p.x) * 56)}; };
-  xi.forEach(p => { const c = at(p), q = {x:0,y:0}, v = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(v||0) * 3.2)), f = PP.valueFill(v||0, 5);
-    const g = p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open his page`},svg) : svg;
-    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, started ${Math.round((p.share||0)*100)}% of matches<br>${p.pos==="GK"?"Shot-stopping":"Value above replacement"}: ${sgn(v,2)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
-    const st = injHere(p.ws_player_id);
-    if(st){ const m = S("g",{transform:`translate(${c.cx + rr*0.55},${c.cy - rr*0.55 - 14})`,class:"xi-inj","data-tip":esc(PP.injTip(st))},g);
-      S("rect",{width:13,height:13,rx:3,style:`fill:${st.s === "q" ? "#B07A00" : "var(--flare)"}`,stroke:"var(--paper)","stroke-width":1.5},m);
-      S("path",{d:"M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z",transform:"translate(1.5,1.5)",fill:"#fff"},m); }
-    text(g, c.cx, c.cy+4, sgn(v,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
+  const vlab = p => `${p.pos==="GK"?"Shot-stopping":"Value above replacement"}: ${sgn(p.value,2)}`;
+  const injAt = (g, p, c, rr) => { const st = injHere(p.ws_player_id); if(!st) return;
+    const m = S("g",{transform:`translate(${c.cx + rr*0.55},${c.cy - rr*0.55 - 14})`,class:"xi-inj","data-tip":esc(PP.injTip(st))},g);
+    S("rect",{width:13,height:13,rx:3,style:`fill:${st.s === "q" ? "#B07A00" : "var(--flare)"}`,stroke:"var(--paper)","stroke-width":1.5},m);
+    S("path",{d:"M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z",transform:"translate(1.5,1.5)",fill:"#fff"},m); };
+  const link = (p, parent) => p.ws_player_id != null ? S("a",{href:`#player-${p.ws_player_id}-${s.year}`,class:"xi-link","aria-label":`${p.player}: open his page`},parent) : parent;
+  if(depth){
+    const fs = portrait ? 10 : 11;
+    v.slots.forEach(sl => { const c = at(sl), p0 = sl.players[0], f = PP.valueFill(p0.value||0, 5), rr = portrait ? 7 : 8;
+      sl.players.forEach((p, i) => { const g = link(p, svg);
+        const tip = `<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, ${p.starts_here} start${p.starts_here === 1 ? "" : "s"} in this position, ${p.starts} of ${v.n} in all${p.last_start ? `<br>Last start ${dShort(p.last_start)}` : ""}<br>${vlab(p)}`;
+        if(i === 0){ S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":tip},g); injAt(g, p, c, rr); }
+        text(g, c.cx, c.cy + rr + 12 + i*(fs+3), `${surname(p.player)} ${p.starts_here}`, `${i ? "t-lab2" : "t-lab"} halo-w`, {"text-anchor":"middle","data-tip":tip,style:`font-size:${fs}px`}); }); });
+    return;
+  }
+  xi.forEach(p => { const c = at(p), val = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(val||0) * 3.2)), f = PP.valueFill(val||0, 5);
+    const g = link(p, svg);
+    const used = T.xiMode === "current" ? `started ${p.last5} of the last 5 matches, ${p.starts} of ${v.n} in all${p.last_start ? `<br>Last start ${dShort(p.last_start)}` : ""}`
+      : v ? `${p.starts} starts of ${v.n}, ${p.starts_here} in this position` : `started ${Math.round((p.share||0)*100)}% of matches`;
+    S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, ${used}<br>${vlab(p)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
+    injAt(g, p, c, rr);
+    text(g, c.cx, c.cy+4, sgn(val,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
     text(g, c.cx, c.cy+rr+13, surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
 }
