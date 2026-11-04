@@ -7,7 +7,7 @@ let rP = null, RC = null;
 const load = () => rP || (rP = fetch("data/recruiting.json").then(r => { if(!r.ok) throw new Error(`recruiting.json returned ${r.status}`); return r.json(); }));
 const TEAMN = {"Salt Lake":"Real Salt Lake","Kansas City":"Sporting Kansas City","Columbus":"Columbus Crew","San Jose":"San Jose Earthquakes","Minnesota":"Minnesota United","New England":"New England Revolution","Philadelphia":"Philadelphia Union","Portland":"Portland Timbers","Orlando":"Orlando City","Toronto":"Toronto FC","Vancouver":"Vancouver Whitecaps","Atlanta":"Atlanta United","Austin":"Austin FC","Charlotte":"Charlotte FC","Cincinnati":"FC Cincinnati","Colorado":"Colorado Rapids","Dallas":"FC Dallas","Nashville":"Nashville SC","San Diego":"San Diego FC","Miami":"Inter Miami CF","Los Angeles":"Los Angeles FC","Galaxy":"LA Galaxy","New York":"Red Bull New York","NYCFC":"New York City FC","LA Galaxy":"LA Galaxy","LAFC":"Los Angeles FC","Inter Miami":"Inter Miami CF","Montréal":"CF Montreal","Montreal":"CF Montreal","D.C. United":"DC United","DC United":"DC United","Sporting KC":"Sporting Kansas City","St. Louis":"St. Louis City","Chicago":"Chicago Fire FC","Seattle":"Seattle Sounders FC","Houston":"Houston Dynamo FC"};
 const club = t => { if(!t) return null; if(PP.CLUB[t]) return t; if(TEAMN[t]) return TEAMN[t]; return Object.keys(PP.CLUB).find(k => PP.short(k) === t || k.startsWith(t)) || null; };
-const GRP = {CB:"centre backs", FB:"fullbacks", MID:"midfielders", ATT:"attackers"};
+const GRP = {CB:"center backs", FB:"fullbacks", MID:"midfielders", ATT:"attackers"};
 const S2 = {tab:"signings", year:null, sort:"grade", sc:{league:"all", pos:"all", age:"all", arch:"all", sort:"pct", q:"", hide:false, n:60}};
 let SB = null;   // scouted players' badges, from data/scouts/index.json (78)
 const loadSB = () => SB ? Promise.resolve(SB) : Promise.all([PP.data.scouts ? PP.data.scouts : fetch("data/scouts/index.json").then(r => r.ok ? r.json() : null).catch(() => null), PP.loadArch()])
@@ -93,7 +93,7 @@ function scouting(){
   const leagues = [...new Set(SC.players.map(p => p.league))].sort(), v = SC.validation || {};
   /* the data's dates (owner, 2026-10-27: "make it clear when recruiting data is updated or valid until"): 60's run, the
      latest match counted per league (raw payloads' start times), the next weekly update (automation/scouting_refresh.sh) */
-  const md = iso => PP.dayShort(iso).replace(/ \d{4}$/, "");         /* "25 Oct" */
+  const md = iso => PP.dayShort(iso).replace(/,? \d{4}$/, "");       /* "Oct 25" */
   const latest = {}; (SC.coverage||[]).forEach(c => { if(c.last_match && !(latest[c.league] > c.last_match)) latest[c.league] = c.last_match; });
   const cov = {}; (SC.coverage||[]).forEach(c => { (cov[c.league] = cov[c.league] || []).push(`${String(c.season_label).replace("-","/")} (${c.matches} matches${c.last_match && c.last_match === latest[c.league] ? `, to ${md(c.last_match)}` : ""})`); });
   const due = SC.next_update, late = due && new Date().toISOString().slice(0,10) > due;
@@ -106,7 +106,7 @@ function scouting(){
       <p class="r-small">The projection learned from ${v.n ?? "–"} past foreign signings: age, position, league, appearances and goals alone predict their MLS quality at r ${num(v.r_S0,2)}; adding our rating of their last season abroad and their match ratings there (WhoScored's, used as an input but not shown) raises it to r ${num(v.r_S1,2)}. No salary is known for a player not yet signed, which is why this is lower than the signing grades. Covered: ${Object.entries(cov).map(([l,s]) => `${esc(l)} ${s.join(" and ")}`).join("; ")}. Goalkeepers are not projected.</p></div>
     <div class="exfilters" style="margin-bottom:var(--s-4)">
       ${sel("sclg", [["all","All leagues"], ...leagues.map(l => [l,l])], f.league, "League")}
-      ${sel("scpos", [["all","All positions"],["CB","Centre backs"],["FB","Fullbacks"],["MID","Midfielders"],["ATT","Attackers"]], f.pos, "Position")}
+      ${sel("scpos", [["all","All positions"],["CB","Center backs"],["FB","Fullbacks"],["MID","Midfielders"],["ATT","Attackers"]], f.pos, "Position")}
       ${sel("scage", [["all","Any age"],["21","21 or under"],["23","23 or under"],["25","25 or under"],["28","28 or under"]], f.age, "Age")}
       ${PP.data.arch ? sel("scarch", [["all","All archetypes"], ...PP.data.arch.defs.filter(d => d.shown && d.side !== "keeper").map(d => [d.key, d.name])], f.arch, "Archetype") : ""}
       ${sel("scsort", [["pct","Projected MLS rank"],["hi","Upside (top of range)"],["age","Youngest"],["mins","Most minutes"]].concat(PP.data.market ? [["move","Most likely to move to MLS"],["contract","Contract ending soonest"]] : []), f.sort, "Order")}

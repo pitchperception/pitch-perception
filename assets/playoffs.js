@@ -37,7 +37,7 @@ const seriesText = (m, P) => {     // a Round One game's series score before it,
   const b = m.series_before; if(!b || (!b[0] && !b[1])) return "";
   if(b[0] === b[1]) return `series level ${b[0]}–${b[1]}`;
   const lead = b[0] > b[1] ? m.home : m.away;
-  return `${esc(short(lead))} lead the series ${Math.max(...b)}–${Math.min(...b)}`;
+  return `${esc(short(lead))} leads the series ${Math.max(...b)}–${Math.min(...b)}`;
 };
 // where the forecast comes from (owner, 2026-10-27: team sheets apply in the playoffs too), the league pages' labels
 const srcLine = f => f && f.source === "lineups" ? `<span class="src"><i class="st confirmed"></i>Confirmed lineups</span>`
@@ -55,7 +55,7 @@ const throughLine = (m, f) => {
 PP.poUpRow = (m, P) => { const f = m.forecast;
   // each row opens the match's page (P-B, 2026-10-27); a row being played gets the live score and chance to go through (live.js)
   const live = PP.live && f && PP.live.inWindow({kickoff_utc: m.kickoff_utc, status: "upcoming"}) ? ` data-po-live="${m.id}"` : "";
-  return `<div class="fx po-fx" data-href="#playoff-${m.id}" role="link" tabindex="0"${live}><span class="time">${m.time_confirmed ? PP.kick(m.kickoff_utc).time : "Time TBC"}</span>
+  return `<div class="fx po-fx" data-href="#playoff-${m.id}" role="link" tabindex="0"${live}><span class="time">${m.time_confirmed ? PP.kick(m.kickoff_utc).time : "Time TBD"}</span>
     <div class="teams"><span>${seedTag(P, m.home)}${clubTag(m.home, true)}</span><span>${seedTag(P, m.away)}${clubTag(m.away, true)}</span></div>
     ${f ? `<div class="probs">${pbar(m, f)}<div class="plab"><span><b>${pctShort(f.pH)}</b> win</span><span>${pctShort(f.pD)} draw</span><span><b>${pctShort(f.pA)}</b> win</span></div>
       <span class="src">After 90 minutes${m.round === "wild_card" || m.round === "round_one" ? "; a draw goes straight to penalties" : "; a draw goes to extra time"}</span></div>` : `<div class="probs"><span class="r-small">No forecast yet</span></div>`}
@@ -116,7 +116,7 @@ function drawHistory(el){
   const step = y1 <= 0.4 ? 0.1 : 0.25;
   for(let v = 0; v <= y1+1e-9; v += step){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v<1e-9?"g-base":"g-line"},svg); text(svg, m.l-8, sy(v)+4, Math.round(v*100)+"%", "t-axis", {"text-anchor":"end"}); }
   const ticks = narrow ? [0, n-1] : [0, Math.floor((n-1)/2), n-1];
-  ticks.forEach(i => text(svg, sx(i), Ht-6, new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor": i === 0 ? "start" : i === n-1 ? "end" : "middle"}));
+  ticks.forEach(i => text(svg, sx(i), Ht-6, new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor": i === 0 ? "start" : i === n-1 ? "end" : "middle"}));
   const top = new Set(A.slice().sort((a,b) => (b.p_champion||0) - (a.p_champion||0)).slice(0, 3).map(t => t.team));
   const strong = t => top.has(t.team), paths = new Map();
   A.slice().sort((a,b) => strong(a) - strong(b)).forEach(t => {
@@ -132,7 +132,7 @@ function drawHistory(el){
     let best = null, bd = 1e9; A.forEach(t => { const v = val(t, i); if(v == null) return; const d = Math.abs(sy(v) - y); if(d < bd){ bd = d; best = t; } });
     cross.setAttribute("x1", sx(i)); cross.setAttribute("x2", sx(i)); cross.setAttribute("opacity", 1);
     paths.forEach((pth, k) => pth.style.opacity = !best || k === best.team ? 1 : 0.2);
-    if(best) PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}: ${pct(val(best, i))} to win MLS Cup<br>Now ${pct(val(best, n-1))}`, e.clientX, e.clientY); };
+    if(best) PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}: ${pct(val(best, i))} to win MLS Cup<br>Now ${pct(val(best, n-1))}`, e.clientX, e.clientY); };
   ov.addEventListener("pointermove", move); ov.addEventListener("pointerdown", move);
   ov.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); paths.forEach(pth => pth.style.opacity = 1); PP.hideTip(); });
 }
@@ -163,7 +163,7 @@ function bracket(P){
       <div class="po-round"><span class="r-label">Round One, best of three</span>${b.round_one.map(tieCard).join("")}</div>
       <div class="po-round"><span class="r-label">Conference semifinals</span>${b.semis.map(tieCard).join("")}</div>
       <div class="po-round"><span class="r-label">Conference final</span>${tieCard(b.final)}</div></div></div>`; };
-  const cup = B.cup ? `<div class="po-cup"><span class="r-label">MLS Cup, 18 December</span>${tieCard({...B.cup, seed_a: null, seed_b: null})}</div>` : "";
+  const cup = B.cup ? `<div class="po-cup"><span class="r-label">MLS Cup, December 18</span>${tieCard({...B.cup, seed_a: null, seed_b: null})}</div>` : "";
   return `<section class="band well" id="po-bracket" aria-labelledby="pob-h"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="pob-h">The bracket</h2><p>Seeds ${P.seeds_official ? "as the league published them" : "from the final table (the league's own seeding replaces them once published)"}. The better seed hosts; in Round One it hosts games 1 and 3. Kickoff times are Eastern.</p></div>
     <div class="po-bracket">${conf("East")}${conf("West")}</div>${cup}
@@ -189,7 +189,7 @@ PP.poRecordLine = P => { const R = P.record || {}, T = R.ties || {}, H = R.highe
   const dl = ` <a href="data/forecast_log_playoffs.csv">Download the playoff record</a>.`;
   const bench = H.n_ties ? ` The benchmark is the higher seed's record: it went through in ${Math.round(H.rate * 100)}% of ${H.n_ties} playoff ties in 2013–25.` : "";
   if(!T.n) return `${lead} No tie has been decided yet.${bench}${dl}`;
-  return `${lead} ${T.n} tie${T.n === 1 ? " has" : "s have"} been decided: the forecasts' favourite went through in ${T.favourite_through}, and their own chances said about ${Math.round(T.favourite_expected)}; the higher seed went through in ${T.higher_seed_through}.${bench} Too few to judge the forecasts yet.${dl}`;
+  return `${lead} ${T.n} tie${T.n === 1 ? " has" : "s have"} been decided: the forecasts' favorite went through in ${T.favourite_through}, and their own chances said about ${Math.round(T.favourite_expected)}; the higher seed went through in ${T.higher_seed_through}.${bench} Too few to judge the forecasts yet.${dl}`;
 };
 /* 188 (owner, 2026-10-29): the same forecasts run back over past playoffs, in counts and words only */
 const btLine = P => { const B = (P.record || {}).backtest;
@@ -214,13 +214,13 @@ PP.poPage = (main, P) => {
   const runner = done ? (() => { const c = (P.matches || []).find(m => m.round === "cup"); return c ? (c.winner === c.home ? c.away : c.home) : null; })() : null;
   const cupM = (P.matches || []).find(m => m.round === "cup" && m.status === "final");
   const stand = done && P.champion ? `${esc(full(P.champion))} won MLS Cup${runner && cupM ? `, beating ${esc(short(runner))} ${scoreText(cupM.winner === cupM.home ? cupM : {...cupM, g_home: cupM.g_away, g_away: cupM.g_home, pen_home: cupM.pen_away, pen_away: cupM.pen_home})}` : ""}.`
-    : P.phase === "set" ? `The regular season is over and ${PP.WORDS[A.length] || A.length} clubs are in. ${f ? `${esc(short(f.team))} are the most likely champions, at ${pct(f.p_champion)}.` : ""}`
-    : `${cap(PP.WORDS[A.length] || String(A.length))} clubs are still in. ${f ? `${esc(short(f.team))} are the most likely champions, at ${pct(f.p_champion)}.` : ""}`;
-  const d = new Date(P.as_of + "T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"});
+    : P.phase === "set" ? `The regular season is over and ${PP.WORDS[A.length] || A.length} clubs are in. ${f ? `${esc(short(f.team))} is the most likely champion, at ${pct(f.p_champion)}.` : ""}`
+    : `${cap(PP.WORDS[A.length] || String(A.length))} clubs are still in. ${f ? `${esc(short(f.team))} is the most likely champion, at ${pct(f.p_champion)}.` : ""}`;
+  const d = new Date(P.as_of + "T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"});
   const nx = (P.next || []).map(id => byId(P)[id]).filter(Boolean)[0];
-  const dl = `Forecast of ${d}; ${P.played ? `playoff results through ${PP.dateLong(P.results_through)}` : "no playoff match played yet"}.${nx ? ` Next: ${gameName(nx).toLowerCase().replace(/^round one/, "Round One").replace(/^mls cup/, "MLS Cup")}, ${esc(short(nx.home))} v ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : P.phase === "set" ? " The playoffs start with the wild card on 18 November; MLS Cup is on 18 December." : ""}`;
+  const dl = `Forecast of ${d}; ${P.played ? `playoff results through ${PP.dateLong(P.results_through)}` : "no playoff match played yet"}.${nx ? ` Next: ${gameName(nx).toLowerCase().replace(/^round one/, "Round One").replace(/^mls cup/, "MLS Cup")}, ${esc(short(nx.home))} vs. ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : P.phase === "set" ? " The playoffs start with the wild card on November 18; MLS Cup is on December 18." : ""}`;
   const nm = nextMatches(P, 8);
-  const fin = P.race_final ? `<p class="dateline"><a href="#race-final">The final regular-season table, and the odds as they stood on ${new Date(P.race_final + "T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"})}</a></p>` : "";
+  const fin = P.race_final ? `<p class="dateline"><a href="#race-final">The final regular-season table, and the odds as they stood on ${new Date(P.race_final + "T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"})}</a></p>` : "";
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">${done ? "MLS Cup 2026" : "The playoffs"}</h1>
       <p class="r-note standfirst">${stand}</p><p class="dateline">${dl}</p>${fin}</section></div>
     ${done ? "" : chances(P)}${done ? "" : history(P)}
@@ -252,17 +252,17 @@ PP.poRail = P => {
   const last = (P.matches || []).filter(m => m.status === "final").slice(-1)[0];
   if(P.phase === "complete") return {head: `${esc(short(P.champion))} won MLS Cup`, body: last ? `${resultSentence(last)}.` : ""};
   const nx = (P.next || []).map(id => M[id]).filter(Boolean)[0];
-  return {head: f ? `<a href="#race">${esc(short(f.team))}</a> are favourites for MLS Cup, at ${pct(f.p_champion)}` : "The playoffs",
-          body: `${cap(PP.WORDS[A.length] || String(A.length))} clubs ${P.phase === "set" ? "are in" : "are still in"}.${last ? ` Last result: ${resultSentence(last)}.` : ""}${nx ? ` Next: ${esc(short(nx.home))} v ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : ""}`};
+  return {head: f ? `<a href="#race">${esc(short(f.team))}</a> is the favorite for MLS Cup, at ${pct(f.p_champion)}` : "The playoffs",
+          body: `${cap(PP.WORDS[A.length] || String(A.length))} clubs ${P.phase === "set" ? "are in" : "are still in"}.${last ? ` Last result: ${resultSentence(last)}.` : ""}${nx ? ` Next: ${esc(short(nx.home))} vs. ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : ""}`};
 };
 /* the lead story's MLS Cup line, from the playoff chances once the regular season is over */
 PP.poCupLine = (P, t) => {
   const x = team(P, t); if(!P || P.phase === "regular") return null;
   if(!x.team) return `${esc(short(t))} did not reach the playoffs.`;
   if(x.status === "champion") return `${esc(short(t))} won MLS Cup.`;
-  if(x.status === "out") return `${esc(short(t))} are out of the playoffs (${rlow(x.out_in)}).`;
+  if(x.status === "out") return `${esc(short(t))} is out of the playoffs (${rlow(x.out_in)}).`;
   const order = alive(P).slice().sort((a,b) => (b.p_champion||0) - (a.p_champion||0)), i = order.findIndex(y => y.team === t);
-  return i === 0 ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(t))} favourites for MLS Cup (${pct(x.p_champion)}).`
+  return i === 0 ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(t))} the favorite for MLS Cup (${pct(x.p_champion)}).`
     : `The playoff forecast, which weighs results and chances equally, gives ${esc(short(t))} a ${pct(x.p_champion)} chance of MLS Cup, ${PP.ordWord(i + 1)} behind ${esc(short(order[0].team))} (${pct(order[0].p_champion)}).`;
 };
 

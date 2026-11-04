@@ -1,6 +1,6 @@
 /* Pitch Perception: design system (design/02_design_system.md) and page styles.
    Layout: a navy masthead over one content column (max 1,280 px); pages compose full-width
-   bands of editorial sections, never grids of cards. Colours from the MLS crest. */
+   bands of editorial sections, never grids of cards. Colors from the MLS crest. */
 :root{
   --paper:#F4F6F9; --well:#E7EBF1; --raised:#FFFFFF; --rule:#D2D8E2; --rule-strong:#A2ACBC;
   --ink:#0B1A33; --ink-2:#45526A; --ink-3:#566279;
@@ -146,7 +146,7 @@ button{font:inherit;color:inherit}
 .lg-line.dash{border-top-style:dashed}
 .dtable tr.cur td{font-weight:650}
 .lg-c{width:11px;height:11px;border:2px solid var(--ink);border-radius:50%;display:inline-block}
-/* a legend line in its own colour (2026-11-03: the signal-blue border above showed through every swatch) */
+/* a legend line in its own color (2026-11-03: the signal-blue border above showed through every swatch) */
 .lg-line{width:18px;height:0;display:inline-block;border-top:2px solid var(--c, var(--signal));background:none}
 .missing{border:1px dashed var(--rule-strong);border-radius:6px;padding:var(--s-3) var(--s-4);display:grid;gap:2px}
 .missing b{font-weight:650;font-size:var(--t-13)}
@@ -722,7 +722,7 @@ span.dl{cursor:default}
 .prtrack .c{border:2px solid var(--ink);border-radius:50%;background:var(--paper)}
 /* the week in review (weeks.js) */
 .wknav{display:flex;flex-wrap:wrap;gap:var(--s-3) var(--s-5);align-items:center;justify-content:space-between;margin-top:var(--s-4);max-width:720px}
-.wknav .fsel select{min-width:220px;max-width:min(330px,100%)}   /* "Matchday 28: 23 to 30 September" (2026-10-15) */
+.wknav .fsel select{min-width:220px;max-width:min(330px,100%)}   /* "Matchday 28: 23 to September 30" (2026-10-15) */
 .potw-name{margin:4px 0 2px}
 .potw-name a{text-decoration:none}
 .pfacts-inline{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--ink-2);font-size:var(--t-13);margin-bottom:var(--s-3)}
@@ -898,7 +898,7 @@ td>.club,.ctabs .club,.cmpstrip .club,.cres .club{vertical-align:middle}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--crest-halo:drop-shadow(0 0 1px rgba(255,255,255,.55))}}
 :root[data-theme="dark"]{--crest-halo:drop-shadow(0 0 1px rgba(255,255,255,.55))}
 .crest{filter:var(--crest-halo)}
-/* the Teams index: a crest is wider than the colour chip, so the club column gets more of the row */
+/* the Teams index: a crest is wider than the color chip, so the club column gets more of the row */
 @media (min-width:641px){.tindex .thead,.tindex .trow{grid-template-columns:24px minmax(0,1.9fr) minmax(0,1fr) 84px minmax(90px,1fr)}}
 
 /* club crests for every chip, and player links everywhere (owner, 2026-10-15) */

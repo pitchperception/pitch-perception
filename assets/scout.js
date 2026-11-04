@@ -4,10 +4,10 @@
 "use strict";
 const {$, $$, esc, sgn, num, pct, pctile} = PP;
 const NS = 32, shards = {};
-const GRP = {CB:"centre backs", FB:"fullbacks", MID:"midfielders", ATT:"attackers"};
-const POSW = {DC:"Centre back", DL:"Left back", DR:"Right back", DML:"Left wing-back", DMR:"Right wing-back", DMC:"Defensive midfielder", MC:"Central midfielder",
+const GRP = {CB:"center backs", FB:"fullbacks", MID:"midfielders", ATT:"attackers"};
+const POSW = {DC:"Center back", DL:"Left back", DR:"Right back", DML:"Left wing-back", DMR:"Right wing-back", DMC:"Defensive midfielder", MC:"Central midfielder",
   AMC:"Attacking midfielder", AML:"Left winger", AMR:"Right winger", ML:"Left midfielder", MR:"Right midfielder", FW:"Striker", FWL:"Left forward", FWR:"Right forward"};
-const POS6 = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
+const POS6 = {CB:"center backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
 const SK = [["On the ball","Passes and carries, valued by how much they moved the chance of a goal"],["Shooting","Chance quality of the shots taken (expected goals), not whether they went in"],
   ["Receiving","Getting on the end of passes in valuable places"],["Ball security","Value lost by giving the ball away (higher is better)"],["Winning the ball","Danger removed by winning the ball, beyond what a replacement would win back in the same minutes and danger"]];
 const LG = {"england-premier-league":"Premier League","germany-bundesliga":"Bundesliga","spain-laliga":"LaLiga","italy-serie-a":"Serie A","france-ligue-1":"Ligue 1",

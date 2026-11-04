@@ -6,8 +6,8 @@ let mP = null, M = null, FILTER = "all", RP = null, LOGD = null, SORT = "time", 
 const load = () => mP || (mP = fetch("data/matches.json").then(r => { if(!r.ok) throw new Error(`matches.json returned ${r.status}`); return r.json(); }));
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 const kickDate = m => m.kickoff_utc ? new Date(m.kickoff_utc.replace("Z",":00Z")) : new Date(m.date+"T23:00:00Z");
-const dayKey = d => d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",timeZone:"America/New_York"}).replace(",", "");
-const timeOf = d => d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).replace(" AM"," am").replace(" PM"," pm") + " ET";
+const dayKey = d => d.toLocaleDateString("en-US",{weekday:"long",day:"numeric",month:"long",timeZone:"America/New_York"});
+const timeOf = d => d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}) + " ET";
 const src = s => s === "lineups" ? `<span class="src"><i class="st confirmed"></i>Confirmed lineups</span>` : s === "availability" ? `<span class="src"><i class="st likely"></i>Likely lineups from the availability report</span>` : `<span class="src"><i class="st model"></i>Team strength only; no lineup news yet</span>`;
 const pbar = (m, big) => { const [h, a] = PP.pairKit(m.home, m.away); return `<div class="pbar${big?" big":""}" role="img" aria-label="${esc(short(m.home))} ${pct(m.pH)}, draw ${pct(m.pD)}, ${esc(short(m.away))} ${pct(m.pA)}"><i style="width:${m.pH*100}%;background:${h}"></i><i style="width:${m.pD*100}%;background:var(--mid)"></i><i style="width:${m.pA*100}%;background:${a}"></i></div>`; };
 /* watchability, quality and importance (FiveThirtyEight's old match ratings; 29): restored on v3, owner 2026-10-09; pre-match
@@ -24,7 +24,7 @@ const motwCard = m => {
   return `<section class="band motw" aria-labelledby="motw-h"><div class="band-head"><h2 class="r-title" id="motw-h">Match of the week</h2><p>The most watchable match still to play this matchday: both sides strong, and a lot riding on it.</p></div>
     <a class="motw-card" href="#match-${m.id}">
       <span class="r-label">${dayKey(k)}, ${timeOf(k)}</span>
-      <div class="motw-teams">${clubTag(m.home, true)}<span class="v">v</span>${clubTag(m.away, true)}</div>
+      <div class="motw-teams">${clubTag(m.home, true)}<span class="v">vs.</span>${clubTag(m.away, true)}</div>
       <div class="probs">${pbar(m, true)}<div class="plab"><span><b>${pctShort(m.pH)}</b> ${esc(short(m.home))} win</span><span>${pctShort(m.pD)} draw</span><span><b>${pctShort(m.pA)}</b> ${esc(short(m.away))} win</span></div></div>
       <div class="motw-figs"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
       ${sw ? `<p class="r-small">${esc(short(sw.team))}: ${pct(sw.w)} chance of ${STAKE(sw.stake, confOf(sw.team)+"ern Conference")} with a win, ${pct(sw.l)} with a defeat.</p>` : ""}
@@ -42,7 +42,7 @@ const recordLine = () => {
   const tail = ` <a href="data/forecast_log.csv">Download the full record</a> or read <a href="#method-record">how we check it</a>.`;
   if(!sc.n) return `<p class="r-small">Since ${since}, every forecast on this site is written down before kickoff and never changed.${tail} Forecasts for earlier matches were worked out afterwards.</p>`;
   const ci = sc.log_loss_gap_ci95, mix = "simply going by the league's usual mix of home wins, draws and away wins";
-  const fav = sc.favourite_won != null ? ` The favourite won ${sc.favourite_won} of them; the forecasts' own chances said about ${Math.round(sc.favourite_expected)}.` : "";
+  const fav = sc.favourite_won != null ? ` The favorite won ${sc.favourite_won} of them; the forecasts' own chances said about ${Math.round(sc.favourite_expected)}.` : "";
   const verdict = !ci ? "" : ci[1] < 0 ? ` So far the forecasts have done better than ${mix}; it is too early to say by how much.`
                 : ci[0] > 0 ? ` So far the forecasts have done worse than ${mix}.` : ` It is too early to tell whether the forecasts do better than ${mix}.`;
   return `<p class="r-small">Since ${since}, every forecast on this site has been written down before kickoff and never changed. ${sc.n} of those match${sc.n === 1 ? " has" : "es have"} been played.${fav}${verdict}${tail}</p>`;
@@ -101,7 +101,7 @@ PP.pages.matches = async main => {
      in the round being played when it is played; a round played only Tuesday to Thursday is midweek. Days are US Eastern.
      A match without a round (none expected; 87 checks) is shown on its own as an extra. */
   const ymd = m => kickDate(m).toLocaleDateString("en-CA", {timeZone: "America/New_York"});
-  const dShort = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", {day: "numeric", month: "short", timeZone: "UTC"});
+  const dShort = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {day: "numeric", month: "short", timeZone: "UTC"});
   const dRange = (a, b) => { if(a === b) return dShort(a); const [da, ma] = dShort(a).split(" "), [db, mb] = dShort(b).split(" "); return ma === mb ? `${da} to ${db} ${mb}` : `${dShort(a)} to ${dShort(b)}`; };
   const slates = (() => {
     const by = new Map();
@@ -153,7 +153,7 @@ PP.pages.matches = async main => {
 };
 
 /* ---------------- post-match report (82_weekly.py) ---------------- */
-const POSW = {CB:"centre back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
+const POSW = {CB:"center back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
 function report(m, R, wk, po){
   const [gh, ga] = R.g, hw = gh > ga, aw = ga > gh, win = hw ? 0 : aw ? 2 : 1, W = hw ? m.home : aw ? m.away : null, L = hw ? m.away : m.home;
   // "before kickoff" (owner, 2026-10-27): the recorded forecast wherever the live record has one (82), else reconstructed
@@ -262,7 +262,7 @@ PP.pages.match = async (main, h) => {
   const h2h = (d.h2h || []).filter(x => x[0] < (played ? "9999" : m.date) && !(played && x[0] === m.date && x[1] === m.home)).slice(0,5);
   body += `<section class="band" id="mform"><div class="wrap"><div class="band-head"><h2 class="r-title">The two clubs</h2><p>Team strength (half results, half chances) through 2026, and their recent meetings.</p></div>
     <div class="trajwrap"><figure class="tfig"><div class="chart" id="melo"></div><div class="legend"><span><i class="lg-line" style="--c:${PP.kit(m.home)}"></i>${esc(short(m.home))}</span><span><i class="lg-line${PP.pairKit(m.home, m.away)[2] ? " dash" : ""}" style="--c:${PP.pairKit(m.home, m.away)[1]}"></i>${esc(short(m.away))}</span></div></figure>
-    <div><h3 class="r-heading">Recent meetings</h3>${h2h.length ? `<div class="h2h">${h2h.map(x => `<div class="h2r"><span class="r-small">${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})}</span><span>${esc(short(x[1]))} <b class="num">${x[3]}–${x[4]}</b> ${esc(short(x[2]))}</span></div>`).join("")}</div>` : `<p class="r-small">No meetings in our data.</p>`}</div></div></div></section>`;
+    <div><h3 class="r-heading">Recent meetings</h3>${h2h.length ? `<div class="h2h">${h2h.map(x => `<div class="h2r"><span class="r-small">${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})}</span><span>${esc(short(x[1]))} <b class="num">${x[3]}–${x[4]}</b> ${esc(short(x[2]))}</span></div>`).join("")}</div>` : `<p class="r-small">No meetings in our data.</p>`}</div></div></div></section>`;
   main.innerHTML = head + (liveOn ? `<div id="mlivebox"></div>` : "") + body;
   if(liveOn) PP.live.page(m, $("#mlivebox"));
   if(!played) PP.chart($("#duel"), el => drawDuel(el, m, d));
@@ -271,7 +271,7 @@ PP.pages.match = async (main, h) => {
   if(RP && RP.R.chain && $("#mpitch")){ const ch = PP.chainFrom(RP.R.chain); PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels: ch.labels})); PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {}));
     $("#mplay").addEventListener("click", () => { PP.chainPitch($("#mpitch"), ch, {labels: ch.labels, animate: true}); PP.chainSteps($("#msteps"), ch, {animate: true}); }); }
   ["#duel","#melo","#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
-  document.title = `${short(m.home)} v ${short(m.away)} | Pitch Perception`;
+  document.title = `${short(m.home)} vs. ${short(m.away)} | Pitch Perception`;
 };
 
 function drawDuel(el, m, d){
@@ -411,7 +411,7 @@ PP.pages.playoff = async (main, h) => {
   if(RP2 && RP2.R.chain && $("#mpitch")){ const ch = PP.chainFrom(RP2.R.chain); PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels: ch.labels})); PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {}));
     $("#mplay").addEventListener("click", () => { PP.chainPitch($("#mpitch"), ch, {labels: ch.labels, animate: true}); PP.chainSteps($("#msteps"), ch, {animate: true}); }); }
   ["#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
-  document.title = `${short(m.home)} v ${short(m.away)}, ${poGame(m)} | Pitch Perception`;
+  document.title = `${short(m.home)} vs. ${short(m.away)}, ${poGame(m)} | Pitch Perception`;
 };
 
 })();

@@ -143,7 +143,7 @@ function poNDRow(r, club){
   const og = r.not_in_shot_map ? r.not_in_shot_map[0] + r.not_in_shot_map[1] : 0;
   const xg = r.xg ? ` · xG ${num(r.xg[us] + (r.xg_et ? r.xg_et[us] : 0), 2)}–${num(r.xg[them] + (r.xg_et ? r.xg_et[them] : 0), 2)}` : "";
   const feed = r.src === "feed", el = feed ? "a" : "div";
-  return `<${el} class="po-prow po-nd"${feed ? ` href="#playoff-${esc(r.key)}"` : ""}><span class="r-small">${PP.dayShort(r.date)}</span><span>${us ? "at" : "v"} ${clubTag(opp, true)}</span><span class="r-small">${res}${og ? ` (${og} own goal${og === 1 ? "" : "s"})` : ""}${xg}</span><span class="v r-small po-ndv">${feed ? "pending" : "no data"}</span></${el}>`;
+  return `<${el} class="po-prow po-nd"${feed ? ` href="#playoff-${esc(r.key)}"` : ""}><span class="r-small">${PP.dayShort(r.date)}</span><span>${us ? "at" : "vs."} ${clubTag(opp, true)}</span><span class="r-small">${res}${og ? ` (${og} own goal${og === 1 ? "" : "s"})` : ""}${xg}</span><span class="v r-small po-ndv">${feed ? "pending" : "no data"}</span></${el}>`;
 }
 // where the player-season ranks in that season's playoffs (Playoffs view; computed by 175 from the figures in this file)
 function poRanks(rows, year, cov){
@@ -178,7 +178,7 @@ function playoffBody(){
   const clubNote = !cc ? "" : miss ? ` ${miss === cc[0] ? (miss === 1 ? "The one" : `All ${cc[0]}`) : `${miss} of the ${cc[0]}`} ${miss === cc[0] && miss === 1 ? "playoff match" : "playoff matches"} ${esc(short(club))} played ${miss === 1 ? "is" : "are"} among them, so not in these values; listed with ${miss === 1 ? "its result" : "their results"}.`
     : cc[0] === 1 ? ` The one playoff match ${esc(short(club))} played is in these values.` : ` All ${pm(cc[0])} ${esc(short(club))} played are in these values.`;
   const gapNote = partial ? `<p class="r-small po-partial"><b>Incomplete season:</b> playoff values from ${cov.with_data} of ${cov.matches} matches in ${year}; ${gone} ${gone === 1 ? "has" : "have"} no event data.${clubNote}</p>` : "";
-  const items = ms.map(x => [x[2], `<${tag(x)}><span class="r-small">${PP.dayShort ? PP.dayShort(x[2]) : esc(x[2])}</span><span>${x[5] ? "at" : "v"} ${clubTag(x[4], true)}</span><span class="r-small">${minsTxt(x[6], x[7])}</span><span class="v num">${sgn(x[8], 2)}</span></${String(x[0]).startsWith("MLS-") ? "a" : "div"}>`])
+  const items = ms.map(x => [x[2], `<${tag(x)}><span class="r-small">${PP.dayShort ? PP.dayShort(x[2]) : esc(x[2])}</span><span>${x[5] ? "at" : "vs."} ${clubTag(x[4], true)}</span><span class="r-small">${minsTxt(x[6], x[7])}</span><span class="v num">${sgn(x[8], 2)}</span></${String(x[0]).startsWith("MLS-") ? "a" : "div"}>`])
     .concat(nd.map(r => [r.date, poNDRow(r, club)])).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
   const ndSofa = nd.some(r => r.src === "sofascore"), ndFeed = nd.some(r => r.src === "feed");
   const ndNote = nd.length ? `<p class="r-small po-ndnote">${ndSofa ? "“No data”: WhoScored has no event data for the match, so it has no player values. Its result is Sofascore’s, checked against the league feed; its xG is our shot model on Sofascore’s shots, a different source from the expected goals elsewhere on this site." : ""}${ndSofa && ndFeed ? " " : ""}${ndFeed ? "“Pending”: the event data has not arrived yet; the result is the league feed’s, and the values follow once it does." : ""}</p>` : "";
@@ -303,7 +303,7 @@ function decompSection(){
   const R = k => { const p = P(k); return p && p[2] != null ? p[2] : null; }, noisy = k => R(k) != null && R(k) < NOISE;
   const vals = [...Object.values(d.att||{}), ...Object.values(d.def||{}), d.att_repl, d.def_repl, s.attack, s.defence].filter(v => v != null);
   const M = Math.max(0.5, ...vals.map(Math.abs));
-  // ball security is a cost by definition (owner, 2026-10-09: "always red"): colour it by how the player compares at his position
+  // ball security is a cost by definition (owner, 2026-10-09: "always red"): color it by how the player compares at his position
   const secP = (P("security") || [])[0], secCls = (secP == null ? "nil" : secP >= 0.5 ? "pos" : "neg") + " sec";
   const bar = (v, na="–", cls=null) => v == null ? `<span class="dz-na">${na}</span>` : `<span class="dz"><span class="z"></span><span class="b ${cls || (v>=0?"pos":"neg")}" style="${v>=0?`left:50%;width:${v/M*50}%`:`left:${50+v/M*50}%;width:${-v/M*50}%`}"></span></span><span class="dv num">${sgn(v)}</span>`;
   const pbar = (k) => { const p = P(k); if(!p || p[0] == null) return `<span class="pc-na r-small">${k==="other"?"":"–"}</span>`; const noise = noisy(k), band = Math.min(5, Math.floor(p[0]*5)+1);
@@ -371,7 +371,7 @@ function impactSection(){
       ${met("Of those, ended in a shot", im.shot_share, im.shot_share_pct, v => Math.round(v*100)+"%")}
       ${met("Attacking value added per 100 possessions touched", im.val_per_inv, im.val_per_inv_pct, v => sgn(v*100,2)+" goals")}
     </div>` : "";
-  const tabs = ch.map((c,i) => { const opp = c.home === c.team ? c.away : c.home; return `<button type="button" role="tab" aria-selected="${i===ST.chainI}" data-i="${i}"><b>${c.ends === "goal" ? "Goal" : c.ends === "shot" ? "Shot" : "Lost"}</b> v ${PP.crestTag(opp)}, ${c.date ? PP.dateLong(c.date) : ""}</button>`; }).join("");
+  const tabs = ch.map((c,i) => { const opp = c.home === c.team ? c.away : c.home; return `<button type="button" role="tab" aria-selected="${i===ST.chainI}" data-i="${i}"><b>${c.ends === "goal" ? "Goal" : c.ends === "shot" ? "Shot" : "Lost"}</b> vs. ${PP.crestTag(opp)}, ${c.date ? PP.dateLong(c.date) : ""}</button>`; }).join("");
   const partners = pr.length ? `<div class="partners"><h3 class="r-heading">Most valuable connections</h3><p class="r-small">Completed passes with each teammate, either way, and the value those passes added in ${s.year}.</p>
       ${(() => { const mx = Math.max(...pr.map(p => Math.abs(p[3]))); return pr.map(p => `<a class="prow" href="#player-${p[0]}"><span class="nm">${esc(p[1])}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[3])/mx*100)}%;background:${p[3]>=0?"var(--turf)":"var(--flare)"}"></i></span><span class="v num">${sgn(p[3])}</span><span class="r-small">${PP.int(p[2])} passes</span></a>`).join(""); })()}</div>` : "";
   const chains = ch.length ? `<div class="pchains"><div class="fig-cap"><h3 class="r-heading">Possessions shaped most</h3><button type="button" class="btn-text" id="pplay">Play the chain</button></div>
@@ -458,7 +458,7 @@ function drawMatches(el){
   const move = e => { const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n-1, Math.round((e.clientX-r.left-m.l)/iw*(n-1)))), x = ms[i];
     cross.setAttribute("x1", sx(i)); cross.setAttribute("x2", sx(i)); cross.setAttribute("opacity", 1);
     const opp = teams[x[1]] || "", [h, a] = String(x[3]||"").split(":"), us = x[2] ? h : a, them = x[2] ? a : h;
-    PP.showTip(`<b>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}, ${x[2]?"v":"at"} ${esc(short(opp))}</b>${us!=null&&them!=null?` (${us}–${them})`:""}<br>${PP.int(x[4])} minutes, ${sgn(x[5],3)} goals<br>Running total ${sgn(run[i],2)}`, e.clientX, e.clientY); };
+    PP.showTip(`<b>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}, ${x[2]?"vs.":"at"} ${esc(short(opp))}</b>${us!=null&&them!=null?` (${us}–${them})`:""}<br>${PP.int(x[4])} minutes, ${sgn(x[5],3)} goals<br>Running total ${sgn(run[i],2)}`, e.clientX, e.clientY); };
   ov.addEventListener("pointermove", move); ov.addEventListener("pointerdown", move);
   ov.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); PP.hideTip(); });
 }
@@ -532,7 +532,7 @@ function detailSection(){
   const seasonRows = rec.seasons.slice().sort((a,b) => b.year - a.year).map(x => `<tr><td>${x.year}</td><td>${PP.crestTag(x.team)}</td><td>${posSing(x.pos)}</td><td class="n">${PP.int(x.mins)}</td>
     <td class="n">${x.rating!=null?sgn(x.rating):x.gk&&x.gk.skill!=null?sgn(x.gk.skill):"–"}</td><td class="n">${x.lo!=null?`${num(x.lo)} to ${num(x.hi)}`:x.gk&&x.gk.skill_lo!=null?`${num(x.gk.skill_lo)} to ${num(x.gk.skill_hi)}`:"–"}</td><td class="n">${x.p90!=null?num(x.p90,3):"–"}</td><td class="n">${x.attack!=null?sgn(x.attack):"–"}</td><td class="n">${x.defence!=null?sgn(x.defence):"–"}</td>
     <td>${PP.SLOT[x.slot]||x.slot||"–"}</td><td class="n">${x.moved_to ? `<span class="r-small">Moved to ${esc(short(x.moved_to))}</span>` : x.pay_at ? (x.pay_season ? money(x.pay_season) : "–") : x.comp ? money(x.comp) : "–"}</td><td class="n">${x.slot_value!=null?sgn(x.slot_value):"–"}</td><td class="n">${x.conv&&x.conv.goals!=null?x.conv.goals:"–"}</td><td class="n">${x.conv&&x.conv.shots!=null?x.conv.shots:"–"}</td></tr>`).join("");
-  const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${teams[x[1]] ? PP.crestTag(teams[x[1]]) : ""}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
+  const ms = (s.matches||[]).slice().reverse().map(x => { const [h,a] = String(x[3]||"").split(":"); return `<tr><td>${new Date(`${s.year}-${x[0]}T12:00:00Z`).toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"vs.":"at"} ${teams[x[1]] ? PP.crestTag(teams[x[1]]) : ""}</td><td class="n">${h??""}–${a??""}</td><td class="n">${PP.int(x[4])}</td><td class="n">${sgn(x[5],3)}</td></tr>`; }).join("");
   const keys = ST.peers.components.map(c => c.key);
   const sk = s.skills ? SKILL_ORDER.filter(k => keys.includes(k)).map(k => { const v = s.skills[keys.indexOf(k)]; return `<tr><td>${COMP[k][0]}</td><td class="n">${sgn(v[1],4)}</td><td class="n">${v[0]!=null?pctile(v[0]):"–"}</td><td class="n">${v[2]!=null?v[2].toFixed(2):"–"}</td></tr>`; }).join("") : "";
   const ry = ST.peers.reliability_years || [];

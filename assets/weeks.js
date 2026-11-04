@@ -9,9 +9,9 @@ PP.loadRounds = () => iP || (iP = fetch("data/matchdays/index.json").then(r => r
 PP.loadRound = n => wkP[n] || (wkP[n] = fetch(`data/matchdays/md${String(n).padStart(2,"0")}.json`).then(r => { if(!r.ok) throw new Error(`matchday ${n} returned ${r.status}`); return r.json(); }));
 PP.latestRound = I => (I.matchdays.filter(w => w.complete).slice(-1)[0] || I.matchdays.slice(-1)[0]);
 PP.roundOfMatch = (I, id) => (I.matchdays.find(w => w.matches.includes(+id)) || {}).md;
-const dm = d => new Date(d+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"});
+const dm = d => new Date(d+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"});
 PP.weekRange = w => { if(w.first === w.last) return dm(w.first); const a = dm(w.first).split(" "), b = dm(w.last); return a[1] === b.split(" ")[1] ? `${a[0]} to ${b}` : `${dm(w.first)} to ${b}`; };
-const POSW = {CB:"centre back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
+const POSW = {CB:"center back", FB:"fullback", CM_DM:"central midfielder", AM:"attacking midfielder", W:"winger", ST:"striker", GK:"keeper"};
 const surname = n => { const p = String(n||"").split(" "); return p.length > 1 ? p.slice(1).join(" ") : (n||""); };
 const mlab = r => `${esc(short(r.home))} ${r.g[0]}–${r.g[1]} ${esc(short(r.away))}`;
 let CH = null, chFocus = null;
@@ -55,12 +55,12 @@ function render(main, I, W, meta){
   const cardP = (label, head, body, href) => `<div class="award" data-href="${href}" role="link" tabindex="0"><span class="r-label">${label}</span><b>${head}</b><span class="r-small">${body}</span></div>`;
   const aw = [];
   if(W.performance){ const p = W.performance, r = R[p.match]; aw.push(cardP("Performance of the matchday", PP.plink(p.id, p.player), `${sgn(p.value,2)} goals above replacement in ${PP.int(p.mins)} minutes${r ? `, ${mlab(r)}` : ""}.`, `#match-${p.match}`)); }
-  if(W.upset){ const r = R[W.upset.match], w = r.g[0] > r.g[1] ? r.home : r.away; aw.push(card("Upset of the matchday", `${esc(short(w))} win`, `${mlab(r)}. Before kickoff they had a ${pct(W.upset.p)} chance of winning${r.pre && r.pre[3] === "recorded" ? ", as recorded" : r.pre && r.pre[3] === "reconstructed" ? " (reconstructed)" : ""}.`, `#match-${W.upset.match}`)); }
-  if(W.robbery){ const r = R[W.robbery.match], w = r.g[0] > r.g[1] ? r.home : r.away; aw.push(card("Against the run of play", `${esc(short(w))} win anyway`, `${mlab(r)}, from ${num(r.xg[0],1)} expected goals to ${num(r.xg[1],1)}. On those chances they win ${pct(W.robbery.p)} of the time.`, `#match-${W.robbery.match}`)); }
+  if(W.upset){ const r = R[W.upset.match], w = r.g[0] > r.g[1] ? r.home : r.away; aw.push(card("Upset of the matchday", `${esc(short(w))} wins`, `${mlab(r)}. Before kickoff they had a ${pct(W.upset.p)} chance of winning${r.pre && r.pre[3] === "recorded" ? ", as recorded" : r.pre && r.pre[3] === "reconstructed" ? " (reconstructed)" : ""}.`, `#match-${W.upset.match}`)); }
+  if(W.robbery){ const r = R[W.robbery.match], w = r.g[0] > r.g[1] ? r.home : r.away; aw.push(card("Against the run of play", `${esc(short(w))} wins anyway`, `${mlab(r)}, from ${num(r.xg[0],1)} expected goals to ${num(r.xg[1],1)}. On those chances they win ${pct(W.robbery.p)} of the time.`, `#match-${W.robbery.match}`)); }
   if(W.club) aw.push(card("Club of the matchday", esc(full(W.club.team)), `${sgn(W.club.xgd,2)} expected-goal difference in ${W.club.n === 1 ? "one match" : `${W.club.n} matches`}, the best this matchday.`, `#team-${PP.slug(W.club.team)}`));
   if(W.chances){ const r = R[W.chances.match]; aw.push(card("Most chances", mlab(r), `${num(W.chances.xg,1)} expected goals between them, the most in any match this matchday.`, `#match-${W.chances.match}`)); }
   const res = W.matches.map(id => { const r = R[id]; if(!r) return ""; const win = r.g[0] > r.g[1] ? 0 : r.g[1] > r.g[0] ? 2 : 1;
-    const note = win === 1 ? `On the chances a draw ${pct(r.xg_probs[1])}` : `On the chances, ${esc(short(win === 0 ? r.home : r.away))} win ${pct(r.xg_probs[win])}`;
+    const note = win === 1 ? `On the chances a draw ${pct(r.xg_probs[1])}` : `On the chances, ${esc(short(win === 0 ? r.home : r.away))} wins ${pct(r.xg_probs[win])}`;
     return `<a class="fx fxl fxp" href="#match-${id}"><span class="score num">${r.g[0]}–${r.g[1]}</span><div class="teams"><span>${clubTag(r.home, true)}</span><span>${clubTag(r.away, true)}</span></div>
       <div class="xgpair num"><span>xG ${num(r.xg[0],2)}</span><span>xG ${num(r.xg[1],2)}</span></div><div class="stake r-small">${note}</div></a>`; }).join("");
   const mv = W.movers, mvList = (arr, up) => arr.map(x => `<div class="wkmv"><a href="#team-${PP.slug(x[0])}">${chip(x[0])}${esc(short(x[0]))}</a><span class="num">${pct(x[1])}</span><span class="num ${up?"pos":"neg"}"><span class="tri ${up?"up":"down"}" aria-hidden="true"></span>${Math.abs(Math.round(x[2]*100))} points</span></div>`).join("");
@@ -70,7 +70,7 @@ function render(main, I, W, meta){
       <figure style="margin:0;display:grid;gap:var(--s-3)"><div class="fig-cap"><span class="legend"><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain"></line></svg>Pass</span><span><svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="chain carry"></line></svg>Carry</span></span><button type="button" class="btn-text" id="wkplay">Play the chain</button></div>
       <div class="chart" id="wkpitch"></div><div class="chart" id="wksteps"></div></figure></div></section>` : "";
   const left = (meta.scheduled || meta.n) - meta.n;
-  const moved = (W.moved || []).map(([id, o]) => { const r = R[id]; return r ? `${esc(short(r.home))} v ${esc(short(r.away))} (rescheduled from Matchday ${o})` : ""; }).filter(Boolean);
+  const moved = (W.moved || []).map(([id, o]) => { const r = R[id]; return r ? `${esc(short(r.home))} vs. ${esc(short(r.away))} (rescheduled from Matchday ${o})` : ""; }).filter(Boolean);
   main.innerHTML = `<div class="wrap"><section class="pid"><span class="kicker">The matchday in review</span><h1 class="r-name">Matchday ${meta.md}</h1>
       <p class="r-note standfirst">${esc(PP.weekRange(meta))}: ${meta.n === 1 ? "one match" : `${PP.int(meta.n)} matches`}${W.complete ? "" : ` so far, ${left === 1 ? "one" : PP.int(left)} still to play`}${moved.length ? `, including ${moved.join(" and ")}` : ""}. Every player is valued by what he added in his minutes, against a replacement-level player at the same position: the same measure as the season ratings, added up for the matchday.</p>${nav}</section></div>
     <div class="wrap"><section class="plate pplate" aria-label="Player and team of the matchday">${potw}

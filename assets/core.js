@@ -23,15 +23,15 @@ PP.pctile = p => p>=0.995 ? "top" : p<0.005 ? "bottom" : PP.ord(Math.round(p*100
 PP.WORDS = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
 PP.ordWord = n => (["","first","second","third","fourth","fifth","sixth","seventh","eighth","ninth","tenth","eleventh","twelfth"][n]) || PP.ord(n);
 PP.money = v => v==null ? "–" : v>=1e6 ? "$"+(v/1e6).toFixed(v>=1e7?1:2).replace(/\.?0+$/,"")+"m" : "$"+Math.round(v).toLocaleString("en-US");
-PP.dateLong = iso => new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"});
-PP.kick = iso => { // "2026-10-10T17:00Z" -> {day:"Saturday 10 October", time:"1:00 pm ET"}
+PP.dateLong = iso => new Date(iso+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"});
+PP.kick = iso => { // "2026-10-10T17:00Z" -> {day:"Saturday October 10", time:"1:00 pm ET"}
   const d=new Date(iso.replace("Z",":00Z")); if(isNaN(d)) return null;
-  const day=d.toLocaleDateString("en-GB",{weekday:"long",month:"long",day:"numeric",timeZone:"America/New_York"}).replace(",", "");
-  const time=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"}).replace(" AM"," am").replace(" PM"," pm");
+  const day=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",timeZone:"America/New_York"});
+  const time=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
   return {day, time:time+" ET", date:d};
 };
-PP.POS = {GK:"Goalkeeper",CB:"Centre back",FB:"Fullback",CM_DM:"Central midfielder",AM:"Attacking midfielder",W:"Winger",ST:"Striker"};
-PP.POSPL = {GK:"goalkeepers",CB:"centre backs",FB:"fullbacks",CM_DM:"central midfielders",AM:"attacking midfielders",W:"wingers",ST:"strikers"};
+PP.POS = {GK:"Goalkeeper",CB:"Center back",FB:"Fullback",CM_DM:"Central midfielder",AM:"Attacking midfielder",W:"Winger",ST:"Striker"};
+PP.POSPL = {GK:"goalkeepers",CB:"center backs",FB:"fullbacks",CM_DM:"central midfielders",AM:"attacking midfielders",W:"wingers",ST:"strikers"};
 PP.SLOT = {"DP":"Designated Player","U22":"U22 Initiative","TAM/GAM":"TAM / GAM","Senior":"Senior roster","Supplemental":"Supplemental roster","Homegrown":"Homegrown"};
 
 /* ---------- clubs ---------- */
@@ -43,7 +43,7 @@ PP.full = t => PP.FULL[t] || t;
 PP.slug = t => PP.short(t).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 PP.teamBySlug = s => Object.keys(PP.CLUB).find(t => PP.slug(t)===s);
 
-/* colour maths (OKLab), kit-safe club colours per theme */
+/* color maths (OKLab), kit-safe club colors per theme */
 const hexRgb = h => {h=h.replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255);};
 const s2l = c => c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4);
 const l2s = c => {c=Math.max(0,Math.min(1,c)); return c<=0.0031308 ? 12.92*c : 1.055*Math.pow(c,1/2.4)-0.055;};
@@ -62,7 +62,7 @@ PP.kit = team => {
   return kitCache[key] = x;
 };
 PP.labDist = (a, b) => { const x = toLab(a), y = toLab(b); return Math.hypot(x[0]-y[0], x[1]-y[1], x[2]-y[2]); };
-/* head-to-head colours: home keeps its kit; an away kit too close to it is lightened toward the ground */
+/* head-to-head colors: home keeps its kit; an away kit too close to it is lightened toward the ground */
 PP.pairKit = (home, away) => { const h = PP.kit(home), a = PP.kit(away); return PP.labDist(h, a) < 0.12 ? [h, PP.mix(a, PP.tok("--paper"), 0.5), true] : [h, a, false]; };
 // touch screens have no hover: instructions say "tap" there (2026-11-03)
 PP.touch = matchMedia("(hover: none)").matches; PP.HOVER = PP.touch ? "Tap" : "Hover"; PP.hover = PP.touch ? "tap" : "hover";
@@ -157,7 +157,7 @@ PP.loadRoles = () => roleP || (roleP = fetch("data/roles.json").then(r => r.ok ?
    club injury lists, and the league's availability report for questionable players) marks names in the rankings */
 let injP = null;
 PP.loadInjuries = () => injP || (injP = fetch("data/injuries.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => (PP.data.inj = d)));
-PP.dayShort = iso => iso ? new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "";
+PP.dayShort = iso => iso ? new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "";
 PP.injStatus = (id, year) => { const I = PP.data.inj; return I && +year === I.season ? (I.status || {})[id] || null : null; };
 PP.injTip = st => {
   const I = PP.data.inj || {}, bits = [`${st.s === "q" ? "Questionable" : "Out"}: ${st.r}`];
@@ -168,7 +168,7 @@ PP.injTip = st => {
 };
 PP.INJ_SVG = '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z" fill="currentColor"/></svg>';
 PP.injMark = (id, year) => { const st = PP.injStatus(id, year); if(!st) return ""; const t = PP.esc(PP.injTip(st)); return `<span class="injm ${st.s === "q" ? "q" : "out"}" role="img" aria-label="${t}" data-tip="${t}">${PP.INJ_SVG}</span>`; };
-PP.ROLE_POS = {CB:"centre backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
+PP.ROLE_POS = {CB:"center backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
 // {label, tip} for a player-season, or null (no role shown: under 900 minutes, or his top role is not one the site shows)
 PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.players[`${id}|${year}|${team}`]; if(!x || x[0] === "none") return null;
   const defs = R.roles[pos] || [], shown = defs.filter(d => d.shown), by = Object.fromEntries(defs.map(d => [d.role, d]));
@@ -196,12 +196,12 @@ PP.loadPhoto = async id => { const n = (await PP.loadImages()).photo_shards; if(
   return (await photoP[u])[String(id)] || null; };
 PP.headshot = (src, team, size) => src ? `<span class="hshot" style="--c:${PP.kit(team)};width:${size}px;height:${size}px"><img src="${src}" alt="" decoding="async"></span>` : "";
 PP.crestImg = (team, size) => { const u = PP.data.images && PP.data.images.crests[team]; return u ? `<img class="crest" src="${u}" alt="" width="${size}" height="${size}">` : ""; };
-/* a club's crest wherever the site names it, or its colour chip if there is no crest (owner, 2026-10-15) */
+/* a club's crest wherever the site names it, or its color chip if there is no crest (owner, 2026-10-15) */
 PP.crestURL = team => (PP.data.images && PP.data.images.crests[team]) || (PP.data.crestsSmall && PP.data.crestsSmall[team]) || null;
 PP.crestOr = (team, size) => PP.crestImg(team, size || 16) || PP.chip(team);
 PP.crestTag = (team, full, size) => `<span class="club">${PP.crestOr(team, size)}${PP.esc(full ? PP.full(team) : PP.short(team))}</span>`;
 /* every club chip shows the club's crest (owner, 2026-10-15): one stylesheet paints each i.chip[data-team] from
-   data/crests_small.json, so chips drawn before it loads change too; a club without a crest keeps its colour */
+   data/crests_small.json, so chips drawn before it loads change too; a club without a crest keeps its color */
 let crP = null;
 PP.loadCrests = () => crP || (crP = fetch("data/crests_small.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
   const c = d && d.crests; if(!c) return null; PP.data.crestsSmall = c;
@@ -213,7 +213,7 @@ PP.plink = (id, name, year) => id != null && id !== "" ? `<a class="plink" href=
 PP.svgA = (parent, id, year) => id != null && id !== "" ? PP.S("a", {href:`#player-${id}${year ? "-" + year : ""}`, class:"plink-svg"}, parent) : parent;
 PP.svgCrest = (parent, team, x, y, size) => { const u = PP.crestURL(team); return u ? PP.S("image", {href:u, x, y, width:size, height:size, class:"crest", preserveAspectRatio:"xMidYMid meet"}, parent) : null; };
 PP.loadMarket = () => mkP || (mkP = fetch("data/scouts/market.json").then(r => r.ok ? r.json() : null).catch(() => null).then(d => { d = d && !d.pending ? d : null; PP.data.market = d; return d; }));
-PP.contractText = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c || "").trim()); return m ? new Date(Date.UTC(+m[3], +m[2]-1, +m[1])).toLocaleDateString("en-GB", {month:"long", year:"numeric", timeZone:"UTC"}) : (c && c !== "-" ? String(c) : null); };
+PP.contractText = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c || "").trim()); return m ? new Date(Date.UTC(+m[3], +m[2]-1, +m[1])).toLocaleDateString("en-US", {month:"long", year:"numeric", timeZone:"UTC"}) : (c && c !== "-" ? String(c) : null); };
 PP.contractEnd = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c || "").trim()); return m ? Date.UTC(+m[3], +m[2]-1, +m[1]) : null; };
 PP.moveWords = x => x == null ? null : x >= 3 ? "Much more likely than most" : x >= 1.5 ? "More likely than most" : x >= 0.67 ? "About as likely as most" : "Less likely than most";
 

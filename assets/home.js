@@ -77,11 +77,11 @@ async function weekTeaser(){
 
 /* ---------------- edition line ---------------- */
 function dateline(H){
-  const d = new Date(H.as_of + "T12:00:00Z").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"}).replace(",", "");
-  if(H.season_over) return `${d}. The regular season is over: all ${H.played} matches played, results through ${PP.dateLong(H.data_through)}. The playoffs run from 18 November to MLS Cup on 18 December.`;
+  const d = new Date(H.as_of + "T12:00:00Z").toLocaleDateString("en-US",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
+  if(H.season_over) return `${d}. The regular season is over: all ${H.played} matches played, results through ${PP.dateLong(H.data_through)}. The playoffs run from November 18 to MLS Cup on December 18.`;
   const nxt = upcoming(H)[0], k = nxt && nxt.kickoff_utc ? PP.kick(nxt.kickoff_utc) : null;
   return `${d}. ${H.played} of ${H.played + H.remaining} regular-season matches played, results through ${PP.dateLong(H.data_through)}.` +
-    (nxt && k ? ` Next: ${esc(short(nxt.home))} v ${esc(short(nxt.away))}, ${k.day}, ${k.time}.` : "");
+    (nxt && k ? ` Next: ${esc(short(nxt.home))} vs. ${esc(short(nxt.away))}, ${k.day}, ${k.time}.` : "");
 }
 const upcoming = H => H.next.filter(m => m.kickoff_utc && new Date(m.kickoff_utc.replace("Z",":00Z")) > new Date(Date.now() - 2*3600e3));
 
@@ -91,18 +91,18 @@ function lead(H){
   const sorted = H.race.teams.slice().sort((a,b) => b.points - a.points);
   const first = sorted[0].team === o.team, gap = first ? sorted[0].points - sorted[1].points : null;
   const head = first
-    ? `${esc(short(o.team))} lead MLS by ${gap} points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`
-    : `${esc(short(o.team))} are ${PP.ordWord(o.pts_rank)} on points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`;
+    ? `${esc(short(o.team))} leads MLS by ${gap} points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`
+    : `${esc(short(o.team))} is ${PP.ordWord(o.pts_rank)} on points. On the chances they create and allow, they rank ${PP.ordWord(o.xgd_rank)}.`;
   const note = `They have scored ${Math.round(o.gf)} goals from chances worth ${o.xgf.toFixed(1)} and conceded ${Math.round(o.ga)} from chances worth ${o.xga.toFixed(1)}: a goal difference of ${sgn(o.gd,0)} where the chances added up to ${sgn(o.xgd,1)}. Keeper ${PP.plink(k.ws_player_id, k.player)} accounts for ${k.goals_prevented.toFixed(1)} of the goals saved (range ${num(k.lo,1)} to ${num(k.hi,1)}).`;
-  // the cup line reads the actual order (owner, 2026-10-09: it called this team favourites when it was second)
+  // the cup line reads the actual order (owner, 2026-10-09: it called this team favorites when it was second)
   const cup = H.race.teams.slice().sort((a,b) => b.p_champion - a.p_champion), cr = cup.findIndex(x => x.team === o.team);
   const cupLine = cr === 0
-    ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(o.team))} favourites for MLS Cup (${pct(t.p_champion)}).`
+    ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(o.team))} the favorite for MLS Cup (${pct(t.p_champion)}).`
     : `The playoff forecast, which weighs results and chances equally, gives ${esc(short(o.team))} a ${pct(t.p_champion)} chance of MLS Cup, ${PP.ordWord(cr + 1)} behind ${esc(short(cup[0].team))} (${pct(cup[0].p_champion)}).`;
   // the record chase (owner, 2026-10-15), while it is live: only for the points leader, between 2% and 98%, or once broken
   const rc = H.record_chase, N = n => PP.WORDS[n] || String(n);
   const recLine = !(rc && first && rc.team === o.team) ? "" : rc.points > rc.record
-    ? `${esc(short(o.team))} have broken the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
+    ? `${esc(short(o.team))} has broken the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
     : rc.points === rc.record && !rc.left
       ? `${esc(short(o.team))} finished level with the league record of ${rc.record} points (${esc(short(rc.holder))}, ${rc.holder_season}). `
     : rc.p_break >= 0.02 && rc.p_break <= 0.98
@@ -129,8 +129,8 @@ function lead(H){
    Since 2026-10-29 (owner: "Switch to playoff news on front page after the Nashville points record is settled") the record
    leads while the chase is open: the points leader has matches left and can still equal or break the record. Once it is
    settled (no matches left, or out of reach), the lead is the playoffs when the regular season is over (data/playoffs.json,
-   with one line on the record if it was broken or equalled), and results against chances before that. As before, a chase
-   that has never been plausible (under a 2% chance of even equalling it, e.g. early in a season) does not lead. */
+   with one line on the record if it was broken or equaled), and results against chances before that. As before, a chase
+   that has never been plausible (under a 2% chance of even equaling it, e.g. early in a season) does not lead. */
 const chaseOpen = rc => !!(rc && rc.pace && rc.pace.length) && rc.left > 0 && rc.points + 3 * rc.left >= rc.record
   && (rc.points >= rc.record || rc.p_tie_or_break >= 0.02);
 function leadBlock(H, P){
@@ -141,7 +141,7 @@ function leadBlock(H, P){
 }
 const cupLineFor = (H, team) => {
   const t = PP.byTeam[team] || {}, cup = H.race.teams.slice().sort((a,b) => b.p_champion - a.p_champion), cr = cup.findIndex(x => x.team === team);
-  return cr === 0 ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(team))} favourites for MLS Cup (${pct(t.p_champion)}).`
+  return cr === 0 ? `The playoff forecast, which weighs results and chances equally, makes ${esc(short(team))} the favorite for MLS Cup (${pct(t.p_champion)}).`
     : `The playoff forecast, which weighs results and chances equally, gives ${esc(short(team))} a ${pct(t.p_champion)} chance of MLS Cup, ${PP.ordWord(cr + 1)} behind ${esc(short(cup[0].team))} (${pct(cup[0].p_champion)}).`;
 };
 const NW = n => PP.WORDS[n] || String(n);
@@ -160,11 +160,11 @@ function waysTo(left, need, exact){
 function recordLead(H){
   const rc = H.record_chase, team = rc.team, T = esc(short(team)), b = rc.best_at_stage, yr = H.season;
   const holder = `${esc(short(rc.holder))} in ${rc.holder_season}`, broke = rc.points > rc.record, level = rc.points === rc.record;
-  const canBreak = rc.need <= 3 * rc.left;             // otherwise only equalling it is left (the lead shows while that is possible)
-  const head = broke ? (rc.left ? `${T} have broken the league points record` : `${T} finished with ${rc.points} points, a league record`)
-    : level ? (rc.left ? `${T} have equalled the league points record` : `${T} finished level with the league points record`)
-    : !canBreak ? `${T} need ${nPoints(rc.need - 1)} from their last ${lastN(rc.left)} to equal the league points record`
-    : `${T} need ${nPoints(rc.need)} from their last ${lastN(rc.left)} to break the league points record`;
+  const canBreak = rc.need <= 3 * rc.left;             // otherwise only equaling it is left (the lead shows while that is possible)
+  const head = broke ? (rc.left ? `${T} has broken the league points record` : `${T} finished with ${rc.points} points, a league record`)
+    : level ? (rc.left ? `${T} has equaled the league points record` : `${T} finished level with the league points record`)
+    : !canBreak ? `${T} needs ${nPoints(rc.need - 1)} from their last ${lastN(rc.left)} to equal the league points record`
+    : `${T} needs ${nPoints(rc.need)} from their last ${lastN(rc.left)} to break the league points record`;
   const isRecord = b && b.team === rc.holder && b.season === rc.holder_season && b.points === rc.record;
   const stage = !b || isRecord ? "" : rc.points > b.points ? `, the most any team has had after ${rc.played} matches since 2013 (the previous best: ${esc(short(b.team))}, ${b.points} in ${b.season})`
     : rc.points === b.points ? `, level with the most any team has had after ${rc.played} matches since 2013 (${esc(short(b.team))}, ${b.season})`
@@ -172,23 +172,23 @@ function recordLead(H){
   const chase = broke ? `The previous record was ${rc.record}, set by ${holder}.${rc.left ? ` They have ${nMatches(rc.left)} left.` : ""}`
     : level ? `The record is ${rc.record}, set by ${holder}.${rc.left ? ` One more point from their last ${lastN(rc.left)} breaks it; the forecast gives them a ${pct(rc.p_break)} chance.` : ""}`
     : !canBreak ? `The record is ${rc.record}, set by ${holder}. Breaking it is now out of reach; ${NW(rc.need - 1)} more ${rc.need - 1 === 1 ? "point" : "points"} would equal it, and the forecast gives them a ${pct(rc.p_tie_or_break)} chance.`
-    : `The record is ${rc.record}, set by ${holder}. ${cap(NW(rc.need))} more ${rc.need === 1 ? "point" : "points"} would break it and ${NW(rc.need - 1)} would equal it; the forecast gives them a ${pct(rc.p_break)} chance of breaking it and ${pct(rc.p_tie_or_break)} of at least equalling it.`;
-  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}).replace(",", "");
+    : `The record is ${rc.record}, set by ${holder}. ${cap(NW(rc.need))} more ${rc.need === 1 ? "point" : "points"} would break it and ${NW(rc.need - 1)} would equal it; the forecast gives them a ${pct(rc.p_break)} chance of breaking it and ${pct(rc.p_tie_or_break)} of at least equaling it.`;
+  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-US",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"});
   const fx = rc.fixtures.map(f => {
     const opp = f.at_home ? f.away : f.home, k = f.kickoff_utc ? PP.kick(f.kickoff_utc) : null, kit = PP.pairKit(f.home, f.away), [cW, cL] = f.at_home ? kit : [kit[1], kit[0]];
     return `<a class="rc-row" href="#match-${f.ws_match_id}">
       <span class="rc-when"><b>${f.kickoff_utc ? day(f.kickoff_utc) : PP.dateLong(f.date)}</b>${k ? `<span>${k.time}</span>` : ""}</span>
-      <span class="rc-opp">${f.at_home ? "v" : "at"} ${clubTag(opp)}</span>
+      <span class="rc-opp">${f.at_home ? "vs." : "at"} ${clubTag(opp)}</span>
       <span class="probs"><span class="pbar" role="img" aria-label="${T} win ${pct(f.p_win)}, draw ${pct(f.p_draw)}, defeat ${pct(f.p_loss)}"><i style="width:${f.p_win*100}%;background:${cW}"></i><i style="width:${f.p_draw*100}%;background:var(--mid)"></i><i style="width:${f.p_loss*100}%;background:${cL}"></i></span>
         <span class="plab"><span><b>${pctShort(f.p_win)}</b> win</span><span>${pctShort(f.p_draw)} draw</span><span><b>${pctShort(f.p_loss)}</b> defeat</span></span></span></a>`;
   }).join("");
   const pLevel = Math.max(0, rc.p_tie_or_break - rc.p_break), pShort = Math.max(0, 1 - rc.p_tie_or_break);
   const rows = broke || !rc.left ? [] : level
-    ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equalled", pLevel, rc.left === 1 ? "a defeat" : `${NW(rc.left)} defeats`]]
-    : !canBreak ? [[`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
+    ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equaled", pLevel, rc.left === 1 ? "a defeat" : `${NW(rc.left)} defeats`]]
+    : !canBreak ? [[`${rc.need - 1}`, `${rc.record}`, "Equaled", pLevel, waysTo(rc.left, rc.need - 1, true)],
        ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])]
     : [[`${rc.need} or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, rc.need)],
-       [`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
+       [`${rc.need - 1}`, `${rc.record}`, "Equaled", pLevel, waysTo(rc.left, rc.need - 1, true)],
        ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])];
   const table = rows.length ? `<table class="mini-table rc-table"><thead><tr><th>${rc.left === 1 ? "Points from the last match" : `Points from the last ${NW(rc.left)}`}</th><th class="n">Final total</th><th>Record</th><th class="n">Chance</th></tr></thead>
     <tbody>${rows.map(r => `<tr><td>${r[0]}${r[4] ? `<span class="r-small rc-ways">${esc(cap(r[4]))}</span>` : ""}</td><td class="n">${r[1]}</td><td>${r[2]}</td><td class="n">${pct(r[3])}</td></tr>`).join("")}</tbody></table>` : "";
@@ -199,7 +199,7 @@ function recordLead(H){
   return `<article class="lead" aria-labelledby="lead-h">
     <span class="kicker">The points record</span>
     <h2 id="lead-h">${head}</h2>
-    <p class="r-note">${T} have ${rc.points} points from ${rc.played} matches${stage}. ${chase}</p>
+    <p class="r-note">${T} has ${rc.points} points from ${rc.played} matches${stage}. ${chase}</p>
     <p class="r-note" style="color:var(--ink-2)"><span id="cupline">${cupLineFor(H, team)}</span></p>
     <div class="lead-figs rc-figs">
       <figure style="margin:0"><div class="fig-cap"><span class="r-label">Points after each match: ${T} ${yr} and the highest totals since 2013</span><span class="r-small">From match ${Math.max(1, rc.played - 16)}; shaded: ${T}'s likely finish (the middle 80%)</span></div>${legend}<div class="chart" id="rcpace"></div></figure>
@@ -214,7 +214,7 @@ function recordLead(H){
 
 /* ---------------- lead: the playoffs (owner, 2026-10-29: "Switch to playoff news on front page after the Nashville points record
    is settled"). From data/playoffs.json (172), which the matchday refresh keeps current: the latest result, what comes next
-   and the favourites, with one line on the points record if the leader broke or equalled it. ---------------- */
+   and the favorites, with one line on the points record if the leader broke or equaled it. ---------------- */
 const PO_RND = {wild_card:"the wild card", round_one:"Round One", conf_semi:"the conference semifinals", conf_final:"the conference final", cup:"MLS Cup"};
 const PO_NEXT = {wild_card:"Round One", round_one:"the conference semifinals", conf_semi:"the conference final", conf_final:"MLS Cup"};
 const poScore = m => {
@@ -236,7 +236,7 @@ function poLead(H, P){
   const nx = (P.next || []).map(id => M[id]).filter(Boolean)[0];
   const when = m => { if(!m.time_confirmed) return "date to be confirmed"; const k = PP.kick(m.kickoff_utc); return k ? `${k.day}, ${k.time}` : ""; };
   const side = c => c ? esc(short(c)) : "a club to be decided";
-  const next = nx ? ` Next: ${side(nx.home)} v ${side(nx.away)}, ${nx.round === "round_one" ? `Round One, game ${nx.game}` : PO_RND[nx.round].replace(/^the /, "")}, ${when(nx)}.` : "";
+  const next = nx ? ` Next: ${side(nx.home)} vs. ${side(nx.away)}, ${nx.round === "round_one" ? `Round One, game ${nx.game}` : PO_RND[nx.round].replace(/^the /, "")}, ${when(nx)}.` : "";
   let kicker = "The playoffs", head, body, fig;
   if(P.phase === "complete"){
     const cup = done.filter(m => m.round === "cup").slice(-1)[0];
@@ -246,7 +246,7 @@ function poLead(H, P){
     const path = done.filter(m => m.home === P.champion || m.away === P.champion);
     fig = path.length ? `<figure style="margin:0"><div class="fig-cap"><span class="r-label">${esc(short(P.champion))}'s playoffs</span><span class="r-small">With the forecast written down before kickoff</span></div><div class="fixtures">${path.map(m => PP.poPastRow(m, P)).join("")}</div></figure>` : "";
   } else if(!last){
-    head = f ? `The playoff field is set: ${esc(short(f.team))} are favourites for MLS Cup` : "The playoff field is set";
+    head = f ? `The playoff field is set: ${esc(short(f.team))} is the favorite for MLS Cup` : "The playoff field is set";
     body = `${N} clubs are in.${f ? ` The forecast gives ${esc(short(f.team))} a ${pct(f.p_champion)} chance of winning MLS Cup${g ? `, ahead of ${esc(short(g.team))} (${pct(g.p_champion)})` : ""}.` : ""}${next}`;
     const seeds = c => { const s = ((P.bracket || {})[c] || {}).seeds || {};
       return Object.keys(s).sort((a,b) => a - b).map(k => `<tr><td class="n">${k}</td><td>${clubTag(s[k], true)}</td></tr>`).join(""); };
@@ -259,12 +259,12 @@ function poLead(H, P){
     if(!W) head = `${esc(short(last.home))} and ${esc(short(last.away))} were level after 90 minutes; the shoot-out result is still to come`;
     else if(out){ head = `${esc(short(W))} knock out ${esc(short(L))}`; if(PO_NEXT[last.round]) ctx = `, so ${esc(short(W))} ${last.round === "conf_final" ? "reach MLS Cup" : `go through to ${PO_NEXT[last.round]}`}`; }
     else {
-      head = `${esc(short(W))} win game ${last.game} against ${esc(short(L))}`;
+      head = `${esc(short(W))} wins game ${last.game} against ${esc(short(L))}`;
       const s = done.filter(m => m.round === "round_one" && [m.home, m.away].includes(W) && [m.home, m.away].includes(L));
       const a = s.filter(m => m.winner === W).length, b = s.filter(m => m.winner === L).length;
-      ctx = a === b ? `; the series is level at ${a}–${b}` : `; ${esc(short(a > b ? W : L))} lead the series ${Math.max(a, b)}–${Math.min(a, b)}`;
+      ctx = a === b ? `; the series is level at ${a}–${b}` : `; ${esc(short(a > b ? W : L))} leads the series ${Math.max(a, b)}–${Math.min(a, b)}`;
     }
-    body = `${poScore(last)}${ctx}. ${N} clubs are still in${f ? `, and ${esc(short(f.team))} are favourites for MLS Cup at ${pct(f.p_champion)}` : ""}.${next}`;
+    body = `${poScore(last)}${ctx}. ${N} clubs are still in${f ? `, and ${esc(short(f.team))} is the favorite for MLS Cup at ${pct(f.p_champion)}` : ""}.${next}`;
     fig = `<figure style="margin:0"><div class="fig-cap"><span class="r-label">Latest results</span><span class="r-small">With the forecast written down before kickoff</span></div><div class="fixtures">${done.slice(-4).reverse().map(m => PP.poPastRow(m, P)).join("")}</div></figure>`;
   }
   const rec = recordNote(H.record_chase);
@@ -357,10 +357,10 @@ function placesLead(H){
         [out.filter(x => !x.eliminated), "All but out", gone], [out.filter(x => x.eliminated), "Eliminated", null]].filter(([a]) => a.length)
         .map(([a, lab, say]) => `<span><b>${lab}:</b> ${say ? group(a, say) : names(a)}</span>`).join("")}</div></div>`;
   };
-  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}).replace(",", "");
+  const day = iso => new Date(iso.replace("Z",":00Z")).toLocaleDateString("en-US",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"});
   const dec = B.deciders.map(d => { const k = d.kickoff_utc ? PP.kick(d.kickoff_utc) : null;
     return `<a class="pl-dec" href="#match-${d.ws_match_id}"><span class="pl-when"><b>${k ? day(d.kickoff_utc) : PP.dateLong(d.date)}</b>${k ? ` ${k.time}` : ""}</span>
-      <span class="pl-teams">${esc(short(d.home))} v ${esc(short(d.away))}</span>
+      <span class="pl-teams">${esc(short(d.home))} vs. ${esc(short(d.away))}</span>
       <span class="pl-stakes">${d.stakes.map(s => `<span><b>${esc(short(s.team))}</b>: ${pct(s.if_win)} with a win, ${pct(s.if_loss)} with a defeat</span>`).join("")}</span></a>`; }).join("");
   return `<article class="lead lead-2" id="places" aria-labelledby="places-h">
     <span class="kicker">The last playoff places</span>
@@ -617,7 +617,7 @@ function drawRace(el){
   S("rect",{x:sx(n-5),y:m.t,width:sx(n-1)-sx(n-5),height:ih,fill:"var(--paper)"},svg);
   text(svg, sx(n-1)-5, m.t+ih-6, narrow ? "4 wks" : "Last 4 weeks", "t-axis halo", {"text-anchor":"end"});
   [0,.25,.5,.75,1].forEach(v => { S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, m.l-8, sy(v)+4, Math.round(v*100)+"%", "t-axis", {"text-anchor":"end"}); });
-  dates.forEach((s,i) => { if(i % 4 === 0 || i === n-1) text(svg, sx(i), Ht-6, new Date(s+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor":i===n-1?"end":"middle"}); });
+  dates.forEach((s,i) => { if(i % 4 === 0 || i === n-1) text(svg, sx(i), Ht-6, new Date(s+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor":i===n-1?"end":"middle"}); });
   const col = t => t.move_playoffs >= 0.1 ? "var(--turf)" : t.move_playoffs <= -0.1 ? "var(--flare)" : "var(--ink-3)";
   const order = live.slice().sort((a,b) => Math.abs(a.move_playoffs) - Math.abs(b.move_playoffs));
   const paths = new Map();
@@ -636,7 +636,7 @@ function drawRace(el){
     let best = null, bd = 1e9; live.forEach(t => { const dd = Math.abs(sy(t.hist[i]) - y); if(dd < bd){ bd = dd; best = t; } });
     cross.setAttribute("x1", sx(i)); cross.setAttribute("x2", sx(i)); cross.setAttribute("opacity", 1);
     paths.forEach((p, k) => p.style.opacity = !best || k === best.team ? 1 : 0.25);
-    if(best) PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}: ${pct(best.hist[i])}<br>Now ${pct(best.p_playoffs)}, ${pp(best.move_playoffs)} points in four weeks`, e.clientX, e.clientY); };
+    if(best) PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(dates[i]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}: ${pct(best.hist[i])}<br>Now ${pct(best.p_playoffs)}, ${pp(best.move_playoffs)} points in four weeks`, e.clientX, e.clientY); };
   ov.addEventListener("pointermove", move); ov.addEventListener("pointerdown", move);
   ov.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); paths.forEach(p => p.style.opacity = 1); PP.hideTip(); });
 }
@@ -661,7 +661,7 @@ function chainBand(H){
       <div class="credits" aria-label="Credit by player">
         <span class="r-label" style="padding-bottom:6px">Who added what, in goals. Select a player to see his actions.</span>
         ${credits}
-        <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${PP.plink(first.id, first.player)}'s ${esc(first.action)}) counts toward defence and is not included here.`:""}</p>
+        <p class="r-small" style="padding-top:10px">A completed pass splits its value between passer and receiver.${c.regain_swing!=null?` Winning the ball back to start the move (${PP.plink(first.id, first.player)}'s ${esc(first.action)}) counts toward defense and is not included here.`:""}</p>
       </div>
     </div>
   </div></section>`;
@@ -710,7 +710,7 @@ function nextBand(H){
 /* ---------------- leaders ---------------- */
 function leadersBand(H){
   const L = H.leaders, d0 = Math.min(-1, ...L.map(p => p.lo ?? p.rating)), d1 = Math.max(...L.map(p => p.hi ?? p.rating));
-  const rows = L.map((p,i) => `<a class="lrow" href="#player-${p.ws_player_id}" data-tip="<b>${esc(p.player)}</b><br>${sgn(p.rating)} goals above replacement${p.lo!=null?`<br>90% range ${num(p.lo)} to ${num(p.hi)}`:""}<br>Attack ${sgn(p.attack)}, defence ${sgn(p.defence)}<br>${PP.int(p.mins)} minutes">
+  const rows = L.map((p,i) => `<a class="lrow" href="#player-${p.ws_player_id}" data-tip="<b>${esc(p.player)}</b><br>${sgn(p.rating)} goals above replacement${p.lo!=null?`<br>90% range ${num(p.lo)} to ${num(p.hi)}`:""}<br>Attack ${sgn(p.attack)}, defense ${sgn(p.defence)}<br>${PP.int(p.mins)} minutes">
       <span class="rk">${i+1}</span><span class="nm">${esc(p.player)}</span>
       <span class="val">${PP.ibar(p.rating, p.lo, p.hi, d0, d1)}<span style="min-width:42px;text-align:right">${sgn(p.rating)}</span></span>
       <span class="meta">${chip(p.team)}${esc(short(p.team))}, ${PP.POS[p.pos].toLowerCase()}</span></a>`).join("");

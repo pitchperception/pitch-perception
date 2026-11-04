@@ -43,14 +43,14 @@ function render(main){
 }
 
 function header(){
-  const D = R.D, d = new Date(D.as_of+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"});
+  const D = R.D, d = new Date(D.as_of+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"});
   if(R.final) return `<div class="wrap"><section class="pid"><h1 class="r-name">The final regular-season table</h1>
     <p class="r-note standfirst">The table at the end of the regular season, and the playoff odds as they stood on ${d}, before the first playoff match. This page is frozen.</p>
     <p class="dateline">Results through ${PP.dateLong(D.data_through)}. <a href="#race">The playoffs: today's chances, the bracket and the matches</a></p>
   </section></div>`;
   const fav = D.teams.slice().sort((a,b) => b.p_champion - a.p_champion)[0];
   return `<div class="wrap"><section class="pid"><h1 class="r-name">The playoff race</h1>
-    <p class="r-note standfirst">The rest of the season played out ${PP.int(D.sims)} times from today's team strengths, with lineup news where it exists. ${esc(short(fav.team))} are the most likely champions, at ${pct(fav.p_champion)}.</p>
+    <p class="r-note standfirst">The rest of the season played out ${PP.int(D.sims)} times from today's team strengths, with lineup news where it exists. ${esc(short(fav.team))} is the most likely champion, at ${pct(fav.p_champion)}.</p>
     <p class="dateline">Forecast of ${d}; results through ${PP.dateLong(D.data_through)}; ${D.remaining} regular-season matches left. Nine clubs per conference reach the playoffs; seeds one to four host a best-of-three Round One series.</p>
   </section></div>`;
 }
@@ -95,7 +95,7 @@ function drawTraj(el){
   const step = isP ? (y1 <= 0.4 ? 0.1 : 0.25) : 50;
   S("rect",{x:sx(n-5),y:m.t,width:sx(n-1)-sx(n-5),height:ih,fill:"var(--paper)"},svg);
   for(let v = y0; v <= y1+1e-9; v += step){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:Math.abs(v-y0)<1e-9?"g-base":"g-line"},svg); text(svg, m.l-8, sy(v)+4, isP ? Math.round(v*100)+"%" : PP.int(v), "t-axis", {"text-anchor":"end"}); }
-  const seen = {}; D.dates.forEach((d,i) => { const k = d.slice(0,7); if(!(k in seen)){ seen[k] = i; if(i > 0 && (!narrow || ["03","05","07","09"].includes(k.slice(5)))) text(svg, sx(i), H-6, new Date(k+"-15T12:00:00Z").toLocaleDateString("en-GB",{month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor":"middle"}); } });
+  const seen = {}; D.dates.forEach((d,i) => { const k = d.slice(0,7); if(!(k in seen)){ seen[k] = i; if(i > 0 && (!narrow || ["03","05","07","09"].includes(k.slice(5)))) text(svg, sx(i), H-6, new Date(k+"-15T12:00:00Z").toLocaleDateString("en-US",{month:"short",timeZone:"UTC"}), "t-axis", {"text-anchor":"middle"}); } });
   const mv = t => t.hist.p_playoffs[n-1] - t.hist.p_playoffs[n-5], col = t => R.sel ? (t.team === R.sel ? "var(--signal)" : "var(--ink-3)") : mv(t) >= 0.1 ? "var(--turf)" : mv(t) <= -0.1 ? "var(--flare)" : "var(--ink-3)";
   const strong = t => R.sel ? t.team === R.sel : Math.abs(mv(t)) >= 0.1;
   const paths = new Map();
@@ -114,7 +114,7 @@ function drawTraj(el){
     let best = null, bd = 1e9; ts.forEach(t => { const v = t.hist[key][i]; if(v == null) return; const dd = Math.abs(sy(v) - y); if(dd < bd){ bd = dd; best = t; } });
     cross.setAttribute("x1", sx(i)); cross.setAttribute("x2", sx(i)); cross.setAttribute("opacity", 1);
     paths.forEach((p,k) => p.style.opacity = !best || k === best.team ? 1 : 0.2);
-    if(best){ const v = best.hist[key][i]; PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(D.dates[i]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}: ${isP ? pct(v) : "Strength "+PP.int(v)}<br>Now ${isP ? pct(lastv(best)) : PP.int(lastv(best))}`, e.clientX, e.clientY); } };
+    if(best){ const v = best.hist[key][i]; PP.showTip(`<b>${esc(full(best.team))}</b><br>${new Date(D.dates[i]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}: ${isP ? pct(v) : "Strength "+PP.int(v)}<br>Now ${isP ? pct(lastv(best)) : PP.int(lastv(best))}`, e.clientX, e.clientY); } };
   ov.addEventListener("pointermove", move); ov.addEventListener("pointerdown", move);
   ov.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); paths.forEach(p => p.style.opacity = 1); PP.hideTip(); });
 }
@@ -130,7 +130,7 @@ function movers(){
       <span class="num mvv"><span class="tri ${x.mv>0?"up":"down"}" aria-hidden="true"></span>${PP.pp(x.mv)}</span>
       <span class="r-small">${form(x.form_4w)}; strength ${sgn(x.emv,0)}</span></div>`;
   return `<section class="band" id="movers" aria-labelledby="mv2-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="mv2-h">What changed in four weeks</h2><p>Playoff chances now against the forecast of ${new Date(ago+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",timeZone:"UTC"})}, with each club's results since. A club can also move without playing well or badly, when its rivals do.</p></div>
+    <div class="band-head"><h2 class="r-title" id="mv2-h">What changed in four weeks</h2><p>Playoff chances now against the forecast of ${new Date(ago+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"})}, with each club's results since. A club can also move without playing well or badly, when its rivals do.</p></div>
     <div class="movers2"><div><h3 class="r-heading">Rising</h3>${up.map(row).join("") || `<p class="r-small">No club gained.</p>`}</div><div><h3 class="r-heading">Falling</h3>${dn.map(row).join("") || `<p class="r-small">No club lost ground.</p>`}</div></div>
   </div></section>`;
 }
@@ -166,7 +166,7 @@ function matter(){
   if(!D.matter || !D.matter.length) return "";                         // no league match left
   const rows = D.matter.map(m => { const k = PP.kick(m.kickoff_utc);
     const side = s => m["stake_"+s] && m["if_win_"+s] != null ? `<div><b>${esc(short(m[s]))}</b>, ${STAKE(m["stake_"+s], conf(m[s])+"ern Conference")}: ${pct(m["if_win_"+s])} with a win, ${pct(m["if_loss_"+s])} with a defeat</div>` : "";
-    const dshort = k ? k.date.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}) : m.date;
+    const dshort = k ? k.date.toLocaleDateString("en-US",{weekday:"short",day:"numeric",month:"short",timeZone:"America/New_York"}) : m.date;
     return `<div class="fx fxl" data-href="#match-${m.ws_match_id}"><span class="time">${dshort}<br>${k ? k.time : ""}</span>
       <div class="teams"><a href="#team-${PP.slug(m.home)}" style="text-decoration:none">${clubTag(m.home, true)}</a><a href="#team-${PP.slug(m.away)}" style="text-decoration:none">${clubTag(m.away, true)}</a></div>
       <div class="probs"><div class="pbar" role="img" aria-label="${esc(short(m.home))} ${pct(m.pH)}, draw ${pct(m.pD)}, ${esc(short(m.away))} ${pct(m.pA)}"><i style="width:${m.pH*100}%;background:${PP.pairKit(m.home, m.away)[0]}"></i><i style="width:${m.pD*100}%;background:var(--mid)"></i><i style="width:${m.pA*100}%;background:${PP.pairKit(m.home, m.away)[1]}"></i></div>
@@ -210,7 +210,7 @@ function production(){
   const favR = all.slice().sort((a,b) => b.v.p_champion_results - a.v.p_champion_results)[0], favB = all.slice().sort((a,b) => b.v.p_champion - a.v.p_champion)[0];
   const t = P.test[P.model], ov = P.study.over, mx = Math.max(...top.map(x => Math.max(x.v.p_champion, x.v.p_champion_results)));
   const sx = v => `${(v / mx * 100).toFixed(1)}%`;
-  const lead = luck ? `${esc(full(luck.team))} have a goal difference of ${PP.sgn(luck.v.gd,0)} from chances worth ${PP.sgn(luck.v.xgd,0)}: ${Math.round(luck.v.gd - luck.v.xgd)} goals better than their shots and the shots against them suggest, the most in the league. A rating built only on results (Elo) takes that at face value and makes ${luck.team === favR.team ? "them clear favourites" : "them contenders"}: ${esc(short(favR.team))} ${pct(favR.v.p_champion_results)} to win MLS Cup.` : "";
+  const lead = luck ? `${esc(full(luck.team))} has a goal difference of ${PP.sgn(luck.v.gd,0)} from chances worth ${PP.sgn(luck.v.xgd,0)}: ${Math.round(luck.v.gd - luck.v.xgd)} goals better than their shots and the shots against them suggest, the most in the league. A rating built only on results (Elo) takes that at face value and makes ${luck.team === favR.team ? "them the clear favorite" : "them a contender"}: ${esc(short(favR.team))} ${pct(favR.v.p_champion_results)} to win MLS Cup.` : "";
   return `<section class="band" id="production" aria-labelledby="pr-h"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="pr-h">Results or chances?</h2>
       <p>${lead} The forecast on this page rates teams half on results and half on chances (expected goals), which makes it ${favB.team === favR.team ? `${esc(short(favB.team))} ${pct(favB.v.p_champion)}` : `${esc(short(favB.team))} ${pct(favB.v.p_champion)} and ${esc(short(favR.team))} ${pct(favR.v.p_champion)}`}.</p></div>
@@ -221,9 +221,9 @@ function production(){
       <p class="r-small" style="margin-top:var(--s-3)">Chance of winning MLS Cup under each rating, from the same simulation without lineup news, so the two are like for like.</p>
     </div>
     <div class="r-note" style="font-size:var(--t-15);display:grid;gap:var(--s-3);max-width:60ch">
-      <p><b>Why both?</b> We tested ratings built on chances against Elo, with the test fixed before it ran. On ${PP.int(P.n_dev)} matches from 2021–25, half results and half chances predicted results <span class="tipline" data-tip="${PP.esc(`Log loss ${PP.sgn(t.diff,4)} against Elo, 95% interval ${PP.sgn(t.ci[0],4)} to ${PP.sgn(t.ci[1],4)} (lower is better)`)}">slightly better than Elo</span>; chances alone did no better. On 2026 so far the two are level. The forecast switched to the half-and-half rating on 7 October 2026.</p>
+      <p><b>Why both?</b> We tested ratings built on chances against Elo, with the test fixed before it ran. On ${PP.int(P.n_dev)} matches from 2021–25, half results and half chances predicted results <span class="tipline" data-tip="${PP.esc(`Log loss ${PP.sgn(t.diff,4)} against Elo, 95% interval ${PP.sgn(t.ci[0],4)} to ${PP.sgn(t.ci[1],4)} (lower is better)`)}">slightly better than Elo</span>; chances alone did no better. On 2026 so far the two are level. The forecast switched to the half-and-half rating on October 7, 2026.</p>
       <p><b>Does over-performance last?</b> Partly, which is why results keep half the weight. After 27 games in 2021–25, the two biggest over-performers each season had averaged ${num(ov.ppg_first27,2)} points a game; they took ${num(ov.ppg_rest,2)} from the rest, still above the league's ${num(ov.league_rest_ppg,2)}.</p>
-      <p><b>Why ${esc(short(favR.team))} stay near the top either way:</b> points already won are banked. They bring the top seed and home advantage through the playoffs, whatever the rating.</p>
+      <p><b>Why ${esc(short(favR.team))} stays near the top either way:</b> points already won are banked. They bring the top seed and home advantage through the playoffs, whatever the rating.</p>
     </div></div>
   </div></section>`;
 }
@@ -237,8 +237,8 @@ function method(){
     <div class="band-head"><h2 class="r-title" id="rm-h">How the forecast works</h2></div>
     <div class="r-note" style="font-size:var(--t-15);display:grid;gap:var(--s-3);max-width:68ch">
       <p>Each remaining match is drawn from its scoreline probabilities: team strengths from a rating built half on results and half on chances (expected goals), with home advantage and margin, turned into expected goals with a Poisson model fitted on 2021–26. Where the starting lineups or the league's availability report are known, the expected goals for that match are adjusted for who plays. Strengths are held at today's values.</p>
-      <p>Ties are broken on wins, goal difference and goals for (MLS's later tiebreakers are not modelled). Each simulated season seeds its own bracket in the 2025 format: wild card between eighth and ninth, best-of-three Round One, single-match semifinals and finals at the better seed, extra time then penalties.</p>
-      ${ll["B1 Elo"] ? `<p>Tested on ${PP.int(b.n)} matches from 2021–25 it was not fitted on, the results-only version of the match model <span class="tipline" data-tip="${PP.esc(`Log loss ${ll["B1 Elo"].toFixed(3)} against ${ll["B0 base rates"].toFixed(3)} for the league's usual mix alone (lower is better)`)}">did better than simply going by the league's usual mix of home wins, draws and away wins</span>, but not by much: football results are hard to call. The half-and-half rating improves on it slightly (see above). The weekly history above is reconstructed: today's model, team strength only, refitted on the results known at each date. It shows what this model would have said then, not what was published; forecasts published since 9 October 2026 are in the <a href="#matches">live record</a> (<a href="#method-record">how we check it</a>).</p>` : ""}
+      <p>Ties are broken on wins, goal difference and goals for (MLS's later tiebreakers are not modeled). Each simulated season seeds its own bracket in the 2025 format: wild card between eighth and ninth, best-of-three Round One, single-match semifinals and finals at the better seed, extra time then penalties.</p>
+      ${ll["B1 Elo"] ? `<p>Tested on ${PP.int(b.n)} matches from 2021–25 it was not fitted on, the results-only version of the match model <span class="tipline" data-tip="${PP.esc(`Log loss ${ll["B1 Elo"].toFixed(3)} against ${ll["B0 base rates"].toFixed(3)} for the league's usual mix alone (lower is better)`)}">did better than simply going by the league's usual mix of home wins, draws and away wins</span>, but not by much: football results are hard to call. The half-and-half rating improves on it slightly (see above). The weekly history above is reconstructed: today's model, team strength only, refitted on the results known at each date. It shows what this model would have said then, not what was published; forecasts published since October 9, 2026 are in the <a href="#matches">live record</a> (<a href="#method-record">how we check it</a>).</p>` : ""}
     </div>
     ${disc("r-table", "Every club, every probability", `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Club</th><th>Conf.</th><th class="n">Pts</th><th class="n">Played</th><th class="n">Projected</th><th class="n">Range</th><th class="n">Playoffs</th><th class="n">Top 7</th><th class="n">1st</th><th class="n">Semis</th><th class="n">Conf. final</th><th class="n">Final</th><th class="n">Champion</th><th class="n">Shield</th></tr></thead><tbody>${rows}</tbody></table></div>`)}
   </div></section>`;

@@ -12,7 +12,7 @@ const loadStyles = () => stylesP || (stylesP = fetch("data/team_styles.json").th
 const loadLeague = () => leagueP || (leagueP = fetch("data/league.json").then(r => { if(!r.ok) throw new Error(`league.json returned ${r.status}`); return r.json(); }));
 const COMPL = {passing:"Passing",setpiece:"Set-piece delivery",carrying:"Carrying",dribbling:"Dribbling",shooting:"Shot selection",receiving:"Receiving",security:"Ball security",
   interceptions:"Interceptions",tackles:"Tackles",recoveries:"Loose-ball recoveries",clearances:"Clearances",blocks:"Blocks",aerials:"Aerials won",high_regains:"High regains",not_beaten:"Not dribbled past",fouls:"Fouls"};
-const POSG = {GK:"Goalkeepers",CB:"Defence",FB:"Defence",CM_DM:"Midfield",AM:"Midfield",W:"Attack",ST:"Attack"};
+const POSG = {GK:"Goalkeepers",CB:"Defense",FB:"Defense",CM_DM:"Midfield",AM:"Midfield",W:"Attack",ST:"Attack"};
 const STAKE = (s, conf) => ({"top 7":"a top-seven finish","playoffs":"the playoffs","1st in conference":`first place in the ${conf}`,"Supporters' Shield":"the Supporters' Shield","MLS Cup":"MLS Cup"}[s] || s);
 let T = null;
 
@@ -24,7 +24,7 @@ function strengthNote(race){
     <div class="disc" id="why-strength" aria-hidden="true"><div><div class="why-body" style="max-width:64ch">
       <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>What it represents.</b> How good each club is right now, on a scale where the league average is about 1,500. It works like an Elo rating in chess: a club gains points when it does better than expected and loses them when it does worse. Today it runs from ${PP.int(hi.elo)} (${esc(short(hi.team))}) to ${PP.int(lo.elo)} (${esc(short(lo.team))}). Before each match the two ratings, with 60 points added for the home side, set the result each side is expected to get: a 100-point edge means the stronger side is expected to take ${Math.round(exp(100)*100)}% of the result on offer, counting a draw as half a win.</p>
       <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>How it moves.</b> After each match, a club's result is counted half as what actually happened (win, draw or loss, and the margin) and half as what the chances would usually produce, from both sides' expected goals. A lucky win therefore earns less than a deserved one, and an unlucky defeat costs less. The bigger the surprise, the bigger the move, and wider margins count a little more. Each new season every rating moves a third of the way back to 1,500, because squads change; expansion clubs start at 1,450.</p>
-      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>How it is used.</b> Every match forecast and every simulation of the rest of the season starts from it; lineup news and the league's availability report then adjust each match. It replaced a rating built on results alone on 7 October 2026, after a test fixed in advance showed it predicted the 2021&ndash;25 matches slightly better. The <a href="#method">Method</a> page has the details.</p>
+      <p class="r-small" style="font-size:var(--t-13);color:var(--ink-2)"><b>How it is used.</b> Every match forecast and every simulation of the rest of the season starts from it; lineup news and the league's availability report then adjust each match. It replaced a rating built on results alone on October 7, 2026, after a test fixed in advance showed it predicted the 2021&ndash;25 matches slightly better. The <a href="#method">Method</a> page has the details.</p>
     </div></div></div></div>`;
 }
 
@@ -165,7 +165,7 @@ function whyTeam(){
   const s = T.s, nm = short(T.D.team), xr = rankOf("xgd_pg"), pr = rankOf("pts_pg");
   if(!xr || !pr) return "";
   const gd = s.gf - s.ga, xgd = s.xgf - s.xga, gap = gd - xgd;
-  let t = `${esc(nm)} have ${s.pts} points from ${s.games} matches (${PP.ord(pr.rank)} in MLS per match) and an expected-goal difference of ${sgn(s.xgd_pg,2)} per match (${PP.ord(xr.rank)}).`;
+  let t = `${esc(nm)} has ${s.pts} points from ${s.games} matches (${PP.ord(pr.rank)} in MLS per match) and an expected-goal difference of ${sgn(s.xgd_pg,2)} per match (${PP.ord(xr.rank)}).`;
   if(Math.abs(pr.rank - xr.rank) >= 6) t += pr.rank < xr.rank ? ` Their results are running well ahead of their chances: a goal difference of ${sgn(gd,0)} from chances worth ${sgn(xgd,1)}.` : ` Their results are lagging their chances: a goal difference of ${sgn(gd,0)} from chances worth ${sgn(xgd,1)}.`;
   else t += ` Their results and their chances tell the same story (goal difference ${sgn(gd,0)}, expected ${sgn(xgd,1)}).`;
   return t;
@@ -231,7 +231,7 @@ function piecesSection(){
     return `<a class="sqrow${gone?" gone":""}" href="#player-${p.id}-${s.year}" data-tip="${esc(`<b>${esc(p.name)}</b><br>${PP.POS[p.pos]||"Position not recorded"}, ${PP.int(p.mins)} minutes<br>${p.pos==="GK"?`${sgn(p.skill,1)} goals of shot-stopping`:`${sgn(p.rating)} goals above replacement`}${p.lo!=null?` (range ${num(p.lo,1)} to ${num(p.hi,1)})`:""}${p.pos==="GK"&&p.gp!=null?`<br>${sgn(p.gp,1)} goals prevented this season`:""}<br>${PP.SLOT[p.slot]||p.slot||"No contract type on record"}${p.comp?`, ${money(p.comp)}`:""}`)}">
       <span class="nm">${esc(p.name)}${PP.badgeMini(PP.badgesFor(p.id, s.year, T.D.team))}${hurt?PP.injMark(p.id, s.year):""}${off&&!hurt?` <span class="tag">out</span>`:""}${gone?` <span class="tag">left</span>`:""}</span><span class="r-small">${PP.int(p.mins)} min</span>
       <span class="dz"><span class="z"></span>${v!=null?`<span class="b ${v>=0?"pos":"neg"}" style="${v>=0?`left:50%;width:${v/M*50}%`:`left:${50+v/M*50}%;width:${-v/M*50}%`}"></span>`:""}</span><span class="num v">${v!=null?sgn(v,2):"–"}</span></a>`; };
-  const order = ["Goalkeepers","Defence","Midfield","Attack","Position not recorded"];
+  const order = ["Goalkeepers","Defense","Midfield","Attack","Position not recorded"];
   const sq = order.filter(g => groups[g]).map(g => { const tot = groups[g].map(val).filter(v => v != null).reduce((a,b)=>a+b,0);
     const main = groups[g].filter(p => p.mins >= 450), rest = groups[g].filter(p => p.mins >= 1 && p.mins < 450);
     return `<div class="sqgroup"><div class="sqhead"><span>${g}</span><span class="num">${sgn(tot,1)}</span></div>${main.map(row).join("")}${rest.length ? `<details class="sqmore"><summary>${rest.length} more under 450 minutes</summary>${rest.map(row).join("")}</details>` : ""}</div>`; }).join("");
@@ -257,11 +257,11 @@ function xiModes(){ const E = T.s.elevens || {}; return XIM.filter(([k]) => E[k]
 function xiView(){ const E = T.s.elevens || {}; if(!T.xiMode || !E[T.xiMode]) T.xiMode = E.current ? "current" : "season"; return E[T.xiMode]; }
 function xiLabel(){ const v = xiView(), f = v ? v.formation : T.s.formation;
   return `${{current: "Current eleven", season: "Most-used eleven", depth: "Depth chart"}[T.xiMode]}${f ? `, ${f}` : ""}`; }
-function xiCap(){ const v = xiView(), y = T.s.year; if(!v) return `Size and colour: value added in ${y}.`;
-  if(T.xiMode === "current") return `Recent matches count most: each match counts half as much as the one ${PP_WORDS[v.half_life] || v.half_life} matches later. A player's minutes count toward the nearest positions, whatever the formation. Size and colour: value added in ${y}.`;
-  if(T.xiMode === "season") return `Every ${y} regular-season minute counts the same, toward the nearest positions of the most-used formation (${Math.round((v.formation_share || 0) * 100)}% of minutes). Size and colour: value added in ${y}.`;
-  return `At each position: its player in the ${v.base === "current" ? "current" : "most-used"} eleven, then the players who started there most in ${y}, with their starts at that position (of ${v.n} matches). Colour: value added in ${y}.`; }
-const dShort = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"});
+function xiCap(){ const v = xiView(), y = T.s.year; if(!v) return `Size and color: value added in ${y}.`;
+  if(T.xiMode === "current") return `Recent matches count most: each match counts half as much as the one ${PP_WORDS[v.half_life] || v.half_life} matches later. A player's minutes count toward the nearest positions, whatever the formation. Size and color: value added in ${y}.`;
+  if(T.xiMode === "season") return `Every ${y} regular-season minute counts the same, toward the nearest positions of the most-used formation (${Math.round((v.formation_share || 0) * 100)}% of minutes). Size and color: value added in ${y}.`;
+  return `At each position: its player in the ${v.base === "current" ? "current" : "most-used"} eleven, then the players who started there most in ${y}, with their starts at that position (of ${v.n} matches). Color: value added in ${y}.`; }
+const dShort = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"});
 function drawXI(el){
   const s = T.s, v = xiView(), depth = T.xiMode === "depth", xi = depth ? [] : (v ? v.lineup : s.lineup) || [], W = Math.min(el.clientWidth, 760); if(!W) return;
   if(!(depth ? v && v.slots.length : xi.length)){ el.innerHTML = `<div class="missing"><b>Not available</b><span>No starting lineups on record for this season.</span></div>`; return; }
@@ -308,7 +308,7 @@ function drawXI(el){
 function injSection(){
   const I = PP.data.inj, s = T.s, y = String(s.year), tm = I && ((I.teams || {})[T.D.team] || {})[y];
   if(!tm) return "";                                                   // only club-seasons whose histories cover 80%+ of minutes
-  const dm = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})
+  const dm = iso => new Date(iso.slice(0,10)+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})
       + (iso.slice(0,4) === y ? "" : " " + iso.slice(0,4));          // the year, for dates outside the season shown
   const rows = (s.roster || []).map(p => { const sp = ((I.history || {})[p.id] || []).filter(x => x[4] === s.year && x[5] === T.D.team).sort((a,b) => a[0] < b[0] ? -1 : 1);
       return {p, sp, n: ((I.missed || {})[p.id] || {})[y] || 0}; }).filter(r => r.sp.length && (r.n || injHere(r.p.id))).sort((a,b) => b.n - a.n || (a.sp[0][0] < b.sp[0][0] ? -1 : 1));
@@ -424,7 +424,7 @@ function drawResults(el){
   ms.forEach((x,i) => { const cx = m.l+band*i+band/2, v = xd[i], res = x[3] > x[4] ? "W" : x[3] === x[4] ? "D" : "L";
     S("rect",{x:cx-bw/2,y:v>=0?bz-bs(v):bz,width:bw,height:Math.max(1,Math.abs(bs(v))),fill:v>=0?"var(--turf)":"var(--flare)",rx:1.5},svg);
     const cy = by - 12; S("circle",{cx,cy,r:Math.min(5, band*0.35),fill:res==="W"?"var(--ink)":res==="D"?"var(--paper)":"var(--paper)",stroke:res==="L"?"var(--ink-3)":"var(--ink)","stroke-width":res==="L"?1.5:1.5,"stroke-dasharray":res==="L"?"2 1.5":""},svg);
-    S("rect",{x:cx-band/2,y:m.t,width:band,height:H-m.t-m.b,class:"hit","data-tip":`<b>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}, ${x[2]?"v":"at"} ${esc(short(x[1]))}</b><br>${x[3]}–${x[4]} (${res==="W"?"won":res==="D"?"drew":"lost"})<br>xG ${num(x[5],2)} to ${num(x[6],2)}<br>Points ${P[i]}, chances worth ${X[i].toFixed(1)}`},svg); });
+    S("rect",{x:cx-band/2,y:m.t,width:band,height:H-m.t-m.b,class:"hit","data-tip":`<b>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}, ${x[2]?"vs.":"at"} ${esc(short(x[1]))}</b><br>${x[3]}–${x[4]} (${res==="W"?"won":res==="D"?"drew":"lost"})<br>xG ${num(x[5],2)} to ${num(x[6],2)}<br>Points ${P[i]}, chances worth ${X[i].toFixed(1)}`},svg); });
   text(svg, m.l, H-8, "Match 1", "t-axis", {}); text(svg, m.l+iw, H-8, `Match ${n}`, "t-axis", {"text-anchor":"end"});
   const lg2 = S("g",{},svg); [["W","won",""],["D","drew",""],["L","lost","2 1.5"]].forEach(([k,l,da],i) => { const x0 = m.l + i*58; S("circle",{cx:x0+5,cy:m.t-12,r:4.5,fill:k==="W"?"var(--ink)":"var(--paper)",stroke:k==="L"?"var(--ink-3)":"var(--ink)","stroke-width":1.5,"stroke-dasharray":da},lg2); text(lg2, x0+14, m.t-8, cap(l), "t-axis", {}); });
 }
@@ -440,7 +440,7 @@ function drawElo(el){
   const L = tr[tr.length-1]; S("circle",{cx:sx(day(L[0])),cy:sy(L[1]),r:4.5,fill:"var(--ink)",stroke:"var(--paper)","stroke-width":2},svg);
   text(svg, sx(day(L[0]))+8, sy(L[1])+4, PP.int(L[1]), "t-lab", {});
   [["03-01","Mar"],["05-01","May"],["07-01","Jul"],["09-01","Sep"]].forEach(([d,l]) => { const dd = day(`${s.year}-${d}`); if(dd > 0 && dd < D1) text(svg, sx(dd), H-6, l, "t-axis", {"text-anchor":"middle"}); });
-  tr.forEach((x,i) => { const nx = tr[i+1], w = nx ? sx(day(nx[0])) - sx(day(x[0])) : 12; S("rect",{x:sx(day(x[0]))-Math.min(w,12)/2,y:m.t,width:Math.max(4,Math.min(w,12)),height:ih,class:"hit","data-tip":`<b>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</b><br>Strength ${PP.int(x[1])}`},svg); });
+  tr.forEach((x,i) => { const nx = tr[i+1], w = nx ? sx(day(nx[0])) - sx(day(x[0])) : 12; S("rect",{x:sx(day(x[0]))-Math.min(w,12)/2,y:m.t,width:Math.max(4,Math.min(w,12)),height:ih,class:"hit","data-tip":`<b>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}</b><br>Strength ${PP.int(x[1])}`},svg); });
 }
 
 /* the playoffs on a club's page (owner, 2026-10-29: "Reword once playoffs begin"). From the playoff phase on
@@ -467,7 +467,7 @@ const poScore = (m, t) => {      // a result from the club's side: "won 2-1", "l
   return `${won ? "won" : "lost"} ${g[0]}–${g[1]}${pen ? ` on penalties (${pen[0]}–${pen[1]})` : m.et ? " after extra time" : ""}`;
 };
 const poGame = m => m.round === "round_one" ? `Round One, game ${m.game}` : cap(PO_RN[m.round].replace(/^the /, ""));
-const nextOpp = (m, t) => { const o = m.home === t ? m.away : m.home; return o ? `${m.home === t ? "v" : "at"} ${esc(short(o))}` : "opponent to be decided"; };
+const nextOpp = (m, t) => { const o = m.home === t ? m.away : m.home; return o ? `${m.home === t ? "vs." : "at"} ${esc(short(o))}` : "opponent to be decided"; };
 function poIndicator(){
   const S_ = poStatus(), t = T.D.team, x = S_.x, conf = T.D.conference;
   const kick = m => { if(!m.time_confirmed) return "date to be confirmed"; const k = PP.kick(m.kickoff_utc); return k ? `${k.day}, ${k.time}` : ""; };
@@ -507,7 +507,7 @@ function runinSection(){
   const funnel = rounds.map(([l,p]) => `<div class="fn"><span>${l}</span><span class="tr"><i style="width:${Math.max(0.5,p*100)}%"></i></span><span class="num">${pct(p)}</span></div>`).join("");
   const conf = T.D.conference + "ern Conference";
   const fx = rem.map(m => { const k = m.kickoff_utc ? PP.kick(m.kickoff_utc) : null;
-    return `<div class="rfx fxl" data-href="#match-${m.id}"><span class="r-small">${k ? `${k.day.replace(/^(\w+) /,"$1, ")}` : m.date}</span><span class="who">${m.home?"v":"at"} <a href="#team-${PP.slug(m.opp)}">${PP.crestTag(m.opp, false, 20)}</a> <span class="r-small">strength ${PP.int(m.opp_elo)}</span></span>
+    return `<div class="rfx fxl" data-href="#match-${m.id}"><span class="r-small">${k ? `${k.day.replace(/^(\w+) /,"$1, ")}` : m.date}</span><span class="who">${m.home?"vs.":"at"} <a href="#team-${PP.slug(m.opp)}">${PP.crestTag(m.opp, false, 20)}</a> <span class="r-small">strength ${PP.int(m.opp_elo)}</span></span>
       <span class="pbar"><i style="width:${m.p_win*100}%;background:var(--signal)"></i><i style="width:${m.p_draw*100}%;background:var(--mid)"></i><i style="width:${m.p_loss*100}%;background:var(--rule-strong)"></i></span>
       <span class="num r-small"><b>${pctShort(m.p_win)}</b> win, ${pctShort(m.p_draw)} draw, ${pctShort(m.p_loss)} loss</span>
       <span class="r-small">${m.stake && m.if_win != null ? `${cap(STAKE(m.stake, conf))}: ${pct(m.if_win)} with a win, ${pct(m.if_loss)} with a defeat` : ""}</span></div>`; }).join("");
@@ -574,7 +574,7 @@ function detailSection(){
   const s = T.s, ros = s.roster || [], ms = (s.matches || []).slice().reverse(), out = new Set(s.out || []), squad = s.squad ? new Set(s.squad) : null;
   const disc = (id, title, inner) => `<div class="ddisc"><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="${id}">${title}</button><div class="disc" id="${id}" aria-hidden="true"><div><div class="why-body">${inner}</div></div></div></div>`;
   const rr = ros.map(p => `<tr><td><a href="#player-${p.id}-${s.year}">${esc(p.name)}</a>${injHere(p.id)?PP.injMark(p.id, s.year):""}${out.has(p.id)&&!injHere(p.id)?" (out)":""}${squad&&!squad.has(p.id)&&!injHere(p.id)?" (left)":""}</td><td>${(PP.POS[p.pos]||"–").toLowerCase()}</td><td class="n">${PP.int(p.mins)}</td><td class="n">${p.pos==="GK"?(p.skill!=null?`${sgn(p.skill,1)} shot-stopping`:"–"):sgn(p.rating)}</td><td class="n">${p.lo!=null?`${num(p.lo,1)} to ${num(p.hi,1)}`:"–"}</td><td>${PP.SLOT[p.slot]||p.slot||"–"}</td><td class="n">${p.moved_to?`<span class="r-small" data-tip="${esc(`Moved to ${short(p.moved_to)} during the season: his pay counts there`)}">Moved to ${esc(short(p.moved_to))}</span>`:p.joined_from&&p.comp?`<span data-tip="${esc(`Joined from ${short(p.joined_from)} during the season and did not play for the club: his pay counts here`)}">${money(p.comp)}</span>`:p.comp?money(p.comp):"–"}</td><td class="n">${p.slot_value!=null?sgn(p.slot_value):"–"}</td></tr>`).join("");
-  const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"v":"at"} ${PP.crestTag(x[1])}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
+  const mr = ms.map(x => `<tr><td>${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",timeZone:"UTC"})}</td><td>${x[2]?"vs.":"at"} ${PP.crestTag(x[1])}</td><td class="n">${x[3]}–${x[4]}</td><td class="n">${num(x[5],2)}</td><td class="n">${num(x[6],2)}</td></tr>`).join("");
   const hr = T.seasons.slice().reverse().map(x => `<tr><td><a href="#team-${T.D.slug}-${x.year}">${x.year}</a></td><td class="n">${x.games}</td><td class="n">${x.w}–${x.d}–${x.l}</td><td class="n">${x.pts}</td><td class="n">${x.gf}–${x.ga}</td><td class="n">${num(x.xgf,1)}–${num(x.xga,1)}</td><td class="n">${PP.ord(x.pts_pg_rank)}</td><td class="n">${PP.ord(x.xgd_pg_rank)}</td><td class="n">${sgn(x.squad_value,1)}</td></tr>`).join("");
   return `<section class="band" id="tdetail" aria-labelledby="tdet-h"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="tdet-h">Detailed data</h2><p>The numbers behind every chart on this page.</p></div>

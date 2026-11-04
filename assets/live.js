@@ -330,7 +330,7 @@ async function page(m, el){
     <section class="band" id="lcurvesec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>${esc(short(m.home))} win (bottom), draw, ${esc(short(m.away))} win (top), as the match has gone. Circles are goals, rectangles red cards; ${PP.hover} them.</p></div><div class="chart" id="lcurve"></div></div></section>
     <section class="band" id="lxgsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, shot by shot</h2><p>Expected goals added up through the match, from the same model as the match reports; filled circles are goals. ${PP.HOVER} a shot.</p></div><div class="chart" id="lxg"></div></div></section>
     <section class="band" id="lplsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title" id="lplh">Player ratings, live</h2><p id="lplp">Each player's value added so far above a replacement player in the same minutes: the same model as the season ratings. Provisional: about two minutes behind play, updated every two minutes, and recalculated overnight with the final data. ${PP.HOVER} a player for attack and ball-winning; keepers are rated after the match.</p></div><div id="lpl"></div><p class="r-small" id="lplup"></p></div></section>`;
-  /* our xG and player ratings (165's file). At full time they are labelled provisional, and a file that stopped before
+  /* our xG and player ratings (165's file). At full time they are labeled provisional, and a file that stopped before
      the whistle says so (on 24 Oct three of fifteen stopped at 56-59 minutes) */
   const drawOurs = (O, done) => {
     if(!(O && O.players && O.players.length)) return;
