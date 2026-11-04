@@ -64,6 +64,8 @@ PP.kit = team => {
 PP.labDist = (a, b) => { const x = toLab(a), y = toLab(b); return Math.hypot(x[0]-y[0], x[1]-y[1], x[2]-y[2]); };
 /* head-to-head colours: home keeps its kit; an away kit too close to it is lightened toward the ground */
 PP.pairKit = (home, away) => { const h = PP.kit(home), a = PP.kit(away); return PP.labDist(h, a) < 0.12 ? [h, PP.mix(a, PP.tok("--paper"), 0.5), true] : [h, a, false]; };
+// touch screens have no hover: instructions say "tap" there (2026-11-03)
+PP.touch = matchMedia("(hover: none)").matches; PP.HOVER = PP.touch ? "Tap" : "Hover"; PP.hover = PP.touch ? "tap" : "hover";
 PP.chip = team => `<i class="chip" data-team="${PP.esc(team)}" style="--c:${PP.kit(team)}" aria-hidden="true"></i>`;
 PP.clubTag = (team, full) => `<span class="club">${PP.chip(team)}${PP.esc(full ? PP.full(team) : PP.short(team))}</span>`;
 PP.valueFill = (v, max) => PP.mix(PP.tok("--mid"), v>=0 ? PP.tok("--turf-4") : PP.tok("--flare-4"), Math.min(1, Math.sqrt(Math.abs(v)/max)));

@@ -137,7 +137,7 @@ PP.drawEleven = (el, xi, opts={}) => {
     S("circle",{cx:c.cx,cy:c.cy,r:rr+3,fill:PP.kit(p.team),opacity:.9},g);
     S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":1.5,"data-tip":opts.tip ? opts.tip(p) : `<b>${PP.esc(p.player)}</b>, ${PP.esc(PP.short(p.team))}<br>${PP.sgn(v,2)}`},g);
     text(g, c.cx, c.cy+4, PP.sgn(v, 2), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:${portrait?10:11}px;pointer-events:none`});
-    PP.svgCrest(g, p.team, c.cx+rr*0.7-8, c.cy-rr*0.7-8, 16);
+    PP.svgCrest(g, p.team, c.cx+rr*0.72-4, c.cy-rr*0.72-12, 16);   // up and out, clear of the value (2026-11-03: it covered the second decimal)
     text(g, c.cx, c.cy+rr+15, PP.surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
 };

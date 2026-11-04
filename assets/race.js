@@ -61,15 +61,16 @@ function landscape(){
   const grid = c => {
     const ts = D.teams.filter(t => t.conference === c).sort((a,b) => a.exp_conf_rank - b.exp_conf_rank);
     const rows = ts.map(t => { const home = t.seeds.slice(0,4).reduce((a,b)=>a+b,0), mv = t.hist.p_playoffs[n-1] - t.hist.p_playoffs[n-5];
-      const cells = t.seeds.map((p,i) => { const band = p < 0.005 ? 0 : Math.min(5, Math.floor(p*5-1e-9)+1); return `<i class="lc${i===3?" l4":""}${i===8?" l9":""}" style="${band?`background:var(--pct-${band})`:""}" data-tip="<b>${esc(full(t.team))}</b><br>${PP.ord(i+1)} in the ${c}: ${pct(p)}">${p>=0.2?`<b style="color:${band>=4?"var(--paper)":"var(--ink)"}">${Math.round(p*100)}</b>`:""}</i>`; }).join("");
+      const cells = t.seeds.map((p,i) => { const band = p < 0.005 ? 0 : Math.min(5, Math.floor(p*5-1e-9)+1); return `<i class="lc${i===3?" l4":""}${i===8?" l9":""}" style="${band?`background:var(--pct-${band})`:""}" data-tip="<b>${esc(full(t.team))}</b><br>${PP.ord(i+1)} in the ${c}: ${pct(p)}">${p>=0.2?`<b${Math.round(p*100)>=100?` class="b3"`:""} style="color:${band>=4?"var(--paper)":"var(--ink)"}">${Math.round(p*100)}</b>`:""}</i>`; }).join("");
       return `<div class="lrow2" data-team="${esc(t.team)}" tabindex="0"><span class="lpos num">${t.pos}</span><a class="lteam" href="#team-${PP.slug(t.team)}">${chip(t.team)}<span class="nmL">${esc(short(t.team))}</span><span class="nmS">${(PP.CLUB[t.team]||[t.team])[0]}</span></a><span class="lpts num">${t.points_now}<small>/${t.played}</small></span>
         <span class="lcells">${cells}</span><span class="lp num">${pctShort(t.p_playoffs)}</span><span class="lp num">${pctShort(home)}</span><span class="lp num">${pctShort(t.p_champion)}</span>
-        <span class="lmv num">${Math.abs(mv) >= 0.005 ? `<span class="tri ${mv>0?"up":"down"}" aria-hidden="true"></span>${PP.pp(mv)}` : "–"}</span></div>`; }).join("");
+        <span class="lmv num">${Math.abs(mv) >= 0.005 ? `<span class="tri ${mv>0?"up":"down"}" aria-hidden="true"></span>${PP.pp(mv)}` : "–"}</span>
+        <span class="lmore">${t.points_now} points from ${t.played} · Playoffs ${pctShort(t.p_playoffs)} · Hosts Round One ${pctShort(home)} · MLS Cup ${pctShort(t.p_champion)} · Four weeks: ${Math.abs(mv) >= 0.005 ? `${mv > 0 ? "up" : "down"} ${PP.pp(Math.abs(mv)).replace(/^[+−-]/, "")} points` : "no change"}</span></div>`; }).join("");
     return `<div class="lgrid" data-conf="${c}" data-hidden="${c!==R.conf}"><h3 class="r-heading">${c}ern Conference</h3>
       <div class="lhead"><span class="lpos">Now</span><span class="lteam">Club</span><span class="lpts">Pts</span><span class="lcells">${Array.from({length:15},(_,i)=>`<i>${i+1}</i>`).join("")}</span><span class="lp">Playoffs</span><span class="lp">Hosts R1</span><span class="lp">Cup</span><span class="lmv">4 wk</span></div>${rows}</div>`;
   };
   return `<section class="band" id="landscape" aria-labelledby="land-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="land-h">Where every club finishes</h2><p>Each row is a club's chance of finishing in each position in its conference, darker for likelier. The solid line after fourth marks home advantage in Round One; the dashed line after ninth is the playoff cut. "Now" is today's table position. Select a row to follow the club in the charts below.</p></div>
+    <div class="band-head"><h2 class="r-title" id="land-h">Where every club finishes</h2><p>Each row is a club's chance of finishing in each position in its conference, darker for likelier. The solid line after fourth marks home advantage in Round One; the dashed line after ninth is the playoff cut.<span class="phone-only"> Tap a club for its points and its chances of hosting in Round One and winning MLS Cup.</span> "Now" is today's table position. Select a row to follow the club in the charts below.</p></div>
     <div class="seg rconf race-tools" role="group" aria-label="Conference">${["East","West"].map(c => `<button type="button" data-c="${c}" aria-pressed="${c===R.conf}">${c}</button>`).join("")}</div>
     <div class="landscape">${grid("East")}${grid("West")}</div>
     <div class="pct-key" style="margin-top:var(--s-4)">${[1,2,3,4,5].map(i => `<span><i style="background:var(--pct-${i})"></i>${["0–20%","20–40%","40–60%","60–80%","80–100%"][i-1]}</span>`).join("")}<span>Numbers shown where the chance is 20% or more</span></div>
@@ -79,7 +80,7 @@ function landscape(){
 /* trajectories */
 function trajectories(){
   return `<section class="band well" id="traj" aria-labelledby="rt-h"><div class="wrap">
-    <div class="band-head"><h2 class="r-title" id="rt-h">How the race has moved</h2><p>The forecast as it stood after every week of the season, recomputed with today's model (team strength only, without lineup news) from the results known at the time. Green lines rose ten points or more in the last four weeks, red lines fell; select a club in the table above, or hover, to follow one.</p></div>
+    <div class="band-head"><h2 class="r-title" id="rt-h">How the race has moved</h2><p>The forecast as it stood after every week of the season, recomputed with today's model (team strength only, without lineup news) from the results known at the time. Green lines rose ten points or more in the last four weeks, red lines fell; select a club in the table above, or ${PP.hover} the chart, to follow one.</p></div>
     <div class="seg rmetric" role="group" aria-label="Measure" style="margin-bottom:var(--s-4)">${METRICS.map(([k,l]) => `<button type="button" data-m="${k}" aria-pressed="${k===R.metric}">${l}</button>`).join("")}</div>
     <div class="rtrajs">${["East","West"].map(c => `<figure class="tfig"><div class="fig-cap"><h3 class="r-heading">${c}ern Conference</h3></div><div class="chart rtraj" data-conf="${c}"></div></figure>`).join("")}</div>
   </div></section>`;
@@ -102,8 +103,11 @@ function drawTraj(el){
     const p = S("path",{d:pts.map((q,i) => (i?"L":"M")+q[0]+","+q[1]).join(""),fill:"none",stroke:col(t),"stroke-width":strong(t)?2.25:1.1,"stroke-opacity":strong(t)?1:(R.sel?0.35:0.55),"stroke-linejoin":"round",style:"transition:opacity 120ms ease-out"},svg); paths.set(t.team, p); });
   const lastv = t => t.hist[key][n-1];
   const ends = ts.filter(t => lastv(t) != null).map(t => ({t, y: sy(lastv(t))})).sort((a,b) => a.y - b.y);
-  for(let i = 1; i < ends.length; i++) if(ends[i].y - ends[i-1].y < 12.5) ends[i].y = ends[i-1].y + 12.5;
-  const over = ends.length ? ends[ends.length-1].y - (m.t+ih+4) : 0; if(over > 0) ends.forEach(e => e.y -= over);
+  // labels at least `gap` apart, kept inside the chart: down from the top, then back up from the bottom (2026-11-03: on
+  // phones, shifting them all up together pushed the top labels above the chart, into the tabs)
+  const top = m.t + 4, bot = m.t + ih, gap = Math.min(12.5, ends.length > 1 ? (bot - top) / (ends.length - 1) : 12.5);
+  ends.forEach((e, i) => { e.y = Math.max(e.y, top, i ? ends[i-1].y + gap : top); });
+  for(let i = ends.length - 1; i >= 0; i--) ends[i].y = Math.min(ends[i].y, i === ends.length - 1 ? bot : ends[i+1].y - gap);
   ends.forEach(e => text(svg, sx(n-1)+7, e.y+4, `${narrow ? (PP.CLUB[e.t.team]||[e.t.team])[0] : short(e.t.team)} ${isP ? pctShort(lastv(e.t)) : PP.int(lastv(e.t))}`, strong(e.t) ? "t-lab" : "t-lab2", {style: strong(e.t) ? "" : "opacity:.75"}));
   const cross = S("line",{x1:0,x2:0,y1:m.t,y2:m.t+ih,stroke:"var(--ink-3)",opacity:0},svg), ov = S("rect",{x:m.l,y:m.t,width:iw,height:ih,fill:"transparent"},svg);
   const move = e => { const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n-1, Math.round((e.clientX-r.left-m.l)/iw*(n-1)))), y = e.clientY - r.top;
@@ -140,14 +144,15 @@ function bubble(){
 }
 function drawBubble(el){
   const D = R.D, conf = el.dataset.conf, ts = D.teams.filter(t => t.conference === conf).sort((a,b) => b.proj_points - a.proj_points), W = el.clientWidth; if(!W) return;
-  const rh = 22, m = {l:W<480?84:118,r:16,t:8,b:28}, H = m.t + ts.length*rh + m.b; el.innerHTML = "";
+  const rh = 22, m = {l:W<480?84:118,r:16,t:8,b:28}, gap = ts.length > 9 ? 16 : 0, H = m.t + ts.length*rh + gap + m.b; el.innerHTML = "";
+  const rowY = i => m.t + i*rh + rh/2 + (i >= 9 ? gap : 0);       // the playoff-line label gets its own strip (2026-11-03: it sat on a club's marks)
   const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`${conf}ern Conference final points ranges`},el);
   const lo = Math.floor(Math.min(...ts.map(t => t.points_now))/5)*5, hi = Math.ceil(Math.max(...ts.map(t => t.points_p90))/5)*5, sx = v => m.l + (v-lo)/(hi-lo)*(W-m.l-m.r);
   for(let v = lo; v <= hi; v += 10){ S("line",{x1:sx(v),x2:sx(v),y1:m.t,y2:H-m.b,class:"g-line"},svg); text(svg, sx(v), H-8, v, "t-axis", {"text-anchor":"middle"}); }
-  const cut = ts[8], cutY = m.t + 9*rh;
+  const cutY = m.t + 9*rh + 2;
   S("line",{x1:m.l-4,x2:W-m.r,y1:cutY,y2:cutY,stroke:"var(--ink-3)","stroke-dasharray":"3 3"},svg);
-  text(svg, W-m.r, cutY+11, "playoff line by projection", "t-axis", {"text-anchor":"end"});
-  ts.forEach((t,i) => { const y = m.t + i*rh + rh/2, open = t.p_playoffs > 0.02 && t.p_playoffs < 0.98;
+  if(gap) text(svg, W-m.r, cutY+11, "playoff line by projection", "t-axis", {"text-anchor":"end"});
+  ts.forEach((t,i) => { const y = rowY(i), open = t.p_playoffs > 0.02 && t.p_playoffs < 0.98;
     text(svg, m.l-8, y+4, short(t.team), open ? "t-lab" : "t-lab2", {"text-anchor":"end"});
     S("rect",{x:sx(t.points_p10),y:y-4,width:Math.max(2,sx(t.points_p90)-sx(t.points_p10)),height:8,rx:3,fill:open?"var(--signal)":"var(--band)",opacity:open?0.45:1},svg);
     S("circle",{cx:sx(t.points_now),cy:y,r:4,fill:"var(--paper)",stroke:"var(--ink-2)","stroke-width":1.5},svg);
@@ -226,7 +231,7 @@ function production(){
 /* method and the full table */
 function method(){
   const D = R.D, b = D.backtest || {}, ll = b.log_loss || {};
-  const rows = D.teams.slice().sort((a,b) => a.conference.localeCompare(b.conference) || a.exp_conf_rank - b.exp_conf_rank).map(t => `<tr><td>${t.conference}</td><td><a href="#team-${PP.slug(t.team)}">${esc(short(t.team))}</a></td><td class="n">${t.points_now}</td><td class="n">${t.played}</td><td class="n">${Math.round(t.proj_points)}</td><td class="n">${Math.round(t.points_p10)}–${Math.round(t.points_p90)}</td><td class="n">${pctShort(t.p_playoffs)}</td><td class="n">${pctShort(t.p_top7)}</td><td class="n">${pctShort(t.p_conf_1st)}</td><td class="n">${pctShort(t.p_semis)}</td><td class="n">${pctShort(t.p_conf_final)}</td><td class="n">${pctShort(t.p_cup_final)}</td><td class="n">${pctShort(t.p_champion)}</td><td class="n">${pctShort(t.p_shield)}</td></tr>`).join("");
+  const rows = D.teams.slice().sort((a,b) => a.conference.localeCompare(b.conference) || a.exp_conf_rank - b.exp_conf_rank).map(t => `<tr><td><a href="#team-${PP.slug(t.team)}">${esc(short(t.team))}</a></td><td>${t.conference}</td><td class="n">${t.points_now}</td><td class="n">${t.played}</td><td class="n">${Math.round(t.proj_points)}</td><td class="n">${Math.round(t.points_p10)}–${Math.round(t.points_p90)}</td><td class="n">${pctShort(t.p_playoffs)}</td><td class="n">${pctShort(t.p_top7)}</td><td class="n">${pctShort(t.p_conf_1st)}</td><td class="n">${pctShort(t.p_semis)}</td><td class="n">${pctShort(t.p_conf_final)}</td><td class="n">${pctShort(t.p_cup_final)}</td><td class="n">${pctShort(t.p_champion)}</td><td class="n">${pctShort(t.p_shield)}</td></tr>`).join("");
   const disc = (id, title, inner) => `<div class="ddisc"><button class="btn-text why" type="button" data-disc aria-expanded="false" aria-controls="${id}">${title}</button><div class="disc" id="${id}" aria-hidden="true"><div><div class="why-body">${inner}</div></div></div></div>`;
   return `<section class="band" id="rmethod" aria-labelledby="rm-h"><div class="wrap">
     <div class="band-head"><h2 class="r-title" id="rm-h">How the forecast works</h2></div>
@@ -235,7 +240,7 @@ function method(){
       <p>Ties are broken on wins, goal difference and goals for (MLS's later tiebreakers are not modelled). Each simulated season seeds its own bracket in the 2025 format: wild card between eighth and ninth, best-of-three Round One, single-match semifinals and finals at the better seed, extra time then penalties.</p>
       ${ll["B1 Elo"] ? `<p>Tested on ${PP.int(b.n)} matches from 2021–25 it was not fitted on, the results-only version of the match model <span class="tipline" data-tip="${PP.esc(`Log loss ${ll["B1 Elo"].toFixed(3)} against ${ll["B0 base rates"].toFixed(3)} for the league's usual mix alone (lower is better)`)}">did better than simply going by the league's usual mix of home wins, draws and away wins</span>, but not by much: football results are hard to call. The half-and-half rating improves on it slightly (see above). The weekly history above is reconstructed: today's model, team strength only, refitted on the results known at each date. It shows what this model would have said then, not what was published; forecasts published since 9 October 2026 are in the <a href="#matches">live record</a> (<a href="#method-record">how we check it</a>).</p>` : ""}
     </div>
-    ${disc("r-table", "Every club, every probability", `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Conf.</th><th>Club</th><th class="n">Pts</th><th class="n">Played</th><th class="n">Projected</th><th class="n">Range</th><th class="n">Playoffs</th><th class="n">Top 7</th><th class="n">1st</th><th class="n">Semis</th><th class="n">Conf. final</th><th class="n">Final</th><th class="n">Champion</th><th class="n">Shield</th></tr></thead><tbody>${rows}</tbody></table></div>`)}
+    ${disc("r-table", "Every club, every probability", `<div class="tbl-wrap"><table class="dtable"><thead><tr><th>Club</th><th>Conf.</th><th class="n">Pts</th><th class="n">Played</th><th class="n">Projected</th><th class="n">Range</th><th class="n">Playoffs</th><th class="n">Top 7</th><th class="n">1st</th><th class="n">Semis</th><th class="n">Conf. final</th><th class="n">Final</th><th class="n">Champion</th><th class="n">Shield</th></tr></thead><tbody>${rows}</tbody></table></div>`)}
   </div></section>`;
 }
 })();

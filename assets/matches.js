@@ -173,7 +173,7 @@ function report(m, R, wk, po){
       <div class="pp-left"><span class="r-label">Match report</span><p class="r-note mlede">${lede}</p>${wk ? `<a class="btn-text" href="#matchday-${wk.md}">The matchday in review: Matchday ${wk.md}</a>` : ""}${po && po.after ? po.after : ""}</div>
       <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, po ? "Before kickoff, as recorded: the result after 90 minutes" : `Before kickoff${recd ? ", as recorded" : recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, po ? "On the chances in normal time: every shot scored with its expected-goal probability" : "On the chances: every shot scored with its expected-goal probability")}</div>
     </section></div>
-    <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match${po && R.shots_et && R.shots_et.length ? ", extra time included (after the dashed line at 90')" : ""}; filled circles are goals. Hover a shot.</p></div><div class="chart" id="mrace"></div></div></section>
+    <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match${po && R.shots_et && R.shots_et.length ? ", extra time included (after the dashed line at 90')" : ""}; filled circles are goals. ${PP.HOVER} a shot.</p></div><div class="chart" id="mrace"></div></div></section>
     <section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>${po ? po.diff : "Each player's contribution to the match above what a replacement player would have added in the same minutes; these add up to the season rating."}</p></div>
       <div class="mtops">${tops("home")}${tops("away")}</div></div></section>
     ${moms ? `<section class="band"><div class="wrap"><div class="band-head"><h2 class="r-title">The moments that mattered</h2><p>The single actions that most raised a side's chance of scoring, or most lowered the opponent's.</p></div><div class="moms">${moms}</div></div></section>` : ""}
@@ -291,12 +291,13 @@ function drawDuel(el, m, d){
   } else { const b = PP.pitchBase(svg, W, H, false); PP.pitchLines(svg, b.sx, b.sy); P = (L, Wd) => ({x: b.sx(L), y: b.sy(Wd)}); }
   const place = (xi, home) => xi.forEach(p => {
     const L = home ? 4 + (1 - p.y) * 46 : 101 - (1 - p.y) * 46, Wd = home ? (portrait ? 6 + p.x*56 : 6 + (1-p.x)*56) : (portrait ? 62 - p.x*56 : 6 + p.x*56);
-    const rated = p.value != null, c = P(L, Wd), v = p.value || 0, rr = Math.max(8, Math.min(16, 8 + Math.abs(v)*2.6)), f = rated ? PP.valueFill(v, 5) : "var(--paper)";
+    const rated = p.value != null, c = P(L, Wd), v = p.value || 0, rr = Math.max(portrait ? 12 : 8, Math.min(16, 8 + Math.abs(v)*2.6)), f = rated ? PP.valueFill(v, 5) : "var(--paper)";
     const pk = PP.pairKit(m.home, m.away), id = p.ws_player_id, linked = id != null && (!pages.size || pages.has(id));
     const g = linked ? S("a",{href:`#player-${id}`,class:"xi-link","aria-label":`${p.player}, ${short(home ? m.home : m.away)}: open his page`},svg) : svg;
     S("circle",{cx:c.x,cy:c.y,r:rr,fill:f,stroke:home ? pk[0] : pk[1],"stroke-width":2.5,"stroke-dasharray":!home && pk[2] ? "3 2" : "","data-tip":`<b>${esc(p.player)}</b>, ${esc(short(home ? m.home : m.away))}<br>${rated ? `${sgn(v,2)} this season` : "No MLS rating yet"}${p.kind && p.kind !== "same" ? `<br>${p.kind === "changed" ? "Change from the usual eleven" : esc(p.kind)}` : ""}${linked ? `<br>Click for his page` : ""}`},g);
     text(g, c.x, c.y+4, rated ? sgn(v,1) : "–", "t-axis", {"text-anchor":"middle",style:`fill:${rated ? PP.inkOn(f) : "var(--ink-3)"};font-weight:650;font-size:10.5px`});
-    text(g, c.x, c.y+rr+12, p.player ? PP.surname(p.player) : "?", "t-lab halo-w", {"text-anchor":"middle",style:"font-size:11px"});
+    const ny = c.y + rr + 12 > H - 3 ? c.y - rr - 5 : c.y + rr + 12;     // a name that would run off the pitch's edge goes above the dot
+    text(g, c.x, ny, p.player ? PP.surname(p.player) : "?", "t-lab halo-w", {"text-anchor":"middle",style:"font-size:11px"});
   });
   place(xh, true); place(xa, false);
   const shp = f => { if(f == null) return null; const s = String(f); if(s.includes("-")) return s; const dg = s.split(".")[0].replace(/\D/g, ""); return dg ? dg.split("").join("-") : null; };

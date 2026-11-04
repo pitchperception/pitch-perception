@@ -69,7 +69,7 @@ async function weekTeaser(){
   el.innerHTML = `<div class="wrap"><div class="band-head"><span class="kicker">The matchday in review</span><h2 class="r-title" id="wkt-h">${top ? `${PP.plink(top[0], top[1])} was the player of Matchday ${wk.md}` : "The matchday in review"}</h2>
       <p>Matchday ${wk.md}, ${esc(PP.weekRange(wk))}. ${top ? `${PP.plink(top[0], surname(top[1]))} added ${sgn(top[6],2)} goals above replacement for ${esc(short(top[2]))}, the most in MLS. ` : ""}<a href="#matchday-${wk.md}">The full matchday: team of the matchday, awards and every match report</a>.</p></div>
     <div class="wkteaser"><div class="wklist">${P.map((p,k) => `<a class="wkrow" href="#player-${p[0]}"><span class="rk">${k+1}</span><span class="nm">${esc(p[1])}${PP.badgeMini(PP.badgesFor(p[0], 2026, p[2]))}</span><span class="meta">${chip(p[2])}${esc(short(p[2]))}</span><span class="tr"><i style="width:${Math.max(2, Math.abs(p[6])/Math.abs(P[0][6]||1)*100)}%;background:var(--turf)"></i></span><span class="v num">${sgn(p[6],2)}</span></a>`).join("")}</div>
-      <figure style="margin:0"><div class="fig-cap"><span class="r-label">Team of the matchday</span><span class="r-small">${esc(W.formation || "4-3-3")}; hover a player</span></div><div class="chart" id="hometotw"></div></figure></div></div>`;
+      <figure style="margin:0"><div class="fig-cap"><span class="r-label">Team of the matchday</span><span class="r-small">${esc(W.formation || "4-3-3")}; ${PP.hover} a player</span></div><div class="chart" id="hometotw"></div></figure></div></div>`;
   el.hidden = false;
   PP.chart($("#hometotw"), e => PP.drawEleven(e, W.xi || [], {maxV: 1, maxW: 640, tip: p => `<b>${esc(p.player)}</b>, ${esc(short(p.team))}<br>${p.keeper ? `${sgn(p.value,2)} goals prevented` : `${sgn(p.value,2)} goals above replacement`}`}));
   PP.bindTips($("#hometotw"));
@@ -149,7 +149,7 @@ const nMatches = n => `${NW(n)} ${n === 1 ? "match" : "matches"}`, nPoints = n =
 const lastN = n => n === 1 ? "match" : nMatches(n);        // "their last match", not "their last one match"
 /* the fewest results that reach `need` points from `left` matches (each one needed: one result worse falls short), in words */
 function waysTo(left, need, exact){
-  const say = (w, d) => [w ? (w === 1 ? "a win" : `${NW(w)} wins`) : "", d ? (d === 1 ? "a draw" : `${NW(d)} draws`) : ""].filter(Boolean).join(" and ") || `${NW(left)} defeats`;
+  const say = (w, d) => [w ? (w === 1 ? "a win" : `${NW(w)} wins`) : "", d ? (d === 1 ? "a draw" : `${NW(d)} draws`) : ""].filter(Boolean).join(" and ") || (left === 1 ? "a defeat" : `${NW(left)} defeats`);
   const out = [];
   for(let w = left; w >= 0; w--) for(let d = left - w; d >= 0; d--){
     const p = 3*w + d;
@@ -184,7 +184,7 @@ function recordLead(H){
   }).join("");
   const pLevel = Math.max(0, rc.p_tie_or_break - rc.p_break), pShort = Math.max(0, 1 - rc.p_tie_or_break);
   const rows = broke || !rc.left ? [] : level
-    ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equalled", pLevel, `${NW(rc.left)} defeats`]]
+    ? [[`1 or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, 1)], [`0`, `${rc.record}`, "Equalled", pLevel, rc.left === 1 ? "a defeat" : `${NW(rc.left)} defeats`]]
     : !canBreak ? [[`${rc.need - 1}`, `${rc.record}`, "Equalled", pLevel, waysTo(rc.left, rc.need - 1, true)],
        ...(rc.need >= 2 ? [[rc.need - 2 ? `${rc.need - 2} or fewer` : "0", `${rc.record - 1} or fewer`, "Short", pShort, ""]] : [])]
     : [[`${rc.need} or more`, `${rc.record + 1} or more`, "Broken", rc.p_break, waysTo(rc.left, rc.need)],
@@ -525,6 +525,7 @@ function drawPayValue(el){
   const m = {l:30,r:10,t:10,b:30}, iw = W-m.l-m.r, ih = Ht-m.t-m.b, lx0 = Math.log10(60000), lx1 = Math.log10(3.2e7);
   const sx = v => m.l + (Math.log10(Math.max(60000,v))-lx0)/(lx1-lx0)*iw, y0 = -3, y1 = 7, sy = v => m.t + ih - (Math.max(y0,Math.min(y1,v))-y0)/(y1-y0)*ih;
   [0,3,6].forEach(v => { S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:v===0?"g-base":"g-line"},svg); text(svg, m.l-6, sy(v)+4, v, "t-axis", {"text-anchor":"end"}); });
+  text(svg, m.l+4, m.t+2, "Goals above replacement", "t-axis", {"dominant-baseline":"hanging"});
   [[1e5,"$100k"],[1e6,"$1m"],[1e7,"$10m"]].forEach(([v,l]) => text(svg, sx(v), Ht-12, l, "t-axis", {"text-anchor":"middle"}));
   text(svg, m.l+iw, Ht, "Guaranteed pay, log scale", "t-axis", {"text-anchor":"end"});
   const topIds = new Set(H.contract.map(p => p.ws_player_id));
@@ -532,9 +533,10 @@ function drawPayValue(el){
   H.contract.forEach(p => { S("circle",{cx:sx(p.comp),cy:sy(p.rating),r:5,fill:"var(--signal)",stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b>, ${esc(short(p.team))}<br>${money(p.comp)}, ${sgn(p.rating)} goals<br>${PP.SLOT[p.slot]||p.slot}`},svg); });
   const messi = H.contract.reduce((a,b) => a.comp > b.comp ? a : b);
   text(PP.svgA(svg, messi.ws_player_id), sx(messi.comp)-9, sy(messi.rating)+4, surname(messi.player), "t-lab halo", {"text-anchor":"end"});
-  const cheap = H.contract.filter(p => p !== messi), cx = Math.max(...cheap.map(p => sx(p.comp))), cy = Math.min(...cheap.map(p => sy(p.rating)));
+  const cheap = H.contract.filter(p => ["Senior","Supplemental","Homegrown"].includes(p.slot) && p !== messi); if(!cheap.length) return;
+  const cx = Math.max(...cheap.map(p => sx(p.comp))), cy = Math.min(...cheap.map(p => sy(p.rating)));
   const lim = Math.ceil((Math.max(...cheap.map(p=>p.comp))+1)/5000)*5000;
-  const lab = text(svg, cx+10, cy+2, W < 420 ? `${cheap.length} more, under $${Math.round(lim/1000)}k` : `${cheap.length} more, all under ${money(lim)}`, "t-anno halo", {});
+  const lab = text(svg, cx+10, cy+2, W < 420 ? `${cheap.length} under ${money(lim)}` : `${cheap.length} of them, all under ${money(lim)}`, "t-anno halo", {});
   if(cx + 10 + lab.getComputedTextLength() > W - 4){ lab.setAttribute("x", W - 4); lab.setAttribute("y", cy - 12); lab.setAttribute("text-anchor", "end"); }   // keep it on the chart
 }
 

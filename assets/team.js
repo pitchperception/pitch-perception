@@ -39,11 +39,11 @@ PP.pages.teams = async main => {
   const OUT = {wild_card:"Out, wild card", round_one:"Out, Round One", conf_semi:"Out, semifinal", conf_final:"Out, conference final", cup:"Runners-up"};
   const poCell = x => `<span class="num">${!x ? "Missed" : x.status === "champion" ? "Champions" : x.status === "out" ? OUT[x.out_in] || "Out" : "Still in"}</span>`;
   const rows = arr => arr.map((t,i) => `<a class="trow" href="#team-${PP.slug(t.team)}"><span class="rk">${i+1}</span><span class="nm">${PP.crestOr(t.team, 22)}<span class="nmt"><span class="nm-full">${esc(full(t.team))}</span><span class="nm-short">${esc(short(t.team))}</span></span></span>
-    <span class="num">${t.points} pts, ${t.played} played</span><span class="num"><span class="sr">Strength </span>${PP.int(t.elo)}</span><span class="tp">${poT ? poCell(poT[t.team]) : `<span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span>`}</span></a>`).join("");
+    <span class="num">${t.points}<span class="tpts"> pts</span><span class="tpl">, ${t.played} played</span></span><span class="num"><span class="sr">Strength </span>${PP.int(t.elo)}</span><span class="tp">${poT ? poCell(poT[t.team]) : `<span class="pbar1"><i style="width:${Math.max(1,t.p_playoffs*100)}%"></i></span><span class="num">${pctShort(t.p_playoffs)}</span>`}</span></a>`).join("");
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-note" style="max-width:62ch">Every club's page: how strong the model thinks they are, how they play, who carries them and what is left of their season. ${poT ? "Ordered by regular-season points; the last column is each club's playoff status." : "Ordered by points; the bar is the chance of reaching the playoffs."}</p><a class="btn-text" href="#managers">The managers: style, shapes and results against their squads</a>
       ${strengthNote(race)}</section>
-    <div class="tindex">${["East","West"].map(c => `<section><h2 class="r-title">${c}ern Conference</h2><div class="thead"><span></span><span>Club</span><span>Record</span><span>Strength</span><span>Playoffs</span></div>${rows(col(c))}</section>`).join("")}</div></div>
-    <section class="band" id="lstyle"><div class="wrap"><div class="band-head"><h2 class="r-title">How the league plays</h2><p>Every club of 2026 by the chances it creates and allows per match, from our shot model. Up and to the right is better at both ends; the diagonal lines mark equal expected-goal difference.</p></div>
+    <div class="tindex">${["East","West"].map(c => `<section><h2 class="r-title">${c}ern Conference</h2><div class="thead"><span></span><span>Club</span><span><span class="hfull">Points</span><span class="hshort">Pts</span></span><span>Strength</span><span>Playoffs</span></div>${rows(col(c))}</section>`).join("")}</div></div>
+    <section class="band" id="lstyle"><div class="wrap"><div class="band-head"><h2 class="r-title">How the league plays</h2><p>Every club of 2026 by the chances it creates and allows per match, from our shot model. Up and to the right is better at both ends; the diagonal lines mark equal expected-goal difference.<span class="phone-only"> The clubs at the edges are named; tap a crest for any club.</span></p></div>
       <div class="chart" id="lscatter"></div></div></section>
     ${TR ? `<section class="band" id="ltrends"><div class="wrap"><div class="band-head"><h2 class="r-title">The league over time</h2><p>Goals and expected goals per match, and how results split between home wins, draws and away wins, every regular season since ${TR.seasons[0].year}. ${TR.seasons[TR.seasons.length-1].year} is in progress.</p></div>
       <div class="trajwrap"><figure class="tfig"><div class="fig-cap"><span class="r-label">Goals per match</span></div><div class="chart" id="lgoals"></div><div class="legend"><span><i class="lg-line" style="--c:var(--ink)"></i>Goals</span><span><i class="lg-line" style="--c:var(--signal)"></i>Expected goals (2020 on)</span></div></figure>
@@ -61,21 +61,36 @@ function drawLeague(el, rows){
   const sx = v => m.l + (v-x0)/(x1-x0)*iw, sy = v => m.t + (v-y0)/(y1-y0)*ih;     // fewer allowed is higher on the chart
   for(let v = Math.ceil(x0*5)/5; v <= x1+1e-9; v += 0.2) text(svg, sx(v), H-m.b+16, v.toFixed(1), "t-axis", {"text-anchor":"middle"});
   for(let v = Math.ceil(y0*5)/5; v <= y1+1e-9; v += 0.2){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:"g-line"},svg); text(svg, m.l-8, sy(v)+4, v.toFixed(1), "t-axis", {"text-anchor":"end"}); }
-  [-0.5, 0, 0.5, 1].forEach(d => { const p = []; for(let x = x0; x <= x1+1e-9; x += 0.01){ const y = x - d; if(y >= y0 && y <= y1) p.push([sx(x), sy(y)]); } if(p.length > 1){ S("path",{d:p.map((q,i) => (i?"L":"M")+q[0]+","+q[1]).join(""),fill:"none",stroke:d===0?"var(--rule-strong)":"var(--rule)","stroke-dasharray":"4 4"},svg); const q = p[p.length-1]; text(svg, q[0]-4, q[1]+12, `${d>0?"+":d<0?"\u2212":""}${Math.abs(d).toFixed(1)}`, "t-axis", {"text-anchor":"end"}); } });
+  const narrow = W < 520, xgd = rows.map(r => r.xgf_pg - r.xga_pg).sort((a,b) => a-b), lab = r => !narrow || r.xgf_pg - r.xga_pg >= xgd[xgd.length-4] || r.xgf_pg - r.xga_pg <= xgd[3];
+  [-0.5, 0, 0.5, 1].forEach(d => { const p = []; for(let x = x0; x <= x1+1e-9; x += 0.01){ const y = x - d; if(y >= y0 && y <= y1) p.push([sx(x), sy(y)]); } if(p.length > 1){ S("path",{d:p.map((q,i) => (i?"L":"M")+q[0]+","+q[1]).join(""),fill:"none",stroke:d===0?"var(--rule-strong)":"var(--rule)","stroke-dasharray":"4 4"},svg); const q = p[p.length-1]; if(!narrow) text(svg, q[0]-4, q[1]+12, `${d>0?"+":d<0?"\u2212":""}${Math.abs(d).toFixed(1)}`, "t-axis", {"text-anchor":"end"}); } });
   text(svg, m.l+iw, H-4, "Expected goals created per match", "t-axis", {"text-anchor":"end"});
   text(svg, m.l+4, m.t+4, "Expected goals allowed per match (fewer is higher)", "t-axis", {"dominant-baseline":"hanging"});
+  const labs = [];
   rows.forEach(r => { const cx = sx(r.xgf_pg), cy = sy(r.xga_pg);
     const a = S("a",{href:`#team-${PP.slug(r.team)}`},svg), cr = PP.svgCrest(a, r.team, cx-11, cy-11, 22);   // the crest, or a dot without one
     if(!cr) S("circle",{cx,cy,r:6,fill:"var(--dot)",stroke:"var(--paper)","stroke-width":2},a);
-    text(a, cx+(cr?14:9), cy+4, PP.short(r.team), "t-lab2 halo", {});
+    if(lab(r)) labs.push({r, cx, cy, t: text(a, cx+(cr?14:9), cy+4, PP.short(r.team), "t-lab2 halo", {}), off: cr ? 14 : 9});   // phones: the four best and worst only (2026-11-03: 25 labels piled up)
     S("circle",{cx,cy,r:11,class:"hit","data-tip":`<b>${esc(full(r.team))}</b><br>${num(r.xgf_pg,2)} created, ${num(r.xga_pg,2)} allowed per match<br>${sgn(r.xgd_pg,2)} difference, ${num(r.pts_pg,2)} points per match`},svg); });
+  // a label stays on the chart and off other crests and labels: right of its crest, else left, above, below; else (phones
+  // only) left out, the crest still tappable
+  const dots = rows.map(r => [sx(r.xgf_pg), sy(r.xga_pg), r.team]), placed = [];
+  const hits = (x0_, x1_, y_, me) => x0_ < 2 || x1_ > W - 2 || y_ < m.t + 14 || y_ > m.t + ih
+    || dots.some(([dx, dy, t]) => t !== me && dx + 11 > x0_ && dx - 11 < x1_ && Math.abs(dy - (y_ - 4)) < 15)
+    || placed.some(([a0, a1, ay]) => a0 < x1_ + 4 && a1 > x0_ - 4 && Math.abs(ay - y_) < 13);
+  labs.forEach(({r, cx, cy, t, off}) => { const w = t.getComputedTextLength();
+    const opts = [[cx + off, cy + 4, "start", cx + off, cx + off + w], [cx - off, cy + 4, "end", cx - off - w, cx - off],
+                  [cx, cy - 15, "middle", cx - w/2, cx + w/2], [cx, cy + 24, "middle", cx - w/2, cx + w/2]];
+    const ok = opts.find(([, y_, , a, b]) => !hits(a, b, y_, r.team));
+    if(ok){ t.setAttribute("x", ok[0]); t.setAttribute("y", ok[1]); t.setAttribute("text-anchor", ok[2]); placed.push([ok[3], ok[4], ok[1]]); }
+    else if(narrow) t.remove();
+    else { if(cx + off + w > W - 2){ t.setAttribute("x", cx - off); t.setAttribute("text-anchor", "end"); } } });
 }
 function drawGoals(el, ss){
   const W = el.clientWidth; if(!W) return; const H = 220; el.innerHTML = "";
   const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":"Goals and expected goals per match by season"},el);
   const m = {l:38,r:14,t:12,b:26}, iw = W-m.l-m.r, ih = H-m.t-m.b, n = ss.length, sx = i => m.l + i/(n-1)*iw, y0 = 2.4, y1 = 3.4, sy = v => m.t + ih - (v-y0)/(y1-y0)*ih;
   for(let v = y0; v <= y1+1e-9; v += 0.2){ S("line",{x1:m.l,x2:m.l+iw,y1:sy(v),y2:sy(v),class:"g-line"},svg); text(svg, m.l-8, sy(v)+4, v.toFixed(1), "t-axis", {"text-anchor":"end"}); }
-  ss.forEach((s,i) => { if(i % 2 === 0 || i === n-1) text(svg, sx(i), H-6, s.year, "t-axis", {"text-anchor":"middle"}); });
+  ss.forEach((s,i) => { if((n-1-i) % 2 === 0) text(svg, sx(i), H-6, s.year, "t-axis", {"text-anchor":"middle"}); });
   S("path",{d:ss.map((s,i) => (i?"L":"M")+sx(i)+","+sy(s.goals_pm)).join(""),fill:"none",stroke:"var(--ink)","stroke-width":2},svg);
   const xi = ss.map((s,i) => [s,i]).filter(([s]) => s.xg_pm != null);
   S("path",{d:xi.map(([s,i],k) => (k?"L":"M")+sx(i)+","+sy(s.xg_pm)).join(""),fill:"none",stroke:"var(--signal)","stroke-width":2},svg);
@@ -87,7 +102,7 @@ function drawRes(el, ss){
   const m = {l:38,r:14,t:12,b:26}, iw = W-m.l-m.r, ih = H-m.t-m.b, n = ss.length, bw = iw/n;
   [0,0.25,0.5,0.75,1].forEach(v => text(svg, m.l-8, m.t + ih - v*ih + 4, Math.round(v*100)+"%", "t-axis", {"text-anchor":"end"}));
   ss.forEach((s,i) => { let y = m.t + ih; [[s.home_win,"var(--signal)"],[s.draw,"var(--mid)"],[s.away_win,"var(--ink-3)"]].forEach(([p,c]) => { const h = p*ih; S("rect",{x:m.l+i*bw+1,y:y-h,width:bw-2,height:Math.max(0,h-1),fill:c},svg); y -= h; });
-    if(i % 2 === 0 || i === n-1) text(svg, m.l+i*bw+bw/2, H-6, s.year, "t-axis", {"text-anchor":"middle"});
+    if((n-1-i) % 2 === 0) text(svg, m.l+i*bw+bw/2, H-6, s.year, "t-axis", {"text-anchor":"middle"});
     S("rect",{x:m.l+i*bw,y:m.t,width:bw,height:ih,class:"hit","data-tip":`<b>${s.year}</b><br>Home wins ${pct(s.home_win)}<br>Draws ${pct(s.draw)}<br>Away wins ${pct(s.away_win)}`},svg); });
 }
 
@@ -278,13 +293,13 @@ function drawXI(el){
         text(g, c.cx, c.cy + rr + 12 + i*(fs+3), `${surname(p.player)} ${p.starts_here}`, `${i ? "t-lab2" : "t-lab"} halo-w`, {"text-anchor":"middle","data-tip":tip,style:`font-size:${fs}px`}); }); });
     return;
   }
-  xi.forEach(p => { const c = at(p), val = p.value, rr = Math.max(9, Math.min(W/(portrait?18:26), 9 + Math.abs(val||0) * 3.2)), f = PP.valueFill(val||0, 5);
+  xi.forEach(p => { const c = at(p), val = p.value, rr = Math.max(portrait ? 13 : 9, Math.min(W/(portrait?18:26), 9 + Math.abs(val||0) * 3.2)), f = PP.valueFill(val||0, 5);
     const g = link(p, svg);
     const used = T.xiMode === "current" ? `started ${p.last5} of the last 5 matches, ${p.starts} of ${v.n} in all${p.last_start ? `<br>Last start ${dShort(p.last_start)}` : ""}`
       : v ? `${p.starts} starts of ${v.n}, ${p.starts_here} in this position` : `started ${Math.round((p.share||0)*100)}% of matches`;
     S("circle",{cx:c.cx,cy:c.cy,r:rr,fill:f,stroke:"var(--paper)","stroke-width":2,"data-tip":`<b>${esc(p.player)}</b><br>${PP.POS[p.pos]||""}, ${used}<br>${vlab(p)}<br>${PP.SLOT[p.contract]||p.contract||""}`},g);
     injAt(g, p, c, rr);
-    text(g, c.cx, c.cy+4, sgn(val,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:11px`});
+    text(g, c.cx, c.cy+4, sgn(val,1), "t-axis", {"text-anchor":"middle",style:`fill:${PP.inkOn(f)};font-weight:650;font-size:${portrait?10:11}px`});
     text(g, c.cx, c.cy+rr+13, surname(p.player), "t-lab halo-w", {"text-anchor":"middle"});
   });
 }

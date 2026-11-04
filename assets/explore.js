@@ -51,7 +51,7 @@ function render(main){
   const sel = (id, opts, cur, label) => `<label class="fsel"><span class="r-small">${label}</span><select id="${id}">${opts.map(([v,t]) => `<option value="${v}"${String(v)===String(cur)?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`;
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Players</h1>
       <p class="r-note standfirst">Every MLS player since 2020, valued by the possession model: goals added above a replacement-level player at the same position. Pick a view, filter, and follow any name to the player's page.</p></section>
-    <section class="exswarm"><div class="fig-cap"><span class="r-label" id="swcap">${swcap()}</span><span class="r-small">Goals above replacement. Keepers are rated by shot-stopping (goals prevented, allowing for luck): choose Goalkeeper below. Hover a dot.</span></div><div class="chart" id="swarm"></div></section>
+    <section class="exswarm"><div class="fig-cap"><span class="r-label" id="swcap">${swcap()}</span><span class="r-small">Goals above replacement. Keepers are rated by shot-stopping (goals prevented, allowing for luck): choose Goalkeeper below. ${PP.HOVER} a dot.</span></div><div class="chart" id="swarm"></div></section>
     <section class="exctl">
       <div class="seg exviews" role="group" aria-label="View">${VIEWS.map(([k,l]) => `<button type="button" data-v="${k}" aria-pressed="${k===ST.view}">${l}</button>`).join("")}</div>
       <div class="exfilters">
@@ -143,7 +143,7 @@ function tierList(rows, el){
   const T = makeTiers(rows, ST.tconf), confs = [[0.8,"80%"],[0.9,"90%"],[0.95,"95%"]];
   const key = r => PP.surname(r.name).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
   el.innerHTML = `<div class="tierctl"><span class="r-small">Start a new tier when the model is</span><div class="seg" role="group" aria-label="Confidence needed to separate tiers">${confs.map(([c,l]) => `<button type="button" data-c="${c}" aria-pressed="${c===ST.tconf}">${l}</button>`).join("")}</div><span class="r-small">sure a player is below the tier's best.</span></div>
-    <div class="fig-cap"><span class="r-label">${T.length} tiers among ${PP.int(rows.length)} players, ${ST.year}</span><span class="r-small">Each dot is a player, with the 90% range of the tier's best drawn above its lane. Hover a dot.</span></div>
+    <div class="fig-cap"><span class="r-label">${T.length} tiers among ${PP.int(rows.length)} players, ${ST.year}</span><span class="r-small">Each dot is a player, with the 90% range of the tier's best drawn above its lane. ${PP.HOVER} a dot.</span></div>
     <div class="chart" id="tierladder"></div>
     <div class="tiers">${T.map((t,i) => { const lo = t.rows[t.rows.length-1].rating, hi = t.lead.rating;
       return `<section class="tier" aria-labelledby="tier-h${i}"><div class="tier-head"><h3 class="r-heading" id="tier-h${i}">Tier ${i+1}</h3><span class="r-small">${t.rows.length} player${t.rows.length>1?"s":""}, ${sgn(lo)} to ${sgn(hi)} goals above replacement</span></div>

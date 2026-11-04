@@ -412,7 +412,7 @@ function trajectorySection(){
     <div class="band-head"><h2 class="r-title" id="traj-h">Over time</h2><p>His value above replacement in every MLS season in our data, with its 90% range, and how the selected season built up match by match.</p></div>
     <div class="trajwrap">
       <figure class="tfig"><div class="fig-cap"><span class="r-label">Season by season</span></div><div class="chart" id="pseasons"></div></figure>
-      <figure class="tfig"><div class="fig-cap"><span class="r-label">${s.year}, match by match: running total</span><span class="r-small">Value above replacement, the rating's units. Hover to scrub</span></div><div class="chart" id="pmatches"></div></figure>
+      <figure class="tfig"><div class="fig-cap"><span class="r-label">${s.year}, match by match: running total</span><span class="r-small">Value above replacement, the rating's units. ${PP.touch ? "Tap or drag" : "Hover"} to scrub</span></div><div class="chart" id="pmatches"></div></figure>
     </div>
   </div></section>`;
 }
@@ -485,7 +485,7 @@ function drawPeers(el){
   const pts = grp.map(r => ({id:r[0], name:r[1], team:r[2], a:r[5], d:r[6], p90:r[4]})).filter(r => r.id !== me.id);
   const H = Math.round(Math.min(380, Math.max(260, W*0.62))); el.innerHTML = "";
   const svg = S("svg",{width:W,height:H,viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`Attack and ball-winning per 90 for ${posPl(s.pos)} in ${s.year}`},el);
-  const m = {l:44,r:14,t:14,b:38}, iw = W-m.l-m.r, ih = H-m.t-m.b, xs = pts.map(p=>p.a).concat(me.a), ys = pts.map(p=>p.d).concat(me.d);
+  const m = {l:44,r:14,t:28,b:38}, iw = W-m.l-m.r, ih = H-m.t-m.b, xs = pts.map(p=>p.a).concat(me.a), ys = pts.map(p=>p.d).concat(me.d);
   const nice = (lo, hi) => { const st = (hi-lo) > 0.4 ? 0.1 : 0.05; return [Math.floor(lo/st)*st, Math.ceil(hi/st)*st, st]; };
   const [x0, x1, xst] = nice(Math.min(...xs, 0), Math.max(...xs, 0)), [y0, y1, yst] = nice(Math.min(...ys, 0), Math.max(...ys, 0));
   const sx = v => m.l + (v-x0)/(x1-x0)*iw, sy = v => m.t + ih - (v-y0)/(y1-y0)*ih, f2 = v => (v<-1e-9?"−":v>1e-9?"+":"")+Math.abs(v).toFixed(2);
@@ -493,7 +493,7 @@ function drawPeers(el){
   for(let v = x0; v <= x1+1e-9; v += xst){ text(svg, sx(v), H-m.b+16, f2(v), "t-axis", {"text-anchor": Math.abs(v-x0) < 1e-9 ? "start" : "middle"}); }
   S("line",{x1:sx(0),x2:sx(0),y1:m.t,y2:m.t+ih,class:"g-base"},svg);
   text(svg, m.l+iw, H-4, "Attack, goals above replacement per 90", "t-axis", {"text-anchor":"end"});
-  text(svg, m.l+4, m.t+4, "Winning it back, per 90", "t-axis", {"dominant-baseline":"hanging"});
+  text(svg, m.l+4, 6, "Winning it back, per 90", "t-axis", {"dominant-baseline":"hanging"});   // above the plot, clear of the names (2026-11-03)
   const cmpId = ST.cmp ? ST.cmp.rec.id : null;
   pts.forEach(p => { const isC = p.id === cmpId; S("circle",{cx:sx(p.a),cy:sy(p.d),r:isC?6:4,fill:isC?"var(--paper)":"var(--dot)",stroke:isC?"var(--ink)":"var(--paper)","stroke-width":isC?2:1.5},svg);
     S("circle",{cx:sx(p.a),cy:sy(p.d),r:9,class:"hit","data-tip":`<b>${esc(p.name)}</b>, ${esc(short(p.team))}<br>Attack ${sgn(p.a,3)}, winning it back ${sgn(p.d,3)} per 90<br>Total ${sgn(p.p90,3)} per 90`},svg);
