@@ -174,6 +174,7 @@ function report(m, R, wk, po){
       <div class="pp-right">${R.pre && R.pre[0] != null ? bar3(R.pre, po ? "Before kickoff, as recorded: the result after 90 minutes" : `Before kickoff${recd ? ", as recorded" : recon ? " (reconstructed from the model)" : ""}`) : ""}${bar3(R.xg_probs, po ? "On the chances in normal time: every shot scored with its expected-goal probability" : "On the chances: every shot scored with its expected-goal probability")}</div>
     </section></div>
     <section class="band" id="mracesec"><div class="wrap"><div class="band-head"><h2 class="r-title">The chances, minute by minute</h2><p>Expected goals added up through the match${po && R.shots_et && R.shots_et.length ? ", extra time included (after the dashed line at 90')" : ""}; filled circles are goals. ${PP.HOVER} a shot.</p></div><div class="chart" id="mrace"></div></div></section>
+    ${po ? "" : `<section class="band" id="mmomsec" hidden><div class="wrap"><div class="band-head"><h2 class="r-title">Momentum, minute by minute</h2><p>Above the line, the danger ${esc(short(m.home))} created in each minute; below it, ${esc(short(m.away))}'s: how close each of their moves came to a goal, from the possession-value model behind the ratings. Underneath, each side's chance of winning as the match went on, from the score, red cards and the last ten minutes of danger. The score does most of the work: momentum moves the chances by about a point on average, and by up to ten or so during a strong spell. ${PP.HOVER} a minute.</p></div><div class="chart" id="mmom"></div></div></section>`}
     <section class="band" id="mtops"><div class="wrap"><div class="band-head"><h2 class="r-title">Who made the difference</h2><p>${po ? po.diff : "Each player's contribution to the match above what a replacement player would have added in the same minutes; these add up to the season rating."}</p></div>
       <div class="mtops">${tops("home")}${tops("away")}</div></div></section>
     ${moms ? `<section class="band"><div class="wrap"><div class="band-head"><h2 class="r-title">The moments that mattered</h2><p>The single actions that most raised a side's chance of scoring, or most lowered the opponent's.</p></div><div class="moms">${moms}</div></div></section>` : ""}
@@ -201,6 +202,51 @@ function drawRace(el, m, R){
 }
 
 PP.drawRace = drawRace;          // the live page draws the same chart from the live poller's shots (live.js)
+
+/* momentum on the report (owner, 2026-11-04; 200_postmatch_momentum.py): each side's danger per played minute, and the
+   win / draw / loss chances from 169's model D at the start of every minute, ending on the result */
+const loadMom = id => fetch(`data/momentum/${id}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
+const momMin = (p, k) => p === 1 ? (k > 45 ? `45+${k - 45}` : `${k}`) : (k > 90 ? `90+${k - 90}` : `${k}`);
+function drawMom(el, m, Q){
+  const W = el.clientWidth; if(!W) return; el.innerHTML = "";
+  const seq = [], n1 = Q.end1 + 1;
+  for(let k = 0; k <= Q.end1; k++) seq.push([1, k]);
+  for(let k = 45; k <= Q.end2; k++) seq.push([2, k]);
+  const n = seq.length, at = (p, k) => p === 1 ? Math.min(k, Q.end1) : n1 + Math.max(0, Math.min(k, Q.end2) - 45);
+  const mg = {l:40, r:W < 520 ? 12 : 24, t:20, b:30}, HS = 120, GAP = 52, HC = W < 520 ? 150 : 180, H = mg.t + HS + GAP + HC + mg.b;
+  const sx = i => mg.l + i / n * (W - mg.l - mg.r), bw = (W - mg.l - mg.r) / n;
+  const [ch, ca] = PP.pairKit(m.home, m.away), hN = short(m.home), aN = short(m.away);
+  const res = (() => { const g = [0, 0]; Q.ev.forEach(e => { if(e[3] === "goal") g[e[2] === "h" ? 0 : 1]++; }); return g[0] > g[1] ? [1, 0, 0] : g[0] < g[1] ? [0, 0, 1] : [0, 1, 0]; })();
+  const P = Q.p.concat([res]), pk = (p, k) => P[at(p, k)];
+  const svg = S("svg",{width:W, height:H, viewBox:`0 0 ${W} ${H}`, role:"img",
+    "aria-label":`Danger each minute and the chances through the match: ${hN} ${pct(Q.p[0][0])} to win at kickoff, ${aN} ${pct(Q.p[0][2])}`}, el);
+  // the danger strip: home above the line, away below
+  const y0 = mg.t + HS / 2, dmax = Math.max(0.2, ...Q.d[0], ...Q.d[1]), sd = v => v / dmax * (HS / 2 - 4);
+  Q.d[0].forEach((v, i) => { if(v > 0) S("rect",{x:sx(i) + bw*0.1, y:y0 - sd(v), width:Math.max(1, bw*0.8), height:sd(v), fill:ch}, svg); });
+  Q.d[1].forEach((v, i) => { if(v > 0) S("rect",{x:sx(i) + bw*0.1, y:y0, width:Math.max(1, bw*0.8), height:sd(v), fill:ca}, svg); });
+  S("line",{x1:mg.l, x2:W - mg.r, y1:y0, y2:y0, class:"g-base"}, svg);
+  const halo = {stroke:"var(--paper)", "stroke-width":3, "paint-order":"stroke"};
+  text(svg, mg.l, mg.t - 6, `${hN} (above)`, "t-lab2", halo); text(svg, mg.l, mg.t + HS + 16, `${aN} (below)`, "t-lab2", halo);
+  Q.ev.forEach(e => { const x = sx(at(e[0], e[1])) + bw / 2, home = e[2] === "h", y = home ? mg.t + 6 : mg.t + HS - 6;
+    if(e[3] === "goal") S("circle",{cx:x, cy:y, r:5, fill:home ? ch : ca, stroke:"var(--paper)", "stroke-width":1.5}, svg);
+    else S("rect",{x:x - 3, y:y - 5, width:6, height:9, rx:1, fill:"var(--flare)"}, svg); });
+  // the chances: home win from the bottom, the draw, away win at the top
+  const c0 = mg.t + HS + GAP, sy = v => c0 + HC - v * HC, xs = P.map((_, i) => sx(i) + (i < n ? bw / 2 : 0));
+  xs[n] = sx(n);
+  const band = (lo, hi) => xs.map((x, i) => `${i ? "L" : "M"}${x},${sy(hi(P[i]))}`).join("") + xs.slice().reverse().map((x, j) => `L${x},${sy(lo(P[n - j]))}`).join("") + "Z";
+  text(svg, mg.l, c0 - 8, `Chances: ${hN} win (bottom), draw, ${aN} win (top)`, "t-lab2", {});
+  S("path",{d:band(() => 0, q => q[0]), fill:ch}, svg);
+  S("path",{d:band(q => q[0], q => q[0] + q[1]), fill:"var(--mid)"}, svg);
+  S("path",{d:band(q => q[0] + q[1], () => 1), fill:ca}, svg);
+  [0, 0.5, 1].forEach(v => { S("line",{x1:mg.l, x2:W - mg.r, y1:sy(v), y2:sy(v), class:"g-line", opacity:v === 0.5 ? 0.9 : 0}, svg); text(svg, mg.l - 6, sy(v) + 4, `${v * 100}%`, "t-axis", {"text-anchor":"end"}); });
+  [[mg.t, mg.t + HS], [c0, c0 + HC]].forEach(([a, b]) => S("line",{x1:sx(n1), x2:sx(n1), y1:a, y2:b, class:"g-line", "stroke-dasharray":"3 3"}, svg));
+  [[1,0],[1,15],[1,30],[2,45],[2,60],[2,75],[2,90]].forEach(([p, k]) => { if(p === 2 && k > Q.end2) return;
+    text(svg, sx(at(p, k)) + bw / 2, H - 10, p === 2 && k === 45 ? "HT" : `${k}'`, "t-axis", {"text-anchor":"middle"}); });
+  // one hover column per played minute, across both panels
+  seq.forEach(([p, k], i) => { const q = P[i];
+    S("rect",{x:sx(i), y:mg.t, width:bw, height:HS + GAP + HC, fill:"transparent",
+      "data-tip":`<b>${momMin(p, k)}'</b><br>Danger: ${esc(hN)} ${num(Q.d[0][i], 2)}, ${esc(aN)} ${num(Q.d[1][i], 2)}<br>Chances: ${esc(hN)} ${pct(q[0])}, draw ${pct(q[1])}, ${esc(aN)} ${pct(q[2])}`}, svg); });
+}
 
 /* ---------------- match page ---------------- */
 PP.pages.match = async (main, h) => {
@@ -268,6 +314,8 @@ PP.pages.match = async (main, h) => {
   if(!played) PP.chart($("#duel"), el => drawDuel(el, m, d));
   PP.chart($("#melo"), el => drawElo2(el, m));
   if($("#mrace")) PP.chart($("#mrace"), el => drawRace(el, RP.m, RP.R));
+  if(RP && $("#mmomsec")){ const rp = RP; loadMom(id).then(Q => { if(!Q || location.hash.slice(1) !== h || !$("#mmomsec")) return;
+    $("#mmomsec").hidden = false; PP.chart($("#mmom"), el => drawMom(el, rp.m, Q)); PP.bindTips($("#mmom")); }); }
   if(RP && RP.R.chain && $("#mpitch")){ const ch = PP.chainFrom(RP.R.chain); PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels: ch.labels})); PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {}));
     $("#mplay").addEventListener("click", () => { PP.chainPitch($("#mpitch"), ch, {labels: ch.labels, animate: true}); PP.chainSteps($("#msteps"), ch, {animate: true}); }); }
   ["#duel","#melo","#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
