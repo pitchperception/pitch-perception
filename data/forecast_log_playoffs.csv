@@ -1,1 +1,3 @@
 logged_at,match,round,game,kickoff_utc,home,away,pH,pD,pA,xg_home,xg_away,p_win_home,p_through_home,model,forecast_run,source
+2026-11-08T10:34:48Z,MLS-MAT-000ACQ,wild_card,1,2026-11-20T00:30Z,Orlando City,FC Cincinnati,0.4181,0.2614,0.3205,1.534,1.317,0.5488,0.5488,X2 blend,2026-11-08_041633,strength
+2026-11-08T10:34:48Z,MLS-MAT-000ACP,wild_card,1,2026-11-20T03:00Z,Seattle Sounders FC,Real Salt Lake,0.4575,0.2568,0.2857,1.627,1.242,0.5859,0.5859,X2 blend,2026-11-08_041633,strength
