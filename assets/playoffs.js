@@ -218,7 +218,7 @@ PP.poPage = (main, P) => {
     : `${cap(PP.WORDS[A.length] || String(A.length))} clubs are still in. ${f ? `${esc(short(f.team))} is the most likely champion, at ${pct(f.p_champion)}.` : ""}`;
   const d = new Date(P.as_of + "T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"});
   const nx = (P.next || []).map(id => byId(P)[id]).filter(Boolean)[0];
-  const dl = `Forecast of ${d}; ${P.played ? `playoff results through ${PP.dateLong(P.results_through)}` : "no playoff match played yet"}.${nx ? ` Next: ${gameName(nx).toLowerCase().replace(/^round one/, "Round One").replace(/^mls cup/, "MLS Cup")}, ${esc(short(nx.home))} vs. ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : P.phase === "set" ? " The playoffs start with the wild card on November 18; MLS Cup is on December 18." : ""}`;
+  const dl = `Forecast of ${d}; ${P.played ? `playoff results through ${PP.dateLong(P.results_through)}` : "no playoff match played yet"}.${nx ? ` Next: ${gameName(nx).toLowerCase().replace(/^round one/, "Round One").replace(/^mls cup/, "MLS Cup")}, ${esc(short(nx.home))} vs. ${esc(short(nx.away))}${nx.time_confirmed ? `, ${PP.kick(nx.kickoff_utc).day}` : ""}.` : P.phase === "set" ? " The playoffs start with the wild card on November 19; MLS Cup is on December 18." : ""}`;
   const nm = nextMatches(P, 8);
   const fin = P.race_final ? `<p class="dateline"><a href="#race-final">The final regular-season table, and the odds as they stood on ${new Date(P.race_final + "T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"long",timeZone:"UTC"})}</a></p>` : "";
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">${done ? "MLS Cup 2026" : "The playoffs"}</h1>

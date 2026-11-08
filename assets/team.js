@@ -33,7 +33,8 @@ PP.pages.teams = async main => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Teams</h1><p class="r-small">Loading.</p></section></div>`;
   let L, TR = null, PO = null; try { [L, TR, , PO] = await Promise.all([loadLeague(), fetch("data/trends.json").then(r => r.ok ? r.json() : null).catch(() => null), PP.loadImages(), PP.loadPlayoffs ? PP.loadPlayoffs() : null]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The league data did not load</h1><p>${esc(e.message)}</p></section></div>`; return; }
   const race = ((PP.data.home||{}).race||{teams:[]}).teams, byT = Object.fromEntries(race.map(t => [t.team, t]));
-  const col = c => race.filter(t => t.conference === c).sort((a,b) => b.points - a.points || a.played - b.played);
+  const fp = PO && PO.phase && PO.phase !== "regular" && PO.final_pos;   // the final places after tiebreakers (172, 2026-11-08)
+  const col = c => race.filter(t => t.conference === c).sort((a,b) => fp ? (fp[a.team] || 99) - (fp[b.team] || 99) : b.points - a.points || a.played - b.played);
   // from the playoff phase on (owner, 2026-10-29) the last column is each club's playoff status, not the regular-season chance
   const poT = PO && PO.phase && PO.phase !== "regular" ? Object.fromEntries((PO.teams || []).map(x => [x.team, x])) : null;
   const OUT = {wild_card:"Out, wild card", round_one:"Out, Round One", conf_semi:"Out, semifinal", conf_final:"Out, conference final", cup:"Runners-up"};
@@ -124,7 +125,8 @@ function lg(){ const L = T.L, rows = L.seasons[String(T.year)] || [], c = L.cols
 function rankOf(key, hiGood=true){ const rows = lg().filter(r => r[key] != null), me = rows.find(r => r.team === T.D.team); if(!me) return null; const sorted = rows.slice().sort((a,b) => hiGood ? b[key]-a[key] : a[key]-b[key]); return {rank: sorted.indexOf(me)+1, of: rows.length}; }
 // injury status (160) for this club's own players only; an injured player missing from recent matchday squads has not left
 function injHere(id){ const st = PP.injStatus(id, T.year); return st && st.t === T.D.team ? st : null; }
-function confRank(){ const conf = T.D.conference, east = new Set(T.L.east), rows = lg().filter(r => (east.has(r.team) ? "East" : "West") === conf).map(r => ({team:r.team, pts:(r.pts_pg||0)*(r.games||0), g:r.games})); rows.sort((a,b) => b.pts - a.pts || a.g - b.g); return {rank: rows.findIndex(r => r.team === T.D.team)+1, of: rows.length}; }
+function confRank(){ const fp = poOn() && T.PO.final_pos; if(fp && fp[T.D.team]) return {rank: fp[T.D.team], of: 15};   // the final place after tiebreakers (172, 2026-11-08)
+  const conf = T.D.conference, east = new Set(T.L.east), rows = lg().filter(r => (east.has(r.team) ? "East" : "West") === conf).map(r => ({team:r.team, pts:(r.pts_pg||0)*(r.games||0), g:r.games})); rows.sort((a,b) => b.pts - a.pts || a.g - b.g); return {rank: rows.findIndex(r => r.team === T.D.team)+1, of: rows.length}; }
 
 function render(main){
   const s = T.s, cur = s.year === 2026 && s.forecast;

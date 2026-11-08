@@ -78,7 +78,7 @@ async function weekTeaser(){
 /* ---------------- edition line ---------------- */
 function dateline(H){
   const d = new Date(H.as_of + "T12:00:00Z").toLocaleDateString("en-US",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"UTC"});
-  if(H.season_over) return `${d}. The regular season is over: all ${H.played} matches played, results through ${PP.dateLong(H.data_through)}. The playoffs run from November 18 to MLS Cup on December 18.`;
+  if(H.season_over) return `${d}. The regular season is over: all ${H.played} matches played, results through ${PP.dateLong(H.data_through)}. The playoffs run from November 19 to MLS Cup on December 18.`;
   const nxt = upcoming(H)[0], k = nxt && nxt.kickoff_utc ? PP.kick(nxt.kickoff_utc) : null;
   return `${d}. ${H.played} of ${H.played + H.remaining} regular-season matches played, results through ${PP.dateLong(H.data_through)}.` +
     (nxt && k ? ` Next: ${esc(short(nxt.home))} vs. ${esc(short(nxt.away))}, ${k.day}, ${k.time}.` : "");
