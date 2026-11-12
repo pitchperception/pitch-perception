@@ -218,7 +218,7 @@ PP.contractEnd = c => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(c ||
 PP.moveWords = x => x == null ? null : x >= 3 ? "Much more likely than most" : x >= 1.5 ? "More likely than most" : x >= 0.67 ? "About as likely as most" : "Less likely than most";
 
 /* ---------- routing ---------- */
-const SECTIONS = [["today","Today"],["players","Players"],["teams","Teams"],["matches","Matches"],["race","Playoff race"],["matchday","Matchday"],["recruiting","Recruiting"],["method","Method"]];
+const SECTIONS = [["today","Today"],["players","Players"],["teams","Teams"],["matches","Matches"],["race","Playoff race"],["matchday","Matchday"],["recruiting","Recruiting"],["method","Method"],["blog","Blog"]];
 const TABS = [["today","Today"],["players","Players"],["teams","Teams"],["matches","Matches"],["more","More"]];   // Matches before the race (owner, 2026-10-15)
 /* a page's own name for the tab title, which the visit counter records (owner, 2026-10-09): players, clubs and managers */
 PP.pageName = h => {
@@ -226,6 +226,7 @@ PP.pageName = h => {
   if(k === "player"){ const r = (PP.data.index || []).find(x => String(x[0]) === id.split("-")[0]); return r ? r[1] : ""; }
   if(k === "team"){ const t = Object.keys(PP.CLUB).find(x => PP.slug(x) === id); return t ? PP.full(t) : ""; }
   if(k === "manager") return id.split("-").map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(" ");
+  if(k === "blog" && id){ const b = (PP.data.blog || []).find(x => x.slug === id); return b ? b.title : "Blog"; }
   return "";
 };
 PP.route = () => {
@@ -237,7 +238,7 @@ PP.route = () => {
   if(section === "scout") section = "recruiting";
   if(section === "week") section = "matchday";            // links from before 2026-10-15 (weeks.js redirects them)
   if(!PP.pages[section] && !PP.pages[h.split("-")[0]]) section = "today";
-  $$(".mnav a, .tabbar a").forEach(a => { if(a.dataset.s === section || (a.dataset.s === "more" && ["race","matchday","recruiting","method","more"].includes(section))) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  $$(".mnav a, .tabbar a").forEach(a => { if(a.dataset.s === section || (a.dataset.s === "more" && ["race","matchday","recruiting","method","blog","more"].includes(section))) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   drawers.clear();
   const main = $("#main"); main.innerHTML = "";
   const page = PP.pages[h.split("-")[0]] || PP.pages[section];
