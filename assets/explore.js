@@ -6,19 +6,37 @@ let expP = null, E = null;
 const load = () => expP || (expP = fetch("data/explorer.json").then(r => { if(!r.ok) throw new Error(`explorer.json returned ${r.status}`); return r.json(); }));
 const POSO = ["CB","FB","CM_DM","AM","W","ST","GK"];
 const VIEWS = [["value","Most valuable"],["tiers","Tiers"],["p90","Per 90"],["contract","Against contract type"],["rising","Rising"],["falling","Falling"]];
-const ST = {view:"value", year:null, pos:"all", team:"all", slot:"all", arch:"all", minMins:900, q:"", n:50, sort:null, tconf:0.9};
+const ST = {view:"value", year:null, pos:"all", team:"all", slot:"all", arch:"all", style:"all", minMins:900, q:"", n:50, sort:null, tconf:0.9};
 const SLOTS = [["DP","Designated Player"],["U22","U22 Initiative"],["TAM/GAM","TAM / GAM"],["Senior","Senior roster"],["Supplemental","Supplemental roster"],["Homegrown","Homegrown"],["none","No contract on record"]];
 try{ const s = JSON.parse(localStorage.getItem("pp-explore") || "{}"); Object.assign(ST, s, {q:"", n:50}); }catch(e){}
 const slotOn = r => ST.slot === "all" || (ST.slot === "none" ? !r.slot : r.slot === ST.slot);
+/* playing styles (owner 2026-11-16): filter by style, from data/roles.json (145). ST.style = "<pos>|<role>" or "<pos>|balanced";
+   a hybrid player counts under both his styles. Styles exist for 900+ minutes at one club. */
+const styleParts = () => ST.style === "all" ? null : ST.style.split("|");
+const styleOn = r => { const sp = styleParts(); if(!sp) return true; const R = PP.data.roles, x = R && R.players[`${r.id}|${r.year}|${r.team}`];
+  if(r.pos !== sp[0] || !x || x[0] === "none") return false; return sp[1] === "balanced" ? x[0] === "balanced" : x[1] === sp[1] || x[2] === sp[1]; };
+const styleDef = () => { const sp = styleParts(), R = PP.data.roles; return sp && R && sp[1] !== "balanced" ? (R.roles[sp[0]] || []).find(d => d.role === sp[1]) : null; };
+const STYLE_GRP = {CB:"Center backs", FB:"Fullbacks", CM_DM:"Central midfielders", AM:"Attacking midfielders", W:"Wingers", ST:"Strikers"};
+function styleOpts(){
+  const R = PP.data.roles; if(!R) return "";
+  const opt = (v, t) => `<option value="${esc(v)}"${v === ST.style ? " selected" : ""}>${esc(t)}</option>`;
+  const grp = pos => (R.roles[pos] || []).filter(d => d.shown).map(d => opt(`${pos}|${d.role}`, d.name)).join("") + opt(`${pos}|balanced`, "Balanced (no one style)");
+  const poss = Object.keys(R.roles).filter(p => (R.roles[p] || []).some(d => d.shown));
+  return opt("all", "All styles") + (poss.includes(ST.pos) ? grp(ST.pos) : poss.map(p => `<optgroup label="${STYLE_GRP[p] || p}">${grp(p)}</optgroup>`).join(""));
+}
 const slotName = () => (SLOTS.find(s => s[0] === ST.slot) || [,""])[1];
-const save = () => { try{ localStorage.setItem("pp-explore", JSON.stringify({view:ST.view, year:ST.year, pos:ST.pos, slot:ST.slot, arch:ST.arch, minMins:ST.minMins, tconf:ST.tconf})); }catch(e){} };
+const save = () => { try{ localStorage.setItem("pp-explore", JSON.stringify({view:ST.view, year:ST.year, pos:ST.pos, slot:ST.slot, arch:ST.arch, style:ST.style, minMins:ST.minMins, tconf:ST.tconf})); }catch(e){} };
 
 PP.pages.players = async (main, h) => {
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Players</h1><p class="r-small">Loading every player-season.</p></section></div>`;
-  let D; try { [D] = await Promise.all([load(), PP.loadArch(), PP.loadInjuries()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The player data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
+  let D; try { [D] = await Promise.all([load(), PP.loadArch(), PP.loadInjuries(), PP.loadRoles()]); } catch(e){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">The player data did not load</h1><p>${esc(e.message)}. Reload the page; if it persists, the site needs republishing.</p></section></div>`; return; }
   const hh = location.hash.slice(1);
   if(hh !== "players" && !hh.startsWith("players-")) return;
-  const ak = hh.slice(8); if(ak && PP.data.arch && PP.data.arch.byKey[ak]){ ST.arch = ak; ST.pos = "all"; ST.slot = "all"; if(ST.view === "tiers") ST.view = "value"; }
+  const ak = hh.slice(8); if(ak && PP.data.arch && PP.data.arch.byKey[ak]){ ST.arch = ak; ST.style = "all"; ST.pos = "all"; ST.slot = "all"; if(ST.view === "tiers") ST.view = "value"; }
+  // #players-style-<pos>-<slug> (player pages and the Method page link here): that style, all clubs and contracts, 900+ minutes
+  if(ak.startsWith("style-") && PP.data.roles){ const R = PP.data.roles, want = ak.slice(6);
+    for(const [pos, ds] of Object.entries(R.roles)) for(const d of ds) if(d.shown && PP.styleSlug(pos, d.role) === want){
+      ST.style = `${pos}|${d.role}`; ST.pos = pos; ST.arch = "all"; ST.slot = "all"; ST.team = "all"; ST.minMins = Math.max(900, ST.minMins); if(ST.view === "tiers") ST.view = "value"; } }
   const ix = Object.fromEntries(D.cols.map((c,i) => [c,i]));
   E = {rows: D.rows.map(r => ({id:r[ix.ws_player_id], name:r[ix.player], team:r[ix.team], year:r[ix.year], pos:r[ix.pos], mins:r[ix.mins], rating:r[ix.rating], lo:r[ix.rating_lo], hi:r[ix.rating_hi], p90:r[ix.rating_p90],
     attack:r[ix.attack], defence:r[ix.defence], slot:r[ix.slot], comp:r[ix.comp], pay:ix.pay != null ? r[ix.pay] : r[ix.comp], moved:ix.moved_to != null ? r[ix.moved_to] : null, slot_value:r[ix.slot_value], p_slot:r[ix.p_above_slot], gp:r[ix.goals_prevented], sk:r[ix.gp_skill], mp:r[ix.model_pct], d90:r[ix.d90], clear:r[ix.clear], age:r[ix.age],
@@ -31,7 +49,7 @@ PP.pages.players = async (main, h) => {
 
 function filtered(){
   const q = ST.q.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
-  let rows = E.rows.filter(r => r.year === ST.year && (ST.pos === "all" ? r.pos !== "GK" : r.pos === ST.pos) && (ST.team === "all" || r.team === ST.team) && slotOn(r) && (ST.arch === "all" || PP.badgesFor(r.id, r.year, r.team).some(b => b[0] === ST.arch))
+  let rows = E.rows.filter(r => r.year === ST.year && (ST.pos === "all" ? r.pos !== "GK" : r.pos === ST.pos) && (ST.team === "all" || r.team === ST.team) && slotOn(r) && (ST.arch === "all" || PP.badgesFor(r.id, r.year, r.team).some(b => b[0] === ST.arch)) && styleOn(r)
     && (r.mins || 0) >= (ST.view === "p90" || ST.view === "tiers" ? Math.max(900, ST.minMins) : ST.minMins)
     && (!q || (r.name||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(q)));
   const gkv = r => r.pos === "GK" ? r.sk : r.rating;          // keepers by shot-stopping skill (owner, 2026-10-17)
@@ -60,6 +78,7 @@ function render(main){
         ${sel("exteam", [["all","All clubs"], ...E.teams.map(t => [t, short(t)])], ST.team, "Club")}
         ${sel("exslot", [["all","All contracts"], ...slots], ST.slot, "Contract")}
         ${PP.data.arch ? sel("exarch", [["all","All archetypes"], ...PP.data.arch.defs.filter(d => d.shown).map(d => [d.key, d.name])], ST.arch, "Archetype") : ""}
+        ${PP.data.roles ? `<label class="fsel"><span class="r-small">Playing style</span><select id="exstyle">${styleOpts()}</select></label>` : ""}
         ${sel("exmin", [[0,"Any minutes"],[450,"450+"],[900,"900+"],[1800,"1,800+"]], ST.minMins, "Minutes")}
         <label class="fsel fq"><span class="r-small">Name</span><input id="exq" type="search" placeholder="Search" value="${esc(ST.q)}" autocomplete="off"></label>
       </div>
@@ -68,7 +87,8 @@ function render(main){
     <section id="exlist"></section></div>`;
   $$(".exviews button").forEach(b => b.addEventListener("click", () => { ST.view = b.dataset.v; ST.sort = null; ST.n = 50; $$(".exviews button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); save(); list(); }));
   $("#exyear").addEventListener("change", e => { ST.year = +e.target.value; ST.n = 50; save(); render(main); });
-  $("#expos").addEventListener("change", e => { ST.pos = e.target.value; ST.n = 50; save(); list(); });
+  $("#expos").addEventListener("change", e => { ST.pos = e.target.value; const sp = styleParts(); if(sp && sp[0] !== ST.pos) ST.style = "all"; if($("#exstyle")) $("#exstyle").innerHTML = styleOpts(); ST.n = 50; save(); list(); });
+  if($("#exstyle")) $("#exstyle").addEventListener("change", e => { ST.style = e.target.value; const sp = styleParts(); if(sp){ ST.pos = sp[0]; $("#expos").value = ST.pos; $("#exstyle").innerHTML = styleOpts(); } ST.n = 50; save(); list(); });
   $("#exteam").addEventListener("change", e => { ST.team = e.target.value; ST.n = 50; list(); });
   if($("#exarch")) $("#exarch").addEventListener("change", e => { ST.arch = e.target.value; ST.n = 50; save(); list(); });
   $("#exslot").addEventListener("change", e => { ST.slot = e.target.value; ST.n = 50; save(); $("#swcap").textContent = swcap(); drawSwarm($("#swarm")); list(); });
@@ -87,7 +107,9 @@ function list(){
   const slotNote = (v === "rising" || v === "falling") ? " Contracts play no part in the change: both seasons are measured against a replacement at the same position, whatever the player is paid. The contract filter uses this season's contract." : "";
   // keepers: shot-stopping skill, the season's goals prevented shrunk by its reliability (24, owner 2026-10-17)
   const gkNote = ST.pos === "GK" && (v === "value" || v === "p90") ? " Keepers: shot-stopping, the goals saved beyond an average keeper after allowing for luck; each keeper's page has this season's raw goals prevented." : "";
-  $("#exnote").textContent = `${PP.int(rows.length)} players. ${notes[v]}${gkNote}${slotNote}${preNote}`;
+  const sd = styleDef(), sp = styleParts();
+  const styleNote = sp ? ` ${sd ? `${sd.name}: ${sd.text}` : "Balanced: no one style stands out."} Styles are given to players with 900+ minutes at one club; a player close to two styles is listed under both.` : "";
+  $("#exnote").textContent = `${PP.int(rows.length)} players. ${notes[v]}${styleNote}${gkNote}${slotNote}${preNote}`;
   const I = PP.data.inj;                                    // injuries key (160): the current season only
   if(I && ST.year === I.season) $("#exnote").insertAdjacentHTML("beforeend", ` <span class="injkey"><span class="injm out" aria-hidden="true">${PP.INJ_SVG}</span> out (injury or illness), <span class="injm q" aria-hidden="true">${PP.INJ_SVG}</span> questionable: hover or tap for details (Transfermarkt; MLS availability report).</span>`);
   const all = rows.filter(r => r.pos !== "GK"), d0 = Math.min(-1, ...all.map(r => r.lo ?? r.rating ?? 0)), d1 = Math.max(1, ...all.map(r => r.hi ?? r.rating ?? 0));
@@ -117,7 +139,7 @@ function list(){
   el.innerHTML = rows.length ? `<div class="board-table tbl-wrap"><table class="board extable"><thead><tr><th class="n">#</th><th>Player</th>${head.map(([k,l,n]) => th(k,l,n)).join("")}</tr></thead><tbody>${rowsH}</tbody></table></div>
     <div class="board-list exlist2">${listH}</div>
     ${rows.length > ST.n ? `<div style="margin-top:var(--s-4)"><button type="button" class="btn btn-secondary" id="exmore">Show ${Math.min(50, rows.length - ST.n)} more</button></div>` : ""}`
-    : `<div class="missing"><b>No players match</b><span>Loosen a filter: fewer minutes, all positions, all clubs, all contracts or all archetypes.</span></div>`;
+    : `<div class="missing"><b>No players match</b><span>Loosen a filter: fewer minutes, all positions, all clubs, all contracts, all archetypes or all styles.</span></div>`;
   $$(".extable th button").forEach(b => b.addEventListener("click", () => { const k = b.dataset.k; ST.sort = ST.sort && ST.sort[0] === k ? [k, -ST.sort[1]] : [k, -1]; list(); }));
   const more = $("#exmore"); if(more) more.addEventListener("click", () => { ST.n += 50; list(); });
   PP.bindTips(el);

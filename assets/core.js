@@ -168,6 +168,8 @@ PP.injTip = st => {
 };
 PP.INJ_SVG = '<svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M3.6 .8h2.8v2.8h2.8v2.8H6.4v2.8H3.6V6.4H.8V3.6h2.8z" fill="currentColor"/></svg>';
 PP.injMark = (id, year) => { const st = PP.injStatus(id, year); if(!st) return ""; const t = PP.esc(PP.injTip(st)); return `<span class="injm ${st.s === "q" ? "q" : "out"}" role="img" aria-label="${t}" data-tip="${t}">${PP.INJ_SVG}</span>`; };
+// link to every player with a style (owner 2026-11-16): #players-style-<pos>-<slug>, read by explore.js
+PP.styleSlug = (pos, role) => `${pos}-${String(role).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 PP.ROLE_POS = {CB:"center backs", FB:"fullbacks", CM_DM:"central midfielders", AM:"attacking midfielders", W:"wingers", ST:"strikers"};
 // {label, tip} for a player-season, or null (no role shown: under 900 minutes, or his top role is not one the site shows)
 PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.players[`${id}|${year}|${team}`]; if(!x || x[0] === "none") return null;
@@ -179,7 +181,7 @@ PP.roleFor = (id, year, team, pos) => { const R = PP.data.roles, x = R && R.play
   const rows = shown.map((d, i) => sc[i] == null ? "" : `${PP.esc(d.name)} ${sc[i] >= 0 ? "+" : "−"}${(Math.trunc(Math.abs(sc[i])*100)/100).toFixed(2)}`).filter(Boolean).join("<br>");
   const tip = `${head}<br><br>His ${year} style against other ${PP.ROLE_POS[pos]} (0 is typical; a role needs ${R.clear}, and ${R.margin} more than the next):<br>${rows}`
     + `<br><br>How he plays, not how well. Partly his team's: when players change clubs, their style carries over at about two-thirds strength.`;
-  return {label, tip}; };
+  return {label, tip, href: fit === "clear" ? `#players-style-${PP.styleSlug(pos, r1)}` : null}; };
 
 /* ---------- Transfermarkt in the scouting hub (62_tm_market.py): value bands, contracts, MLS-move likelihood ---------- */
 let mkP = null;

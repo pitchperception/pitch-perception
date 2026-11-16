@@ -1162,3 +1162,9 @@ div.mlist{padding-left:0;list-style:none}
 .frac .num{padding:0 var(--s-2) 6px;border-bottom:1.5px solid var(--ink)}
 .frac .den{padding:6px var(--s-2) 0}
 .bfoot{margin-top:var(--s-7);padding-top:var(--s-4);border-top:1px solid var(--rule)}
+
+/* ---------- playing-style links (2026-11-16) ---------- */
+.pfacts dd .prole-all{display:inline-block;margin-left:6px;font-size:var(--t-12);font-weight:600;color:var(--signal);text-decoration:none;cursor:pointer}
+.pfacts dd .prole-all:hover{text-decoration:underline}
+.rolelist dt a{color:inherit;text-decoration:underline;text-decoration-color:var(--rule-strong);text-underline-offset:3px}
+.rolelist dt a:hover{color:var(--signal);text-decoration-color:currentColor}
