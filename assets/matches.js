@@ -280,7 +280,6 @@ PP.pages.match = async (main, h) => {
         <div class="stk-lab"><span><u class="l"></u>With a defeat <b class="num">${pctShort(l)}</b></span><span><u class="w"></u>With a win <b class="num">${pctShort(w)}</b></span></div></div>`; };
     const watchFigs = m.watchability != null ? `<div class="motw-figs stk-watch"><div><b class="r-figure">${r0(m.watchability)}</b><span class="r-small">watchability</span></div><div><b class="num">${r0(m.quality)}</b><span class="r-small">quality</span></div><div><b class="num">${r0(m.importance)}</b><span class="r-small">importance</span></div></div>
       <p class="r-small stk-watch">Watchability averages quality (how strong both teams are) and importance (how much the result moves their season goals), after FiveThirtyEight's old match ratings.</p>` : "";
-    const outs = s => { const o = d["out_"+s], q = d["questionable_"+s]; return o || q ? `<p class="r-small"><b>${esc(short(m[s]))}</b>${o ? `: out, ${esc(o.split("; ").join(", "))}` : ""}${q ? `${o?"; ":": "}doubtful, ${esc(q.split("; ").join(", "))}` : ""}.</p>` : ""; };
     body = `<div class="wrap prematch-sec"><section class="plate pplate mplate">
         <div class="pp-left"><span class="r-label">The forecast</span>
           ${pbar(m, true)}
@@ -290,8 +289,7 @@ PP.pages.match = async (main, h) => {
         </div>
         <div class="pp-right"><span class="r-label">What is at stake</span>${stakeRow("home")}${stakeRow("away")}${watchFigs}</div>
       </section></div>
-      <section class="band prematch-sec" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : ["lineups", "confirmed", "sheet"].includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
-        <div class="chart" id="duel"></div>${outs("home")}${outs("away")}</div></section>`;
+      ${xiSec(m, d)}`;
   } else {
     const I = await PP.loadRounds(), wn = I ? PP.roundOfMatch(I, id) : null;
     let R = null;
@@ -306,9 +304,7 @@ PP.pages.match = async (main, h) => {
       <div class="mtops">${list(d.top_home||[], m.home)}${list(d.top_away||[], m.away)}</div></div></section>`;
   }
   const h2h = (d.h2h || []).filter(x => x[0] < (played ? "9999" : m.date) && !(played && x[0] === m.date && x[1] === m.home)).slice(0,5);
-  body += `<section class="band" id="mform"><div class="wrap"><div class="band-head"><h2 class="r-title">The two clubs</h2><p>Team strength (half results, half chances) through 2026, and their recent meetings.</p></div>
-    <div class="trajwrap"><figure class="tfig"><div class="chart" id="melo"></div><div class="legend"><span><i class="lg-line" style="--c:${PP.kit(m.home)}"></i>${esc(short(m.home))}</span><span><i class="lg-line${PP.pairKit(m.home, m.away)[2] ? " dash" : ""}" style="--c:${PP.pairKit(m.home, m.away)[1]}"></i>${esc(short(m.away))}</span></div></figure>
-    <div><h3 class="r-heading">Recent meetings</h3>${h2h.length ? `<div class="h2h">${h2h.map(x => `<div class="h2r"><span class="r-small">${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})}</span><span>${esc(short(x[1]))} <b class="num">${x[3]}–${x[4]}</b> ${esc(short(x[2]))}</span></div>`).join("")}</div>` : `<p class="r-small">No meetings in our data.</p>`}</div></div></div></section>`;
+  body += clubsSec(m, h2h, false);
   main.innerHTML = head + (liveOn ? `<div id="mlivebox"></div>` : "") + body;
   if(liveOn) PP.live.page(m, $("#mlivebox"));
   if(!played) PP.chart($("#duel"), el => drawDuel(el, m, d));
@@ -321,6 +317,17 @@ PP.pages.match = async (main, h) => {
   ["#duel","#melo","#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
   document.title = `${short(m.home)} vs. ${short(m.away)} | Pitch Perception`;
 };
+
+/* the lineups and the two clubs: shared by league previews and playoff match pages (owner, 2026-11-19: "the playoff
+   matches have no projected lineups ... what we had for regular season preview games"). d is a league match's detail
+   (matches.json, 75) or a playoff match's preview (playoffs.json, 172 from 25's playoff_previews): the same keys. */
+const SHEET = ["lineups", "confirmed", "sheet"];
+const xiOuts = (m, d, s) => { const o = d["out_"+s], q = d["questionable_"+s]; return o || q ? `<p class="r-small"><b>${esc(short(m[s]))}</b>${o ? `: out, ${esc(o.split("; ").join(", "))}` : ""}${q ? `${o?"; ":": "}doubtful, ${esc(q.split("; ").join(", "))}` : ""}.</p>` : ""; };
+const xiSec = (m, d) => `<section class="band prematch-sec" id="mxi"><div class="wrap"><div class="band-head"><h2 class="r-title">${SHEET.includes(d.xi_kind) ? "The lineups" : "Likely lineups"}</h2><p>${d.xi_kind === "availability" ? "Built from each club's recent starting elevens, adjusted for the league's availability report." : SHEET.includes(d.xi_kind) ? "The confirmed starting elevens, in the positions on the team sheet." : "Each club's most likely eleven from its recent matches."} Each player is drawn by his value above replacement this season. Click a player for his page.</p></div>
+        <div class="chart" id="duel"></div>${xiOuts(m, d, "home")}${xiOuts(m, d, "away")}</div></section>`;
+const clubsSec = (m, h2h, po) => `<section class="band" id="mform"><div class="wrap"><div class="band-head"><h2 class="r-title">The two clubs</h2><p>${po ? "Team strength (half results, half chances) through the 2026 regular season, and their recent regular-season meetings." : "Team strength (half results, half chances) through 2026, and their recent meetings."}</p></div>
+    <div class="trajwrap"><figure class="tfig"><div class="chart" id="melo"></div><div class="legend"><span><i class="lg-line" style="--c:${PP.kit(m.home)}"></i>${esc(short(m.home))}</span><span><i class="lg-line${PP.pairKit(m.home, m.away)[2] ? " dash" : ""}" style="--c:${PP.pairKit(m.home, m.away)[1]}"></i>${esc(short(m.away))}</span></div></figure>
+    <div><h3 class="r-heading">Recent meetings</h3>${h2h.length ? `<div class="h2h">${h2h.map(x => `<div class="h2r"><span class="r-small">${new Date(x[0]+"T12:00:00Z").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"})}</span><span>${esc(short(x[1]))} <b class="num">${x[3]}–${x[4]}</b> ${esc(short(x[2]))}</span></div>`).join("")}</div>` : `<p class="r-small">No meetings in our data.</p>`}</div></div></div></section>`;
 
 function drawDuel(el, m, d){
   const W = Math.min(el.clientWidth, 980); if(!W) return;
@@ -412,10 +419,11 @@ PP.pages.playoff = async (main, h) => {
   const id = h.slice("playoff-".length);
   main.innerHTML = `<div class="wrap"><section class="pid"><h1 class="r-name">Playoff match</h1><p class="r-small">Loading the match.</p></section></div>`;
   const [P, J] = await Promise.all([PP.loadPlayoffs(), PP.loadPlayoffReports()]);
+  if(!M){ try { M = await load(); } catch(e){ M = null; } }          // the clubs' strength through the season (matches.json)
   if(location.hash.slice(1) !== h) return;
   const m = P && (P.matches || []).find(x => x.id === id);
   if(!m){ main.innerHTML = `<div class="wrap"><section class="holding"><h1 class="r-title">No playoff match with this link</h1><a class="btn-text" href="#matches">All matches</a></section></div>`; return; }
-  const R = J && J.matches ? J.matches[id] : null, miss = J && J.missing ? J.missing[id] : null, f = m.forecast;
+  const R = J && J.matches ? J.matches[id] : null, miss = J && J.missing ? J.missing[id] : null, f = m.forecast, pv = m.preview || null;
   const played = m.status === "final" || m.status === "final_pending", k = m.time_confirmed ? PP.kick(m.kickoff_utc) : null;
   const seed = t => { const s = ((P.teams || []).find(x => x.team === t) || {}).seed; return s ? `<span class="po-seed num">${s}</span>` : ""; };
   const ser = m.round === "round_one" ? poSeries(m, false) : "";
@@ -437,12 +445,14 @@ PP.pages.playoff = async (main, h) => {
     body = f ? `<div class="wrap prematch-sec"><section class="plate pplate mplate">
         <div class="pp-left"><span class="r-label">The forecast, after 90 minutes</span>${pbar({home: m.home, away: m.away, pH: f.pH, pD: f.pD, pA: f.pA}, true)}
           <div class="mprob num"><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pH)}</b><br>${esc(short(m.home))} win</span><span><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pD)}</b><br>draw</span><span style="text-align:right"><b class="r-figure" style="font-size:var(--t-36)">${pctShort(f.pA)}</b><br>${esc(short(m.away))} win</span></div>
-          <p class="r-small">${level === "penalties" ? "Level after 90 minutes, it goes straight to penalties" : "Level after 90 minutes, it goes to 30 minutes of extra time, then penalties"}; the forecast counts a shoot-out as ${pct((P.rules || {}).shootout_home ?? 0.5)} for the home side.</p></div>
+          <p class="r-small">${level === "penalties" ? "Level after 90 minutes, it goes straight to penalties" : "Level after 90 minutes, it goes to 30 minutes of extra time, then penalties"}; the forecast counts a shoot-out as ${pct((P.rules || {}).shootout_home ?? 0.5)} for the home side.</p>
+          <p class="r-small">${f.source === "lineups" ? src("lineups") : `<span class="src"><i class="st model"></i>Team strength only, until the team sheets are out</span>`}</p></div>
         <div class="pp-right"><span class="r-label">${what}</span>
           <div class="po-thr"><div class="pbar big" role="img" aria-label="${esc(short(m.home))} ${pct(f.p_through_home)}, ${esc(short(m.away))} ${pct(1 - f.p_through_home)}"><i style="width:${f.p_through_home*100}%;background:${PP.pairKit(m.home, m.away)[0]}"></i><i style="width:${(1-f.p_through_home)*100}%;background:${PP.pairKit(m.home, m.away)[1]}"></i></div>
           <div class="plab"><span><b>${pct(f.p_through_home)}</b> ${esc(short(m.home))}</span><span></span><span><b>${pct(1 - f.p_through_home)}</b> ${esc(short(m.away))}</span></div></div>
           <p class="r-small">To win this match, penalties included: ${esc(short(m.home))} ${pctShort(f.p_win_home)}, ${esc(short(m.away))} ${pctShort(1 - f.p_win_home)}. From the playoff forecast (team strength), the same numbers the bracket uses.</p></div>
       </section></div>` : `<div class="wrap"><section class="holding"><p>No forecast for this match yet: it appears once both clubs are known.</p></section></div>`;
+    if(pv && ((pv.xi_home || []).length || (pv.xi_away || []).length)) body += xiSec(m, pv);
   } else if(R){
     const R2 = {...R, pre: f ? [f.pH, f.pD, f.pA, "recorded"] : null, shots: (R.shots || []).concat(R.shots_et || [])};
     RP2 = {m, R: R2};
@@ -453,12 +463,15 @@ PP.pages.playoff = async (main, h) => {
     body = `<div class="wrap"><section class="plate pplate mplate"><div class="pp-left"><span class="r-label">Result</span><p class="r-note mlede">${poLede(m, null)}</p>
       <p class="r-small"><b>Match data not available yet.</b> The match report, with expected goals and player values, follows once the match's event data are in${miss && miss.reason ? ` (${esc(miss.reason)})` : ""}; we try again every night.</p></div></section></div>`;
   }
+  body += clubsSec(m, ((pv && pv.h2h) || []).slice(0, 5), true);
   main.innerHTML = head + (liveOn ? `<div id="mlivebox"></div>` : "") + body;
   if(liveOn) PP.live.page(mm, $("#mlivebox"));
+  if(!played && pv && $("#duel")) PP.chart($("#duel"), el => drawDuel(el, m, pv));
+  if(M) PP.chart($("#melo"), el => drawElo2(el, m)); else $("#melo").innerHTML = `<p class="r-small">The strength chart did not load.</p>`;
   if(RP2 && $("#mrace")) PP.chart($("#mrace"), el => drawRace(el, RP2.m, RP2.R));
   if(RP2 && RP2.R.chain && $("#mpitch")){ const ch = PP.chainFrom(RP2.R.chain); PP.chart($("#mpitch"), el => PP.chainPitch(el, ch, {labels: ch.labels})); PP.chart($("#msteps"), el => PP.chainSteps(el, ch, {}));
     $("#mplay").addEventListener("click", () => { PP.chainPitch($("#mpitch"), ch, {labels: ch.labels, animate: true}); PP.chainSteps($("#msteps"), ch, {animate: true}); }); }
-  ["#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
+  ["#duel","#melo","#mrace","#mpitch","#msteps"].forEach(q => { if($(q)) PP.bindTips($(q)); });
   document.title = `${short(m.home)} vs. ${short(m.away)}, ${poGame(m)} | Pitch Perception`;
 };
 
