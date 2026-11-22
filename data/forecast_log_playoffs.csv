@@ -30,3 +30,4 @@ logged_at,match,round,game,kickoff_utc,home,away,pH,pD,pA,xg_home,xg_away,p_win_
 2026-11-22T13:07:30Z,MLS-MAT-000ADG,round_one,3,2026-12-03T00:00Z,New England Revolution,Philadelphia Union,0.3246,0.2617,0.4137,1.326,1.524,0.4555,0.6058,X2 blend,2026-11-22_070701,strength
 2026-11-22T13:07:30Z,MLS-MAT-000ADD,round_one,3,2026-12-03T00:30Z,Inter Miami CF,Columbus Crew,0.5259,0.2435,0.2306,1.799,1.123,0.6477,0.2979,X2 blend,2026-11-22_070701,strength
 2026-11-22T13:07:30Z,MLS-MAT-000ACW,round_one,3,2026-12-03T01:00Z,FC Dallas,Portland Timbers,0.5356,0.2411,0.2233,1.825,1.107,0.6561,0.8174,X2 blend,2026-11-22_070701,strength
+2026-11-22T22:34:51Z,MLS-MAT-000ADH,round_one,1,2026-11-22T23:30Z,Chicago Fire FC,Charlotte FC,0.5478,0.2383,0.2139,1.853,1.083,0.667,0.6296,X2 blend,2026-11-22_163435,lineups
