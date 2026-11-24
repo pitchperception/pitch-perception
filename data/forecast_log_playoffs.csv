@@ -37,3 +37,4 @@ logged_at,match,round,game,kickoff_utc,home,away,pH,pD,pA,xg_home,xg_away,p_win_
 2026-11-23T01:46:47Z,MLS-MAT-000ADI,round_one,2,2026-11-28T17:30Z,Charlotte FC,Chicago Fire FC,0.4197,0.2612,0.3191,1.538,1.314,0.5503,0.7131,X2 blend,2026-11-22_194631,strength
 2026-11-23T01:46:47Z,MLS-MAT-000ADJ,round_one,3,2026-12-03T01:00Z,Chicago Fire FC,Charlotte FC,0.5149,0.2461,0.239,1.77,1.141,0.6379,0.2869,X2 blend,2026-11-22_194631,strength
 2026-11-23T03:39:16Z,MLS-MAT-000ACS,round_one,2,2026-11-28T03:00Z,Real Salt Lake,Vancouver Whitecaps,0.3126,0.2606,0.4268,1.3,1.554,0.4429,0.1176,X2 blend,2026-11-22_213859,strength
+2026-11-24T00:16:04Z,MLS-MAT-000ACY,round_one,1,2026-11-24T01:15Z,St. Louis City,Los Angeles FC,0.3768,0.264,0.3592,1.436,1.397,0.5088,0.4768,X2 blend,2026-11-23_181546,lineups
