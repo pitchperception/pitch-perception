@@ -41,3 +41,4 @@ logged_at,match,round,game,kickoff_utc,home,away,pH,pD,pA,xg_home,xg_away,p_win_
 2026-11-24T03:30:16Z,MLS-MAT-000ACZ,round_one,2,2026-11-29T01:30Z,Los Angeles FC,St. Louis City,0.4973,0.2498,0.2529,1.725,1.171,0.6222,0.2696,X2 blend,2026-11-23_213000,strength
 2026-11-24T03:30:16Z,MLS-MAT-000AD0,round_one,3,2026-12-03T01:00Z,St. Louis City,Los Angeles FC,0.4369,0.2595,0.3036,1.578,1.28,0.5667,0.7304,X2 blend,2026-11-23_213000,strength
 2026-11-24T17:44:24Z,MLS-MAT-000ACT,round_one,3,2026-12-03T02:00Z,Vancouver Whitecaps,Real Salt Lake,0.6284,0.2123,0.1593,2.094,0.965,0.7345,0.8824,X2 blend,2026-11-24_114407,strength
+2026-11-25T02:17:23Z,MLS-MAT-000AD4,round_one,1,2026-11-25T03:00Z,San Jose Earthquakes,Houston Dynamo FC,0.5075,0.2481,0.2444,1.746,1.149,0.6315,0.6058,X2 blend,2026-11-24_201528,lineups
