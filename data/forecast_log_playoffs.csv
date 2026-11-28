@@ -44,3 +44,4 @@ logged_at,match,round,game,kickoff_utc,home,away,pH,pD,pA,xg_home,xg_away,p_win_
 2026-11-25T02:17:23Z,MLS-MAT-000AD4,round_one,1,2026-11-25T03:00Z,San Jose Earthquakes,Houston Dynamo FC,0.5075,0.2481,0.2444,1.746,1.149,0.6315,0.6058,X2 blend,2026-11-24_201528,lineups
 2026-11-25T05:38:25Z,MLS-MAT-000AD6,round_one,2,2026-11-28T19:30Z,Houston Dynamo FC,San Jose Earthquakes,0.4258,0.2607,0.3135,1.552,1.302,0.5562,0.2045,X2 blend,2026-11-24_233809,strength
 2026-11-25T05:38:25Z,MLS-MAT-000AD7,round_one,3,2026-12-03T03:00Z,San Jose Earthquakes,Houston Dynamo FC,0.5086,0.2475,0.2439,1.754,1.152,0.6323,0.7955,X2 blend,2026-11-24_233809,strength
+2026-11-28T00:03:34Z,MLS-MAT-000ADC,round_one,2,2026-11-28T01:00Z,Columbus Crew,Inter Miami CF,0.4478,0.2586,0.2936,1.599,1.255,0.5771,0.7261,X2 blend,2026-11-27_180318,lineups
